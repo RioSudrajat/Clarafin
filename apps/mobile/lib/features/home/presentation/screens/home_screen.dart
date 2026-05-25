@@ -32,11 +32,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    final user = ref.watch(userProvider);
+    final userName = ref.watch(userNameProvider);
     final transactions = ref.watch(transactionsProvider);
     final wallets = ref.watch(walletsProvider);
     final currencyFormat = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
     final totalBalance = wallets.fold<double>(0, (sum, w) => sum + w.balance);
+
+    // Dynamic PnL calculation
+    final now = DateTime.now();
+    final todayTransactions = transactions.where((t) {
+      return t.date.year == now.year && t.date.month == now.month && t.date.day == now.day;
+    }).toList();
+    final todayIncome = todayTransactions.where((t) => t.type == 'income').fold<double>(0, (sum, t) => sum + t.amount);
+    final todayExpense = todayTransactions.where((t) => t.type == 'expense' || t.type == 'transfer').fold<double>(0, (sum, t) => sum + t.amount);
+    final dailyPnl = todayIncome - todayExpense;
+    final pnlPercentage = totalBalance > 0 ? (dailyPnl / totalBalance * 100) : 0.0;
+    final isPnlPositive = dailyPnl >= 0;
+
+    // Dynamic month
+    final currentMonth = DateFormat('MMMM yyyy', 'id_ID').format(now);
 
     return Scaffold(
       backgroundColor: AppColors.surface,
@@ -52,26 +66,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        children: [
-                          // HF Logo
-                          Container(
-                            width: 32,
-                            height: 32,
-                            decoration: const BoxDecoration(
-                              color: AppColors.primary,
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Center(
-                              child: Text('HF', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Colors.white)),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text('HaloFin', style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
-                        ],
+                      // Editable greeting
+                      GestureDetector(
+                        onTap: () => _showEditNameDialog(context, ref, userName),
+                        child: Row(
+                          children: [
+                            Text('Hi, ', style: textTheme.titleMedium?.copyWith(color: AppColors.textSecondary)),
+                            Text(userName, style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
+                            const Text(' 👋', style: TextStyle(fontSize: 18)),
+                            const SizedBox(width: 4),
+                            Icon(Icons.edit, size: 14, color: AppColors.textSecondary.withValues(alpha: 0.5)),
+                          ],
+                        ),
                       ),
                       Row(
                         children: [
+                          // Message icon → Chat Consultant
+                          IconButton(
+                            icon: const Icon(Icons.chat_bubble_outline, size: 24),
+                            onPressed: () => context.push('/session'),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                          ),
+                          // Notification bell
                           Stack(
                             children: [
                               IconButton(
@@ -114,35 +131,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
                 ),
 
-                // ── Welcome & Month (compact single row) ──
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          Text('Hi, ', style: textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary)),
-                          Text(user.name, style: textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold)),
-                          const Text(' 👋', style: TextStyle(fontSize: 16)),
-                        ],
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(12)),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.calendar_today, size: 12, color: Colors.black54),
-                            const SizedBox(width: 4),
-                            Text('Maret 2026', style: textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600, color: Colors.black54)),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 4),
 
                 // Scrollable Content
                 Expanded(
@@ -209,6 +198,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                         onTap: () => setState(() => _obscureBalance = !_obscureBalance),
                                         child: Icon(_obscureBalance ? Icons.visibility_off : Icons.visibility, size: 14, color: Colors.black54),
                                       ),
+                                      const Spacer(),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                        decoration: BoxDecoration(
+                                          color: Colors.black.withValues(alpha: 0.08),
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(Icons.calendar_today, size: 10, color: Colors.black54),
+                                            const SizedBox(width: 4),
+                                            Text(currentMonth, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: Colors.black54)),
+                                          ],
+                                        ),
+                                      ),
                                     ],
                                   ),
                                   const SizedBox(height: 8),
@@ -231,10 +236,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                     decoration: BoxDecoration(color: Colors.black87, borderRadius: BorderRadius.circular(20)),
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
-                                      children: const [
-                                        Text('Hari ini ', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.white)),
-                                        Icon(Icons.trending_down, size: 10, color: Colors.redAccent),
-                                        Text('-Rp 150.000 (-0.5%)', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.redAccent)),
+                                      children: [
+                                        const Text('Hari ini ', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.white)),
+                                        Icon(
+                                          isPnlPositive ? Icons.trending_up : Icons.trending_down,
+                                          size: 10,
+                                          color: isPnlPositive ? AppColors.success : Colors.redAccent,
+                                        ),
+                                        Text(
+                                          '${isPnlPositive ? "+" : ""}${currencyFormat.format(dailyPnl)} (${isPnlPositive ? "+" : ""}${pnlPercentage.toStringAsFixed(1)}%)',
+                                          style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: isPnlPositive ? AppColors.success : Colors.redAccent),
+                                        ),
                                       ],
                                     ),
                                   ),
@@ -255,9 +267,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   children: [
                                     ...wallets.take(3).map((w) {
                                       IconData wIcon = Icons.account_balance;
-                                      if (w.type == 'E-Wallet') wIcon = Icons.account_balance_wallet;
-                                      else if (w.type == 'Cash') wIcon = Icons.shopping_bag;
-                                      else if (w.type == 'Crypto' || w.type == 'Stock' || w.type == 'Mutual Fund') wIcon = Icons.show_chart;
+                                      if (w.type == 'E-Wallet') {
+                                        wIcon = Icons.account_balance_wallet;
+                                      } else if (w.type == 'Cash') {
+                                        wIcon = Icons.shopping_bag;
+                                      } else if (w.type == 'Crypto' || w.type == 'Stock' || w.type == 'Mutual Fund') {
+                                        wIcon = Icons.show_chart;
+                                      }
                                       return Padding(
                                         padding: const EdgeInsets.only(right: 6),
                                         child: _buildWalletPill(
@@ -513,7 +529,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           bottom: 110,
           right: 20,
           child: GestureDetector(
-            onTap: () => context.push('/session'),
+            onTap: () => context.push('/ai-chat'),
             child: Container(
               width: 52,
               height: 52,
@@ -533,6 +549,56 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ),
       ]),
+      ),
+    );
+  }
+  // ── Edit Name Dialog ──
+
+  void _showEditNameDialog(BuildContext context, WidgetRef ref, String currentName) {
+    final controller = TextEditingController(text: currentName);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Edit Nama', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: InputDecoration(
+            hintText: 'Masukkan nama kamu',
+            filled: true,
+            fillColor: Colors.grey.shade50,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.grey.shade200),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppColors.primary, width: 2),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text('Batal', style: TextStyle(color: Colors.grey.shade600)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final newName = controller.text.trim();
+              if (newName.isNotEmpty) {
+                ref.read(userNameProvider.notifier).state = newName;
+              }
+              Navigator.of(ctx).pop();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.black,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: const Text('Simpan', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
       ),
     );
   }

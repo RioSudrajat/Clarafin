@@ -18,6 +18,21 @@ final userProvider = Provider<UserModel>((ref) {
   );
 });
 
+// --- Editable User Name Provider ---
+class UserNameNotifier extends Notifier<String> {
+  @override
+  String build() {
+    return ref.read(userProvider).name;
+  }
+
+  @override
+  set state(String value) => super.state = value;
+}
+
+final userNameProvider = NotifierProvider<UserNameNotifier, String>(() {
+  return UserNameNotifier();
+});
+
 // --- Wallets Provider ---
 class WalletsNotifier extends Notifier<List<WalletModel>> {
   Timer? _simulationTimer;

@@ -30,6 +30,8 @@ import '../features/transaction/presentation/screens/ai_draft_review_screen.dart
 import '../features/profile/presentation/screens/profile_screen.dart';
 import '../features/report/presentation/screens/report_dashboard_screen.dart';
 import '../features/session/presentation/screens/branch_session_screen.dart';
+import '../features/session/presentation/screens/ai_chat_screen.dart';
+import '../features/consult/presentation/screens/consult_chat_screen.dart';
 import '../features/transaction/presentation/screens/transaction_success_screen.dart';
 
 // Keys for each navigator branch
@@ -159,6 +161,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => AddEditBillScreen(billId: state.pathParameters['id']),
       ),
       GoRoute(
+        path: '/consult/chat',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const ConsultChatScreen(),
+      ),
+      GoRoute(
         path: '/consult/:id',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => ConsultDetailScreen(consultantId: state.pathParameters['id']!),
@@ -243,6 +250,12 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: '/profile',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const ProfileScreen(),
+      ),
+
+      GoRoute(
+        path: '/ai-chat',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const AiChatScreen(),
       ),
     ],
   );
