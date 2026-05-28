@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_colors.dart';
+import '../../features/session/presentation/screens/quick_action_sheets.dart';
 
 class ScaffoldWithNavBar extends StatelessWidget {
   final StatefulNavigationShell navigationShell;
@@ -20,15 +22,15 @@ class ScaffoldWithNavBar extends StatelessWidget {
   }
 }
 
-class AppBottomNav extends StatelessWidget {
+class AppBottomNav extends ConsumerWidget {
   final StatefulNavigationShell navigationShell;
   
   const AppBottomNav({super.key, required this.navigationShell});
 
-  void _onTap(BuildContext context, int index) {
+  void _onTap(BuildContext context, WidgetRef ref, int index) {
     // FAB is center index (2)
     if (index == 2) {
-      context.push('/transaction/entry');
+      showQuickActionMenuSheet(context, ref);
       return;
     }
     
@@ -42,7 +44,7 @@ class AppBottomNav extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Container(
       margin: const EdgeInsets.only(left: 16, right: 16, bottom: 20),
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -70,17 +72,17 @@ class AppBottomNav extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _buildNavItem(context, 0, Icons.home_filled, Icons.home_outlined, 'Home'),
-              _buildNavItem(context, 1, Icons.account_balance_wallet, Icons.account_balance_wallet_outlined, 'Budget'),
+              _buildNavItem(context, ref, 0, Icons.home_filled, Icons.home_outlined, 'Home'),
+              _buildNavItem(context, ref, 1, Icons.account_balance_wallet, Icons.account_balance_wallet_outlined, 'Budget'),
               const SizedBox(width: 56), // Space for FAB
-              _buildNavItem(context, 3, Icons.chat_bubble, Icons.chat_bubble_outline, 'Consult'),
-              _buildNavItem(context, 4, Icons.work, Icons.work_outline, 'Wallet'),
+              _buildNavItem(context, ref, 3, Icons.chat_bubble, Icons.chat_bubble_outline, 'Consult'),
+              _buildNavItem(context, ref, 4, Icons.work, Icons.work_outline, 'Wallet'),
             ],
           ),
           Positioned(
             top: -24,
             child: GestureDetector(
-              onTap: () => _onTap(context, 2),
+              onTap: () => _onTap(context, ref, 2),
               child: Container(
                 height: 56,
                 width: 56,
@@ -105,14 +107,14 @@ class AppBottomNav extends StatelessWidget {
     );
   }
 
-  Widget _buildNavItem(BuildContext context, int index, IconData activeIcon, IconData icon, String label) {
+  Widget _buildNavItem(BuildContext context, WidgetRef ref, int index, IconData activeIcon, IconData icon, String label) {
     // Current branch index maps to 0, 1, 3, 4
     final branchIndex = index > 2 ? index - 1 : index;
     final isActive = (index != 2) && (navigationShell.currentIndex == branchIndex);
     final color = isActive ? AppColors.primaryDark : AppColors.textSecondary;
     
     return GestureDetector(
-      onTap: () => _onTap(context, index),
+      onTap: () => _onTap(context, ref, index),
       behavior: HitTestBehavior.opaque,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),

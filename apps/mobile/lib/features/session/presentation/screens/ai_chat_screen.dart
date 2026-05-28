@@ -257,7 +257,7 @@ class _AiChatScreenState extends State<AiChatScreen>
               crossAxisCount: 2,
               crossAxisSpacing: 12,
               mainAxisSpacing: 12,
-              childAspectRatio: 1.55,
+              childAspectRatio: 1.38,
             ),
             itemCount: _suggestedPrompts.length,
             itemBuilder: (context, index) {
@@ -277,7 +277,7 @@ class _AiChatScreenState extends State<AiChatScreen>
         onTap: () => _sendMessage('$emoji $text'),
         borderRadius: BorderRadius.circular(16),
         child: Container(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
@@ -294,15 +294,15 @@ class _AiChatScreenState extends State<AiChatScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(emoji, style: const TextStyle(fontSize: 26)),
-              const SizedBox(height: 8),
+              Text(emoji, style: const TextStyle(fontSize: 24)),
+              const SizedBox(height: 4),
               Text(
                 text,
                 style: const TextStyle(
-                  fontSize: 13,
+                  fontSize: 12,
                   fontWeight: FontWeight.w600,
                   color: AppColors.textPrimary,
-                  height: 1.3,
+                  height: 1.25,
                 ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,

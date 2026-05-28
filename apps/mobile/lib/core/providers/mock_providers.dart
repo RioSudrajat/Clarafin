@@ -33,15 +33,76 @@ final userNameProvider = NotifierProvider<UserNameNotifier, String>(() {
   return UserNameNotifier();
 });
 
+// --- Quick Action Limit Provider ---
+class QuickActionLimitState {
+  final int aiChatCount;
+  final int voiceAiCount;
+  final int scanCount;
+
+  const QuickActionLimitState({
+    required this.aiChatCount,
+    required this.voiceAiCount,
+    required this.scanCount,
+  });
+
+  QuickActionLimitState copyWith({
+    int? aiChatCount,
+    int? voiceAiCount,
+    int? scanCount,
+  }) {
+    return QuickActionLimitState(
+      aiChatCount: aiChatCount ?? this.aiChatCount,
+      voiceAiCount: voiceAiCount ?? this.voiceAiCount,
+      scanCount: scanCount ?? this.scanCount,
+    );
+  }
+}
+
+class QuickActionLimitNotifier extends Notifier<QuickActionLimitState> {
+  @override
+  QuickActionLimitState build() {
+    return const QuickActionLimitState(
+      aiChatCount: 3,
+      voiceAiCount: 5, // default limit reached
+      scanCount: 7,
+    );
+  }
+
+  void incrementAiChat() {
+    if (state.aiChatCount < 10) {
+      state = state.copyWith(aiChatCount: state.aiChatCount + 1);
+    }
+  }
+
+  void incrementVoiceAi() {
+    if (state.voiceAiCount < 5) {
+      state = state.copyWith(voiceAiCount: state.voiceAiCount + 1);
+    }
+  }
+
+  void incrementScan() {
+    if (state.scanCount < 8) {
+      state = state.copyWith(scanCount: state.scanCount + 1);
+    }
+  }
+}
+
+final quickActionLimitProvider = NotifierProvider<QuickActionLimitNotifier, QuickActionLimitState>(() {
+  return QuickActionLimitNotifier();
+});
+
 // --- Wallets Provider ---
 class WalletsNotifier extends Notifier<List<WalletModel>> {
-  Timer? _simulationTimer;
-  Timer? _dividendTimer;
-
   @override
   List<WalletModel> build() {
-    _startSimulation();
-    _startDividendCheck();
+    final simulationTimer = _startSimulation();
+    final dividendTimer = _startDividendCheck();
+    
+    ref.onDispose(() {
+      simulationTimer.cancel();
+      dividendTimer.cancel();
+    });
+
     return [
       WalletModel(id: 'w1', name: 'BCA Utama', type: 'Bank', balance: 12000000, isAutoSync: true),
       WalletModel(id: 'w2', name: 'GoPay', type: 'E-Wallet', balance: 500000, isAutoSync: true),
@@ -51,9 +112,9 @@ class WalletsNotifier extends Notifier<List<WalletModel>> {
     ];
   }
 
-  void _startSimulation() {
+  Timer _startSimulation() {
     // Simulate real-time data for volatile assets
-    _simulationTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
+    return Timer.periodic(const Duration(seconds: 3), (timer) {
       final random = Random();
       state = state.map((wallet) {
         if (wallet.isVolatile) {
@@ -69,9 +130,9 @@ class WalletsNotifier extends Notifier<List<WalletModel>> {
     });
   }
 
-  void _startDividendCheck() {
+  Timer _startDividendCheck() {
     // Check daily (or frequently) for dividend drops
-    _dividendTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+    return Timer.periodic(const Duration(seconds: 10), (timer) {
       final now = DateTime.now();
       state = state.map((wallet) {
         if (wallet.dividendDropDate != null && !wallet.hasClaimedDividend) {
