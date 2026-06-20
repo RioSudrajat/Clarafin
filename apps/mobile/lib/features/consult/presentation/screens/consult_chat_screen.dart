@@ -238,7 +238,7 @@ class _ConsultChatScreenState extends State<ConsultChatScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.white,
       appBar: _buildAppBar(),
       body: SafeArea(
         child: Column(
@@ -260,7 +260,7 @@ class _ConsultChatScreenState extends State<ConsultChatScreen>
       surfaceTintColor: Colors.transparent,
       elevation: 0,
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary, size: 22),
+        icon: const Icon(Icons.chevron_left, color: AppColors.textPrimary, size: 22),
         onPressed: () => context.pop(),
       ),
       titleSpacing: 0,

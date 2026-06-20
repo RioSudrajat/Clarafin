@@ -86,7 +86,7 @@ class _TransactionHistoryScreenState extends ConsumerState<TransactionHistoryScr
           child: Container(
             decoration: BoxDecoration(color: Colors.grey.shade50, shape: BoxShape.circle),
             child: IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.black, size: 20),
+              icon: const Icon(Icons.chevron_left, color: Colors.black, size: 20),
               onPressed: () => Navigator.of(context).pop(),
             ),
           ),

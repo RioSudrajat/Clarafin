@@ -158,7 +158,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))],
                         ),
                         child: Column(
-                          mainAxisAlignment: MainAxisAlignment.end,
                           children: [
                             Container(
                               width: 32,
@@ -166,7 +165,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
                               child: const Icon(Icons.pie_chart, color: Colors.teal, size: 20),
                             ),
-                            const SizedBox(height: 8),
+                            const Spacer(),
                             const Text('View\nPortfolio', textAlign: TextAlign.center, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.teal)),
                             const SizedBox(height: 8),
                           ],
@@ -253,13 +252,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 ],
                               ),
                             ),
-                            // Wallet list inside card
+                            // Wallet list inside card (Redesigned with Lime Yellow background)
                             Container(
                               width: double.infinity,
                               padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF1E293B),
-                                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
+                              decoration: const BoxDecoration(
+                                color: AppColors.primary,
+                                borderRadius: BorderRadius.vertical(bottom: Radius.circular(16)),
                               ),
                               child: SingleChildScrollView(
                                 scrollDirection: Axis.horizontal,
@@ -284,18 +283,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                         ),
                                       );
                                     }),
-                                    // Add wallet button
+                                    // Add wallet button (High-contrast for Lime Yellow background)
                                     GestureDetector(
                                       onTap: () => context.push('/wallet/add'),
                                       child: Container(
                                         width: 32,
                                         height: 32,
                                         decoration: BoxDecoration(
-                                          color: Colors.white.withValues(alpha: 0.15),
+                                          color: Colors.black.withValues(alpha: 0.08),
                                           borderRadius: BorderRadius.circular(8),
-                                          border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+                                          border: Border.all(color: Colors.black.withValues(alpha: 0.12)),
                                         ),
-                                        child: const Icon(Icons.add, size: 16, color: Colors.white70),
+                                        child: const Icon(Icons.add, size: 16, color: Colors.black54),
                                       ),
                                     ),
                                   ],
@@ -611,9 +610,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.1),
+          color: Colors.black.withValues(alpha: 0.06),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+          border: Border.all(color: Colors.black.withValues(alpha: 0.1)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -629,8 +628,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(name, style: const TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Colors.white70)),
-                Text(balance, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.white)),
+                Text(name, style: const TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Colors.black54)),
+                Text(balance, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.black87)),
               ],
             ),
           ],

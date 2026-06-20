@@ -148,7 +148,7 @@ class _AiChatScreenState extends State<AiChatScreen>
       elevation: 0,
       surfaceTintColor: Colors.transparent,
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+        icon: const Icon(Icons.chevron_left, color: AppColors.textPrimary),
         onPressed: () => context.pop(),
       ),
       centerTitle: true,

@@ -11,7 +11,7 @@ class ConsultDetailScreen extends StatelessWidget {
     final textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.white,
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
@@ -25,7 +25,7 @@ class ConsultDetailScreen extends StatelessWidget {
                   color: Colors.white.withValues(alpha: 0.2),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+                child: const Icon(Icons.chevron_left, color: Colors.white, size: 20),
               ),
               onPressed: () => context.pop(),
             ),

@@ -18,7 +18,7 @@ class _OnboardingWalletSetupScreenState extends State<OnboardingWalletSetupScree
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(Icons.chevron_left),
           onPressed: () => context.pop(),
         ),
         title: const Text('Langkah 1 dari 2'),

@@ -5,7 +5,6 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/providers/mock_providers.dart';
-import '../../../../core/models/transaction_model.dart';
 
 class WalletDetailScreen extends ConsumerWidget {
   final String walletId;
@@ -34,7 +33,7 @@ class WalletDetailScreen extends ConsumerWidget {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(Icons.chevron_left),
           onPressed: () => context.pop(),
         ),
         title: const Text(

@@ -51,8 +51,10 @@ class _AddEditBudgetScreenState extends ConsumerState<AddEditBudgetScreen> {
           _totalAmountController.text = budget.totalAmount.toInt().toString();
           _spentAmountController.text = budget.spentAmount.toInt().toString();
           _selectedIcon = budget.icon;
-          // approximate color match
-          _selectedColor = _availableColors.firstWhere((c) => c.value == budget.iconColor.value, orElse: () => _availableColors.first);
+          _selectedColor = _availableColors.firstWhere(
+            (c) => c.toARGB32() == budget.iconColor.toARGB32(),
+            orElse: () => _availableColors.first,
+          );
         });
       });
     }

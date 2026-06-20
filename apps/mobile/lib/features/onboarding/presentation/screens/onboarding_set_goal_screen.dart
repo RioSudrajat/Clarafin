@@ -11,7 +11,7 @@ class OnboardingSetGoalScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(Icons.chevron_left),
           onPressed: () => context.pop(),
         ),
         title: const Text('Langkah 2 dari 2'),

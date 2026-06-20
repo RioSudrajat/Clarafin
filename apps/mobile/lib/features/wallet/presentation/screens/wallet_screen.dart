@@ -53,10 +53,15 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
     for (var w in wallets) {
       totalBalance += w.balance;
       final f = _mapTypeToFilter(w.type);
-      if (f == 'Bank') totalBank += w.balance;
-      else if (f == 'E-Wallet') totalEwallet += w.balance;
-      else if (f == 'Investasi') totalInvest += w.balance;
-      else totalOther += w.balance;
+      if (f == 'Bank') {
+        totalBank += w.balance;
+      } else if (f == 'E-Wallet') {
+        totalEwallet += w.balance;
+      } else if (f == 'Investasi') {
+        totalInvest += w.balance;
+      } else {
+        totalOther += w.balance;
+      }
     }
 
     final filteredWallets = wallets.where((w) {

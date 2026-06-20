@@ -39,7 +39,7 @@ class GoalDetailScreen extends ConsumerWidget {
               icon: Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(color: Colors.grey.shade100, shape: BoxShape.circle),
-                child: const Icon(Icons.arrow_back, size: 20),
+                child: const Icon(Icons.chevron_left, size: 20),
               ),
               onPressed: () => context.pop(),
             ),

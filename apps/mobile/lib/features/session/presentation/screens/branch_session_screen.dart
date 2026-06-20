@@ -150,7 +150,7 @@ class _BranchSessionScreenState extends State<BranchSessionScreen> {
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary, size: 22),
+          icon: const Icon(Icons.chevron_left, color: AppColors.textPrimary, size: 22),
           onPressed: () => context.pop(),
         ),
         centerTitle: true,

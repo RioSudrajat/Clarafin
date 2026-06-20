@@ -41,7 +41,7 @@ class _AddWalletInstitutionScreenState extends State<AddWalletInstitutionScreen>
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => context.pop()),
+        leading: IconButton(icon: const Icon(Icons.chevron_left), onPressed: () => context.pop()),
         title: const Text('Tambah Wallet Baru', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         backgroundColor: Colors.white,
         elevation: 0,

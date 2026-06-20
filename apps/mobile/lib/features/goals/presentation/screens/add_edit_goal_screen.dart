@@ -172,7 +172,7 @@ class _AddEditGoalScreenState extends ConsumerState<AddEditGoalScreen> {
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(Icons.chevron_left),
           onPressed: () => context.pop(),
         ),
         actions: [

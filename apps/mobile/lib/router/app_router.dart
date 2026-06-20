@@ -91,17 +91,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
               ),
             ],
           ),
-          // Branch 1: Budget (internal tabs for Goals/Budget/Bills)
-          StatefulShellBranch(
-            navigatorKey: _budgetNavigatorKey,
-            routes: [
-              GoRoute(
-                path: '/budget',
-                builder: (context, state) => const BudgetScreen(),
-              ),
-            ],
-          ),
-          // Branch 2: Consult
+          // Branch 1: Consult
           StatefulShellBranch(
             navigatorKey: _consultNavigatorKey,
             routes: [
@@ -111,13 +101,23 @@ final goRouterProvider = Provider<GoRouter>((ref) {
               ),
             ],
           ),
-          // Branch 3: Wallet
+          // Branch 2: Wallet
           StatefulShellBranch(
             navigatorKey: _walletNavigatorKey,
             routes: [
               GoRoute(
                 path: '/wallet',
                 builder: (context, state) => const WalletScreen(),
+              ),
+            ],
+          ),
+          // Branch 3: Budget (internal tabs for Goals/Budget/Bills)
+          StatefulShellBranch(
+            navigatorKey: _budgetNavigatorKey,
+            routes: [
+              GoRoute(
+                path: '/budget',
+                builder: (context, state) => const BudgetScreen(),
               ),
             ],
           ),

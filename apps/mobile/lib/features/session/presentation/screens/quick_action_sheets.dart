@@ -65,10 +65,11 @@ class _QuickActionMenuSheet extends ConsumerWidget {
 
     return SafeArea(
       child: SingleChildScrollView(
+        physics: const ClampingScrollPhysics(),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Center(
               child: Container(
@@ -99,74 +100,80 @@ class _QuickActionMenuSheet extends ConsumerWidget {
             ),
             const SizedBox(height: 20),
 
-            // Grid list of quick actions
-            _buildActionItem(
-              context,
-              ref,
-              icon: Icons.smart_toy_outlined,
-              title: 'AI Chat Quick Action',
-              subtitle: 'Ketik cepat detail transaksi lewat asisten AI',
-              limitText: 'Quota: ${limits.aiChatCount}/10 Sesi',
-              isLimited: limits.aiChatCount >= 10,
-              onTap: () {
-                Navigator.pop(context);
-                if (limits.aiChatCount >= 10) {
-                  _showPremiumUpgradeSheet(context, 'AI Chat Quick Action');
-                } else {
-                  _showAiChatQuickSheet(context, parentRef);
-                }
-              },
-            ),
-            const SizedBox(height: 10),
-            _buildActionItem(
-              context,
-              ref,
-              icon: Icons.mic_none_rounded,
-              title: 'Voice AI Action',
-              subtitle: 'Ucapkan transaksimu dan biarkan AI mencatatnya',
-              limitText: 'Quota: ${limits.voiceAiCount}/5 Sesi',
-              isLimited: limits.voiceAiCount >= 5,
-              onTap: () {
-                Navigator.pop(context);
-                if (limits.voiceAiCount >= 5) {
-                  _showPremiumUpgradeSheet(context, 'Voice AI Action');
-                } else {
-                  _showVoiceAiSheet(context, parentRef);
-                }
-              },
-            ),
-            const SizedBox(height: 10),
-            _buildActionItem(
-              context,
-              ref,
-              icon: Icons.document_scanner_outlined,
-              title: 'Scan Action (OCR)',
-              subtitle: 'Foto struk belanjaan lo dan scan otomatis',
-              limitText: 'Quota: ${limits.scanCount}/8 Sesi',
-              isLimited: limits.scanCount >= 8,
-              onTap: () {
-                Navigator.pop(context);
-                if (limits.scanCount >= 8) {
-                  _showPremiumUpgradeSheet(context, 'Scan Action (OCR)');
-                } else {
-                  _showOcrScanSheet(context, parentRef);
-                }
-              },
-            ),
-            const SizedBox(height: 10),
-            _buildActionItem(
-              context,
-              ref,
-              icon: Icons.edit_note_rounded,
-              title: 'Manual Add Transaction',
-              subtitle: 'Isi formulir manual dengan detail lengkap',
-              limitText: 'Tanpa Batasan Kuota',
-              isLimited: false,
-              isManual: true,
-              onTap: () {
-                Navigator.pop(context);
-                context.push('/transaction/entry');
-              },
+            // Grid list of quick actions (2x2 grid)
+            GridView.count(
+              crossAxisCount: 2,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              childAspectRatio: 1.15,
+              children: [
+                _buildActionGridItem(
+                  context,
+                  ref,
+                  emoji: '💬',
+                  title: 'AI Chat Action',
+                  subtitle: 'Ketik lewat asisten AI',
+                  limitText: 'Quota: ${limits.aiChatCount}/10',
+                  isLimited: limits.aiChatCount >= 10,
+                  onTap: () {
+                    Navigator.pop(context);
+                    if (limits.aiChatCount >= 10) {
+                      _showPremiumUpgradeSheet(context, 'AI Chat Quick Action');
+                    } else {
+                      _showAiChatQuickSheet(context, parentRef);
+                    }
+                  },
+                ),
+                _buildActionGridItem(
+                  context,
+                  ref,
+                  emoji: '🎙️',
+                  title: 'Voice AI Action',
+                  subtitle: 'Ucapkan ke asisten AI',
+                  limitText: 'Quota: ${limits.voiceAiCount}/5',
+                  isLimited: limits.voiceAiCount >= 5,
+                  onTap: () {
+                    Navigator.pop(context);
+                    if (limits.voiceAiCount >= 5) {
+                      _showPremiumUpgradeSheet(context, 'Voice AI Action');
+                    } else {
+                      _showVoiceAiSheet(context, parentRef);
+                    }
+                  },
+                ),
+                _buildActionGridItem(
+                  context,
+                  ref,
+                  emoji: '📸',
+                  title: 'Scan Action (OCR)',
+                  subtitle: 'Foto struk belanja untuk scan',
+                  limitText: 'Quota: ${limits.scanCount}/8',
+                  isLimited: limits.scanCount >= 8,
+                  onTap: () {
+                    Navigator.pop(context);
+                    if (limits.scanCount >= 8) {
+                      _showPremiumUpgradeSheet(context, 'Scan Action (OCR)');
+                    } else {
+                      _showOcrScanSheet(context, parentRef);
+                    }
+                  },
+                ),
+                _buildActionGridItem(
+                  context,
+                  ref,
+                  emoji: '📝',
+                  title: 'Manual Add',
+                  subtitle: 'Isi formulir manual lengkap',
+                  limitText: 'Unlimited',
+                  isLimited: false,
+                  onTap: () {
+                    Navigator.pop(context);
+                    context.push('/transaction/entry');
+                  },
+                ),
+              ],
             ),
             const SizedBox(height: 12),
           ],
@@ -175,95 +182,99 @@ class _QuickActionMenuSheet extends ConsumerWidget {
     );
   }
 
-  Widget _buildActionItem(
+  Widget _buildActionGridItem(
     BuildContext context,
     WidgetRef ref, {
-    required IconData icon,
+    required String emoji,
     required String title,
     required String subtitle,
     required String limitText,
     required bool isLimited,
-    bool isManual = false,
     required VoidCallback onTap,
   }) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isLimited ? Colors.red.shade100 : AppColors.divider,
-          width: isLimited ? 1.5 : 1.0,
+          color: const Color(0xFFE5E7EB),
+          width: 1.0,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(20),
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            child: Row(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Glowing Icon Wrapper
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: isLimited
-                        ? Colors.red.shade50
-                        : (isManual
-                            ? Colors.blue.shade50
-                            : AppColors.primary.withValues(alpha: 0.15)),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Icon(
-                    icon,
-                    color: isLimited
-                        ? Colors.red
-                        : (isManual ? Colors.blue.shade700 : AppColors.textPrimary),
-                    size: 22,
-                  ),
-                ),
-                const SizedBox(width: 14),
-                // Texts
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                          color: AppColors.textPrimary,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF3F4F6),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Center(
+                        child: Text(
+                          emoji,
+                          style: const TextStyle(
+                            fontSize: 22,
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        subtitle,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: AppColors.textSecondary.withValues(alpha: 0.8),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                // Quota badge
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: isLimited ? Colors.red.shade100 : Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    limitText,
-                    style: TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.bold,
-                      color: isLimited ? Colors.red.shade900 : Colors.grey.shade700,
                     ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF3F4F6),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        limitText,
+                        style: const TextStyle(
+                          fontSize: 8.5,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF4B5563),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const Spacer(),
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: AppColors.textSecondary,
+                    height: 1.25,
                   ),
                 ),
               ],
@@ -1656,10 +1667,14 @@ void _showOcrScanSheet(BuildContext context, WidgetRef parentRef) {
     context: context,
     backgroundColor: Colors.black,
     isScrollControlled: true,
+    useSafeArea: true,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
     ),
-    builder: (ctx) => _OcrScanModal(parentRef: parentRef),
+    builder: (ctx) => FractionallySizedBox(
+      heightFactor: 1.0,
+      child: _OcrScanModal(parentRef: parentRef),
+    ),
   );
 }
 
@@ -1751,118 +1766,124 @@ class _OcrScanModalState extends State<_OcrScanModal> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Center(
-            child: Container(
-              width: 38,
-              height: 5,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(10),
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        child: Column(
+          children: [
+            Center(
+              child: Container(
+                width: 38,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 20),
-          const Text(
-            'Scan Struk / Nota (OCR)',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
+            const SizedBox(height: 20),
+            const Text(
+              'Scan Struk / Nota (OCR)',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
             ),
-          ),
-          const SizedBox(height: 20),
+            const SizedBox(height: 20),
 
-          if (_ocrDraft != null) ...[
-            _buildReviewPanel(),
-          ] else ...[
-            // Camera Viewfinder Simulator Box
-            Container(
-              width: double.infinity,
-              height: 200,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade900,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 2),
+            if (_ocrDraft != null) ...[
+              Expanded(
+                child: SingleChildScrollView(
+                  child: _buildReviewPanel(),
+                ),
               ),
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  if (_scanningOCR) ...[
-                    const Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CircularProgressIndicator(color: AppColors.primary),
-                        SizedBox(height: 14),
-                        Text(
-                          'Menjalankan OCR & Pemindaian...',
-                          style: TextStyle(color: Colors.white, fontSize: 12),
+            ] else ...[
+              // Camera Viewfinder Simulator Box expanded
+              Expanded(
+                child: Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade900,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 2),
+                  ),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      if (_scanningOCR) ...[
+                        const Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            CircularProgressIndicator(color: AppColors.primary),
+                            SizedBox(height: 14),
+                            Text(
+                              'Menjalankan OCR & Pemindaian...',
+                              style: TextStyle(color: Colors.white, fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ] else if (_isScanning) ...[
+                        // Animated Scanning Laser line
+                        const _ScannerAnimation(),
+                        const Positioned(
+                          bottom: 20,
+                          child: Text(
+                            'Menyelaraskan struktur struk...',
+                            style: TextStyle(color: AppColors.primary, fontSize: 11, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ] else ...[
+                        // Viewfinder corners outline overlay
+                        Opacity(
+                          opacity: 0.5,
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.qr_code_scanner_rounded, size: 48, color: Colors.white),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Posisikan struk di dalam bingkai',
+                                style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 11),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
-                    ),
-                  ] else if (_isScanning) ...[
-                    // Animated Scanning Laser line
-                    const _ScannerAnimation(),
-                    const Positioned(
-                      bottom: 20,
-                      child: Text(
-                        'Menyelaraskan struktur struk...',
-                        style: TextStyle(color: AppColors.primary, fontSize: 11, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ] else ...[
-                    // Viewfinder corners outline overlay
-                    Opacity(
-                      opacity: 0.5,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.qr_code_scanner_rounded, size: 48, color: Colors.white),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Posisikan struk di dalam bingkai',
-                            style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 11),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(height: 28),
-
-            // Control trigger button
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: ElevatedButton.icon(
-                icon: const Icon(
-                  Icons.camera_alt_rounded,
-                  color: Colors.black,
-                  size: 20,
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.black,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+                    ],
                   ),
                 ),
-                onPressed: _isScanning || _scanningOCR ? null : _capturePhoto,
-                label: const Text(
-                  'Jepret Struk Belanjaan',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+              ),
+              const SizedBox(height: 24),
+
+              // Control trigger button
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton.icon(
+                  icon: const Icon(
+                    Icons.camera_alt_rounded,
+                    color: Colors.black,
+                    size: 20,
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.black,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  onPressed: _isScanning || _scanningOCR ? null : _capturePhoto,
+                  label: const Text(
+                    'Jepret Struk Belanjaan',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
                 ),
               ),
-            ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }

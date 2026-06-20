@@ -20,7 +20,7 @@ class _ConsultListScreenState extends State<ConsultListScreen> {
     final textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text('Consultation', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         centerTitle: true,
