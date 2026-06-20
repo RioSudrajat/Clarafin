@@ -64,6 +64,26 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
       }
     }
 
+    final rawChartData = <ChartData>[
+      if (totalEwallet > 0) ChartData('E-Wallet', totalEwallet, Colors.black),
+      if (totalBank > 0) ChartData('Bank', totalBank, Colors.black),
+      if (totalInvest > 0) ChartData('Investasi', totalInvest, Colors.black),
+      if (totalOther > 0) ChartData('Lainnya', totalOther, Colors.black),
+    ];
+    rawChartData.sort((a, b) => b.value.compareTo(a.value));
+    final shades = InteractiveDonutChart.generateLimeShades(rawChartData.length);
+    final chartData = <ChartData>[];
+    for (int i = 0; i < rawChartData.length; i++) {
+      chartData.add(ChartData(
+        rawChartData[i].label,
+        rawChartData[i].value,
+        shades[i],
+      ));
+    }
+    if (chartData.isEmpty) {
+      chartData.add(ChartData('Tidak ada data', 1.0, Colors.grey.shade300));
+    }
+
     final filteredWallets = wallets.where((w) {
       if (_activeFilter == 'Semua') return true;
       return _mapTypeToFilter(w.type) == _activeFilter;
@@ -96,12 +116,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
               child: InteractiveDonutChart(
                 centerTitle: 'Total Balance',
                 centerAmount: formatCurrency.format(totalBalance),
-                data: [
-                  if (totalEwallet > 0) ChartData('E-Wallet', (totalEwallet/totalBalance)*100, AppColors.primary),
-                  if (totalBank > 0) ChartData('Bank', (totalBank/totalBalance)*100, const Color(0xFF1F2937)),
-                  if (totalInvest > 0) ChartData('Investasi', (totalInvest/totalBalance)*100, const Color(0xFF9CA3AF)),
-                  if (totalOther > 0) ChartData('Lainnya', (totalOther/totalBalance)*100, const Color(0xFF065F46)),
-                ],
+                data: chartData,
               ),
             ),
             

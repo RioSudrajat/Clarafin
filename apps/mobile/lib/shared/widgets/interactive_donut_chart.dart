@@ -23,6 +23,24 @@ class InteractiveDonutChart extends StatefulWidget {
     required this.centerAmount,
   });
 
+  // Generates monochromatic shades of the lime yellow brand color
+  static List<Color> generateLimeShades(int count) {
+    if (count <= 0) return [];
+    if (count == 1) return [AppColors.primary];
+
+    const double hue = 72.0;
+    const double saturation = 0.9;
+
+    final shades = <Color>[];
+    for (int i = 0; i < count; i++) {
+      double factor = count > 1 ? i / (count - 1) : 0.0;
+      // Interpolate lightness from 0.85 (lightest) down to 0.15 (darkest)
+      double lightness = 0.85 - (factor * 0.70);
+      shades.add(HSLColor.fromAHSL(1.0, hue, saturation, lightness).toColor());
+    }
+    return shades;
+  }
+
   @override
   State<InteractiveDonutChart> createState() => _InteractiveDonutChartState();
 }
@@ -80,38 +98,55 @@ class _InteractiveDonutChartState extends State<InteractiveDonutChart> {
                     PieChartData(
                       pieTouchData: PieTouchData(
                         touchCallback: (FlTouchEvent event, pieTouchResponse) {
-                          setState(() {
-                            if (!event.isInterestedForInteractions ||
-                                pieTouchResponse == null ||
-                                pieTouchResponse.touchedSection == null) {
-                              _touchedIndex = -1;
-                              return;
-                            }
-                            _touchedIndex = pieTouchResponse.touchedSection!.touchedSectionIndex;
-                          });
+                          if (event is FlTapUpEvent) {
+                            setState(() {
+                              if (pieTouchResponse == null ||
+                                  pieTouchResponse.touchedSection == null) {
+                                _touchedIndex = -1;
+                                return;
+                              }
+                              final index = pieTouchResponse.touchedSection!.touchedSectionIndex;
+                              if (index == -1) {
+                                _touchedIndex = -1;
+                              } else if (_touchedIndex == index) {
+                                _touchedIndex = -1; // Toggle off
+                              } else {
+                                _touchedIndex = index; // Toggle on
+                              }
+                            });
+                          }
                         },
                       ),
                       startDegreeOffset: 0,
                       sectionsSpace: 2,
                       centerSpaceRadius: 50,
-                      sections: widget.data.asMap().entries.map((entry) {
-                        final i = entry.key;
-                        final data = entry.value;
-                        final isTouched = i == _touchedIndex;
-                        final radius = isTouched ? 45.0 : 35.0; // Pop-out effect
+                      sections: () {
+                        final total = widget.data.fold<double>(0.0, (sum, item) => sum + item.value);
+                        return widget.data.asMap().entries.map((entry) {
+                          final i = entry.key;
+                          final data = entry.value;
+                          final isTouched = i == _touchedIndex;
+                          final radius = isTouched ? 45.0 : 35.0; // Pop-out effect
 
-                        return PieChartSectionData(
-                          color: data.color,
-                          value: data.value,
-                          title: '', // We use badge instead
-                          radius: radius,
-                          badgeWidget: Transform.rotate(
-                            angle: -_rotationAngle, // counter-rotate badges to stay upright
-                            child: _buildBadge(data.label, isTouched),
-                          ),
-                          badgePositionPercentageOffset: 1.4, // Push outside
-                        );
-                      }).toList(),
+                          final percentage = total > 0 ? (data.value / total) * 100 : 0.0;
+                          final hasNoData = widget.data.length == 1 && widget.data.first.label == 'Tidak ada data';
+                          final showPercentage = total > 0 && data.value > 0 && !hasNoData;
+                          final percentageText = showPercentage ? '${percentage.toStringAsFixed(0)}%' : '';
+
+                          return PieChartSectionData(
+                            color: data.color,
+                            value: data.value,
+                            title: '',
+                            showTitle: false,
+                            radius: radius,
+                            badgeWidget: Transform.rotate(
+                              angle: -_rotationAngle, // counter-rotate badges to stay upright
+                              child: _buildBadge(data.label, percentageText, isTouched),
+                            ),
+                            badgePositionPercentageOffset: 1.4, // Push outside
+                          );
+                        }).toList();
+                      }(),
                     ),
                   ),
                 ),
@@ -147,7 +182,8 @@ class _InteractiveDonutChartState extends State<InteractiveDonutChart> {
     );
   }
 
-  Widget _buildBadge(String label, bool isTouched) {
+  Widget _buildBadge(String label, String percentageText, bool isTouched) {
+    final displayText = percentageText.isNotEmpty ? '$label $percentageText' : label;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -173,7 +209,7 @@ class _InteractiveDonutChartState extends State<InteractiveDonutChart> {
             decoration: BoxDecoration(color: Colors.grey.shade400, shape: BoxShape.circle),
           ),
           const SizedBox(width: 4),
-          Text(label, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.black87)),
+          Text(displayText, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.black87)),
         ],
       ),
     );

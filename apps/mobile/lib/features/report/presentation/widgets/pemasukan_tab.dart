@@ -77,16 +77,20 @@ class _PemasukanTabState extends ConsumerState<PemasukanTab> {
     final sortedCategories = categoryTotals.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
+    // Generate monochromatic shades of lime green
+    final shades = InteractiveDonutChart.generateLimeShades(sortedCategories.length);
+
     // Donut chart data
     final chartData = <ChartData>[];
     if (periodIncome == 0) {
       chartData.add(ChartData('Tidak ada data', 1.0, Colors.grey.shade300));
     } else {
-      for (final entry in sortedCategories) {
+      for (int i = 0; i < sortedCategories.length; i++) {
+        final entry = sortedCategories[i];
         chartData.add(ChartData(
           entry.key,
           entry.value,
-          _getCategoryColor(entry.key),
+          shades[i],
         ));
       }
     }
@@ -187,7 +191,7 @@ class _PemasukanTabState extends ConsumerState<PemasukanTab> {
                 itemBuilder: (context, index) {
                   final entry = sortedCategories[index];
                   final pct = (entry.value / periodIncome) * 100;
-                  final catColor = _getCategoryColor(entry.key);
+                  final catColor = periodIncome > 0 ? shades[index] : Colors.grey.shade400;
                   final catIcon = _getCategoryIcon(entry.key);
 
                   return ListTile(
