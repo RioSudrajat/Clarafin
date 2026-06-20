@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../../core/theme/app_colors.dart';
 import '../../features/session/presentation/screens/quick_action_sheets.dart';
 
@@ -64,11 +65,11 @@ class AppBottomNav extends ConsumerWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _buildNavItem(context, ref, 0, Icons.home_filled, Icons.home_outlined, 'Home'),
-                  _buildNavItem(context, ref, 1, Icons.chat_bubble, Icons.chat_bubble_outline, 'Consult'),
+                  _buildNavItem(context, ref, 0, 'assets/icons/home_filled.svg', 'assets/icons/home_outlined.svg', 'Home'),
+                  _buildNavItem(context, ref, 1, 'assets/icons/consult_filled.svg', 'assets/icons/consult_outlined.svg', 'Consult'),
                   const SizedBox(width: 60), // Space for FAB
-                  _buildNavItem(context, ref, 3, Icons.work, Icons.work_outline, 'Wallet'),
-                  _buildNavItem(context, ref, 4, Icons.account_balance_wallet, Icons.account_balance_wallet_outlined, 'Budget'),
+                  _buildNavItem(context, ref, 3, 'assets/icons/wallet_filled.svg', 'assets/icons/wallet_outlined.svg', 'Wallet'),
+                  _buildNavItem(context, ref, 4, 'assets/icons/budget_filled.svg', 'assets/icons/budget_outlined.svg', 'Budget'),
                 ],
               ),
             ),
@@ -172,7 +173,7 @@ class AppBottomNav extends ConsumerWidget {
     );
   }
 
-  Widget _buildNavItem(BuildContext context, WidgetRef ref, int index, IconData activeIcon, IconData icon, String label) {
+  Widget _buildNavItem(BuildContext context, WidgetRef ref, int index, String activeIconPath, String iconPath, String label) {
     // Current branch index maps to 0, 1, 3, 4
     final branchIndex = index > 2 ? index - 1 : index;
     final isActive = (index != 2) && (navigationShell.currentIndex == branchIndex);
@@ -186,8 +187,13 @@ class AppBottomNav extends ConsumerWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(isActive ? activeIcon : icon, color: color, size: 24),
-            const SizedBox(height: 2),
+            SvgPicture.asset(
+              isActive ? activeIconPath : iconPath,
+              colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+              width: 22,
+              height: 22,
+            ),
+            const SizedBox(height: 4),
             Text(
               label,
               style: TextStyle(

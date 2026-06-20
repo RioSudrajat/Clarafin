@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/providers/mock_providers.dart';
 import 'package:intl/intl.dart';
@@ -83,7 +84,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         children: [
                           // Message icon → Chat Consultant
                           IconButton(
-                            icon: const Icon(Icons.chat_bubble_outline, size: 24),
+                            icon: SvgPicture.asset(
+                              'assets/icons/message-circle-dots-svgrepo-com.svg',
+                              width: 24,
+                              height: 24,
+                              colorFilter: const ColorFilter.mode(
+                                AppColors.textPrimary,
+                                BlendMode.srcIn,
+                              ),
+                            ),
                             onPressed: () => context.push('/session'),
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
@@ -92,7 +101,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           Stack(
                             children: [
                               IconButton(
-                                icon: const Icon(Icons.notifications_none, size: 26),
+                                icon: SvgPicture.asset(
+                                  'assets/icons/notification-svgrepo-com.svg',
+                                  width: 26,
+                                  height: 26,
+                                  colorFilter: const ColorFilter.mode(
+                                    AppColors.textPrimary,
+                                    BlendMode.srcIn,
+                                  ),
+                                ),
                                 onPressed: () {},
                               ),
                               Positioned(
