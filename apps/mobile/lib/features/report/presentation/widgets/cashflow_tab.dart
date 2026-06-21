@@ -257,6 +257,9 @@ class _CashflowTabState extends ConsumerState<CashflowTab> {
     int numBars = 6;
     if (_periodType == PeriodType.week) {
       numBars = 7;
+    } else if (_periodType == PeriodType.month) {
+      numBars = _endDate.difference(_startDate).inDays + 1;
+      if (numBars <= 0) numBars = 30;
     } else if (_periodType == PeriodType.year) {
       numBars = 12;
     }
@@ -265,7 +268,8 @@ class _CashflowTabState extends ConsumerState<CashflowTab> {
     final rangeDuration = _endDate.difference(_startDate);
     final stepMs = rangeDuration.inMilliseconds / numBars;
 
-    double maxVal = 1.0;
+    double maxVal = 0.5;
+    double minVal = -0.5;
 
     for (int i = 0; i < numBars; i++) {
       final startInt = _startDate.add(Duration(milliseconds: (stepMs * i).toInt()));
@@ -278,25 +282,31 @@ class _CashflowTabState extends ConsumerState<CashflowTab> {
 
       final inc = txs.where((t) => t.type == 'income').fold(0.0, (sum, t) => sum + t.amount) / 1000000.0;
       final exp = txs.where((t) => t.type == 'expense').fold(0.0, (sum, t) => sum + t.amount) / 1000000.0;
+      final net = inc - exp;
 
-      if (inc > maxVal) maxVal = inc;
-      if (exp > maxVal) maxVal = exp;
+      if (net > maxVal) maxVal = net;
+      if (net < minVal) minVal = net;
+
+      final isPositive = net >= 0;
+      final barWidth = numBars > 20 ? 5.5 : (numBars > 10 ? 9.0 : 14.0);
 
       barGroups.add(
         BarChartGroupData(
           x: i,
           barRods: [
             BarChartRodData(
-              toY: inc,
-              color: AppColors.success,
-              width: 8,
-              borderRadius: BorderRadius.circular(4),
-            ),
-            BarChartRodData(
-              toY: exp,
-              color: AppColors.error,
-              width: 8,
-              borderRadius: BorderRadius.circular(4),
+              toY: net,
+              color: isPositive ? const Color(0xFF386B11) : const Color(0xFF8CE824),
+              width: barWidth,
+              borderRadius: isPositive
+                  ? const BorderRadius.only(
+                      topLeft: Radius.circular(4),
+                      topRight: Radius.circular(4),
+                    )
+                  : const BorderRadius.only(
+                      bottomLeft: Radius.circular(4),
+                      bottomRight: Radius.circular(4),
+                    ),
             ),
           ],
         ),
@@ -304,7 +314,7 @@ class _CashflowTabState extends ConsumerState<CashflowTab> {
     }
 
     return Container(
-      height: 220,
+      height: 240,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -322,7 +332,7 @@ class _CashflowTabState extends ConsumerState<CashflowTab> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Grafik Pemasukan vs Pengeluaran',
+            'Grafik Cashflow Harian',
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
           ),
           const SizedBox(height: 16),
@@ -330,10 +340,16 @@ class _CashflowTabState extends ConsumerState<CashflowTab> {
             child: BarChart(
               BarChartData(
                 maxY: maxVal * 1.15,
+                minY: minVal * 1.15,
                 gridData: FlGridData(
                   show: true,
                   drawVerticalLine: false,
-                  getDrawingHorizontalLine: (value) => FlLine(color: Colors.grey.shade100, strokeWidth: 1),
+                  getDrawingHorizontalLine: (value) {
+                    if (value == 0) {
+                      return FlLine(color: Colors.grey.shade300, strokeWidth: 1.5);
+                    }
+                    return FlLine(color: Colors.grey.shade100, strokeWidth: 1);
+                  },
                 ),
                 titlesData: FlTitlesData(
                   topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
@@ -341,9 +357,13 @@ class _CashflowTabState extends ConsumerState<CashflowTab> {
                   leftTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
-                      reservedSize: 40,
+                      reservedSize: 45,
                       getTitlesWidget: (value, meta) {
-                        return Text('${value.toStringAsFixed(1)}jt', style: TextStyle(fontSize: 8, color: Colors.grey.shade400));
+                        if (value.abs() < 0.1) return const SizedBox.shrink();
+                        return Text(
+                          '${value >= 0 ? '+' : ''}${value.toStringAsFixed(1)}jt',
+                          style: TextStyle(fontSize: 8, color: Colors.grey.shade400, fontWeight: FontWeight.bold),
+                        );
                       },
                     ),
                   ),
@@ -354,12 +374,19 @@ class _CashflowTabState extends ConsumerState<CashflowTab> {
                         final idx = value.toInt();
                         if (idx < 0 || idx >= numBars) return const SizedBox.shrink();
                         final pointTime = _startDate.add(Duration(milliseconds: (stepMs * idx).toInt()));
-                        
+
                         String label = '';
                         if (_periodType == PeriodType.day) {
                           label = DateFormat('HH:mm').format(pointTime);
                         } else if (_periodType == PeriodType.week) {
                           label = DateFormat('E', 'id_ID').format(pointTime);
+                        } else if (_periodType == PeriodType.month) {
+                          final day = pointTime.day;
+                          if (day % 2 != 0) {
+                            label = '$day';
+                          } else {
+                            return const SizedBox.shrink();
+                          }
                         } else if (_periodType == PeriodType.year) {
                           try {
                             label = DateFormat('MMM', 'id_ID').format(pointTime);
@@ -374,7 +401,7 @@ class _CashflowTabState extends ConsumerState<CashflowTab> {
                           padding: const EdgeInsets.only(top: 8.0),
                           child: Text(
                             label,
-                            style: TextStyle(fontSize: 9, color: Colors.grey.shade400, fontWeight: FontWeight.w500),
+                            style: TextStyle(fontSize: 9, color: Colors.grey.shade400, fontWeight: FontWeight.bold),
                           ),
                         );
                       },

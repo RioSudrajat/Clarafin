@@ -144,7 +144,7 @@ class _BranchSessionScreenState extends State<BranchSessionScreen> {
     final filtered = _filteredSessions;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,

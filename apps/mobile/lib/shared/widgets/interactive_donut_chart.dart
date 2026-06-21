@@ -48,8 +48,8 @@ class InteractiveDonutChart extends StatefulWidget {
 class _InteractiveDonutChartState extends State<InteractiveDonutChart> {
   int _touchedIndex = -1;
   double _rotationAngle = -math.pi / 2; // Start from -90 degrees equivalent
-
-
+  double _startAngle = 0.0;
+  double _baseAngle = 0.0;
 
   @override
   Widget build(BuildContext context) {
@@ -57,16 +57,20 @@ class _InteractiveDonutChartState extends State<InteractiveDonutChart> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
+        final center = Offset(constraints.maxWidth / 2, constraints.maxHeight / 2);
 
         return GestureDetector(
           onPanStart: (details) {
-            // Can initialize drag state here if needed
+            final touchPoint = details.localPosition;
+            _startAngle = math.atan2(touchPoint.dy - center.dy, touchPoint.dx - center.dx);
+            _baseAngle = _rotationAngle;
           },
           onPanUpdate: (details) {
-            // This is simplified. For true rotation drag, we need delta.
-            // But a simple drag distance multiplier works fine for aesthetic swipe
+            final touchPoint = details.localPosition;
+            final currentAngle = math.atan2(touchPoint.dy - center.dy, touchPoint.dx - center.dx);
+            final angleDiff = currentAngle - _startAngle;
             setState(() {
-              _rotationAngle += details.delta.dx * 0.01 + details.delta.dy * 0.01;
+              _rotationAngle = _baseAngle + angleDiff;
             });
           },
           child: Stack(

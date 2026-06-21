@@ -33,7 +33,7 @@ class _ReportDashboardScreenState extends ConsumerState<ReportDashboardScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.white,
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.chevron_left, color: AppColors.textPrimary),
