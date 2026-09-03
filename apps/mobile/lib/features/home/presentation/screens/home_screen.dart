@@ -14,11 +14,14 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   bool _obscureBalance = false;
+  int _heroPage = 0;
   int _bannerPage = 0;
+  late final PageController _heroController = PageController();
   late final PageController _bannerController = PageController();
 
   @override
   void dispose() {
+    _heroController.dispose();
     _bannerController.dispose();
     super.dispose();
   }
@@ -46,7 +49,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       backgroundColor: Colors.white,
       body: Stack(
         children: [
-          // ── 1. Top Gradient Background (Behind Header and Top Half of Balance Card) ──
+          // ── 1. Top Gradient Background ──
           Positioned(
             top: 0,
             left: 0,
@@ -208,7 +211,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       child: Stack(
                         clipBehavior: Clip.none,
                         children: [
-                          // ── Full-Width White Sheet Container (Edge-to-Edge, rounded top corners) ──
+                          // ── Full-Width White Sheet Container (Edge-to-Edge) ──
                           Container(
                             margin: const EdgeInsets.only(top: 85),
                             width: double.infinity,
@@ -219,7 +222,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 top: BorderSide(color: Colors.black, width: 2),
                               ),
                             ),
-                            padding: const EdgeInsets.only(top: 155, bottom: 24),
+                            padding: const EdgeInsets.only(top: 165, bottom: 24),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -266,21 +269,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                                 const SizedBox(height: 24),
 
-                                // ── Section: Expert Help Banner ──
+                                // ── Section: Expert Help Banner (Smooth Spacing & No Cramped Transition) ──
                                 Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                                  padding: const EdgeInsets.symmetric(horizontal: 14),
                                   child: Column(
                                     children: [
                                       SizedBox(
-                                        height: 154,
+                                        height: 162,
                                         child: PageView(
                                           controller: _bannerController,
                                           clipBehavior: Clip.none,
-                                          physics: const ClampingScrollPhysics(),
+                                          physics: const PageScrollPhysics(),
                                           onPageChanged: (i) => setState(() => _bannerPage = i),
                                           children: [
                                             Padding(
-                                              padding: const EdgeInsets.only(top: 2, bottom: 8),
+                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                                               child: _buildMatchExpertBanner(
                                                 tag: 'EXPERT HELP',
                                                 title: 'Bingung mencari konsultan?',
@@ -289,7 +292,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                               ),
                                             ),
                                             Padding(
-                                              padding: const EdgeInsets.only(top: 2, bottom: 8),
+                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                                               child: _buildMatchExpertBanner(
                                                 tag: 'AI ADVISOR',
                                                 title: 'Analisis budgeting kamu dengan AI',
@@ -306,7 +309,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                         mainAxisAlignment: MainAxisAlignment.center,
                                         children: List.generate(
                                           2,
-                                          (i) => Container(
+                                          (i) => AnimatedContainer(
+                                            duration: const Duration(milliseconds: 250),
                                             width: _bannerPage == i ? 16 : 6,
                                             height: 6,
                                             margin: const EdgeInsets.symmetric(horizontal: 3),
@@ -622,240 +626,55 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             ),
                           ),
 
-                          // ── Total Balance Hero Card (Overlapping Boundary between Gradient & White Container) ──
+                          // ── Hero PageView (Index 0: Konsultasi Finansial Card | Index 1: Total Balance Card) ──
                           Positioned(
                             top: 0,
-                            left: 20,
-                            right: 20,
-                            child: Stack(
-                              clipBehavior: Clip.none,
-                              children: [
-                                // Lime Balance Card Body
-                                Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
-                                  decoration: BoxDecoration(
-                                    color: NeoBrutalism.lime,
-                                    borderRadius: BorderRadius.circular(24),
-                                    border: Border.all(color: Colors.black, width: 2),
-                                    boxShadow: NeoBrutalism.shadow(yOffset: 4),
+                            left: 14,
+                            right: 14,
+                            child: SizedBox(
+                              height: 228,
+                              child: PageView(
+                                controller: _heroController,
+                                clipBehavior: Clip.none,
+                                physics: const PageScrollPhysics(),
+                                onPageChanged: (i) => setState(() => _heroPage = i),
+                                children: [
+                                  // ── Slide 0: Konsultasi Finansial Card (Teal/Blue from Gradient) ──
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                                    child: _buildConsultationHeroCard(userName),
                                   ),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      // Row 1: TOTAL BALANCE + Toggle Eye
-                                      Row(
-                                        children: [
-                                          const Text(
-                                            'TOTAL BALANCE',
-                                            style: TextStyle(
-                                              fontFamily: 'Plus Jakarta Sans',
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w700,
-                                              letterSpacing: 0.6,
-                                              color: NeoBrutalism.dark,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 6),
-                                          GestureDetector(
-                                            onTap: () => setState(() => _obscureBalance = !_obscureBalance),
-                                            child: Icon(
-                                              _obscureBalance ? Icons.visibility_off : Icons.visibility,
-                                              size: 16,
-                                              color: NeoBrutalism.dark,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
 
-                                      const SizedBox(height: 8),
-
-                                      // Row 2: Big Balance Amount
-                                      Row(
-                                        crossAxisAlignment: CrossAxisAlignment.baseline,
-                                        textBaseline: TextBaseline.alphabetic,
-                                        children: [
-                                          const Text(
-                                            'Rp ',
-                                            style: TextStyle(
-                                              fontFamily: 'Plus Jakarta Sans',
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.w700,
-                                              color: NeoBrutalism.dark,
-                                            ),
-                                          ),
-                                          Expanded(
-                                            child: Text(
-                                              _obscureBalance
-                                                  ? '••••••••'
-                                                  : currencyFormat.format(totalBalance).replaceAll('Rp ', ''),
-                                              style: const TextStyle(
-                                                fontFamily: 'Plus Jakarta Sans',
-                                                fontSize: 30,
-                                                fontWeight: FontWeight.w900,
-                                                letterSpacing: -1.4,
-                                                color: NeoBrutalism.dark,
-                                              ),
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-
-                                      const SizedBox(height: 10),
-
-                                      // Row 3: Daily PnL Indicator Pill
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white.withValues(alpha: 0.92),
-                                          borderRadius: BorderRadius.circular(9999),
-                                          border: Border.all(color: Colors.black, width: 2),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            const Text(
-                                              'Hari ini ',
-                                              style: TextStyle(
-                                                fontFamily: 'Plus Jakarta Sans',
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.w700,
-                                                color: NeoBrutalism.dark,
-                                              ),
-                                            ),
-                                            Icon(
-                                              isPnlPositive ? Icons.trending_up : Icons.trending_down,
-                                              size: 13,
-                                              color: isPnlPositive ? const Color(0xFF10B981) : const Color(0xFFDC2626),
-                                            ),
-                                            const SizedBox(width: 2),
-                                            Text(
-                                              '${isPnlPositive ? "+" : ""}${currencyFormat.format(dailyPnl)} (${isPnlPositive ? "+" : ""}${pnlPercentage.toStringAsFixed(1)}%)',
-                                              style: TextStyle(
-                                                fontFamily: 'Plus Jakarta Sans',
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.w700,
-                                                color: isPnlPositive ? const Color(0xFF10B981) : const Color(0xFFDC2626),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-
-                                      const SizedBox(height: 14),
-
-                                      // Row 4: Sub-wallets Horizontal List
-                                      SingleChildScrollView(
-                                        scrollDirection: Axis.horizontal,
-                                        physics: const ClampingScrollPhysics(),
-                                        child: Row(
-                                          children: [
-                                            ...wallets.take(3).map((w) {
-                                              IconData wIcon = Icons.account_balance;
-                                              if (w.type == 'E-Wallet') {
-                                                wIcon = Icons.account_balance_wallet;
-                                              } else if (w.type == 'Cash') {
-                                                wIcon = Icons.shopping_bag_outlined;
-                                              } else if (w.type == 'Crypto' || w.type == 'Stock' || w.type == 'Mutual Fund') {
-                                                wIcon = Icons.show_chart;
-                                              }
-                                              return Padding(
-                                                padding: const EdgeInsets.only(right: 8),
-                                                child: _buildWalletPill(
-                                                  w.name,
-                                                  currencyFormat.format(w.balance),
-                                                  icon: wIcon,
-                                                  onTap: () => context.push('/wallet/${w.id}'),
-                                                ),
-                                              );
-                                            }),
-
-                                            // Plus Add Wallet Button
-                                            GestureDetector(
-                                              onTap: () => context.push('/wallet/add'),
-                                              child: Container(
-                                                width: 32,
-                                                height: 32,
-                                                decoration: BoxDecoration(
-                                                  color: Colors.white,
-                                                  borderRadius: BorderRadius.circular(9999),
-                                                  border: Border.all(color: Colors.black, width: 2),
-                                                  boxShadow: NeoBrutalism.shadow(yOffset: 2),
-                                                ),
-                                                child: const Icon(Icons.add, size: 18, color: Colors.black),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
+                                  // ── Slide 1: Total Balance Card (Neon Lime with Protruding Portfolio Button) ──
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                                    child: _buildTotalBalanceHeroCard(totalBalance, dailyPnl, pnlPercentage, isPnlPositive, currencyFormat, wallets),
                                   ),
-                                ),
-
-                                // ── Portfolio Pill Button (Positioned Overlapping Top-Right Corner: protruding TOP and RIGHT!) ──
-                                Positioned(
-                                  top: 15,
-                                  right: -10,
-                                  child: GestureDetector(
-                                    onTap: () => context.push('/reporting'),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        borderRadius: BorderRadius.circular(9999),
-                                        border: Border.all(color: Colors.black, width: 2),
-                                        boxShadow: NeoBrutalism.shadow(yOffset: 2),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: const [
-                                          Icon(Icons.pie_chart_outline, size: 14, color: Colors.black),
-                                          SizedBox(width: 4),
-                                          Text(
-                                            'Portfolio',
-                                            style: TextStyle(
-                                              fontFamily: 'Plus Jakarta Sans',
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w700,
-                                              color: Colors.black,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
 
-                          // ── Page Indicator Dots (Positioned directly below the Balance Card) ──
+                          // ── Hero Page Indicator Dots (Positioned directly below the Hero Card) ──
                           Positioned(
-                            top: 218,
+                            top: 232,
                             left: 0,
                             right: 0,
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Container(
-                                  width: 16,
+                              children: List.generate(
+                                2,
+                                (i) => AnimatedContainer(
+                                  duration: const Duration(milliseconds: 250),
+                                  width: _heroPage == i ? 16 : 6,
                                   height: 6,
+                                  margin: const EdgeInsets.symmetric(horizontal: 3),
                                   decoration: BoxDecoration(
-                                    color: NeoBrutalism.dark,
+                                    color: _heroPage == i ? NeoBrutalism.dark : const Color(0xFFD1D5DB),
                                     borderRadius: BorderRadius.circular(9999),
                                   ),
                                 ),
-                                const SizedBox(width: 5),
-                                Container(
-                                  width: 6,
-                                  height: 6,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFD1D5DB),
-                                    borderRadius: BorderRadius.circular(9999),
-                                  ),
-                                ),
-                              ],
+                              ),
                             ),
                           ),
                         ],
@@ -868,6 +687,307 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  // ── Hero Card 1: Konsultasi Finansial (Deep Teal / Blue from Gradient) ──
+
+  Widget _buildConsultationHeroCard(String userName) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F758A), // Deep teal from header gradient
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.black, width: 2),
+        boxShadow: NeoBrutalism.shadow(yOffset: 4),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Top Content Area
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(18, 16, 18, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Greeting
+                  Text(
+                    'Hi, $userName',
+                    style: const TextStyle(
+                      fontFamily: 'Plus Jakarta Sans',
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  // Financial Consultation Copywriting
+                  const Text(
+                    'Bagaimana kondisi finansialmu, baik secara pribadi, keluarga, pasangan maupun bisnis. Kamu bisa konsultasikan disini, yuk booking jadwalnya!',
+                    style: TextStyle(
+                      fontFamily: 'Plus Jakarta Sans',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white,
+                      height: 1.35,
+                    ),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 8),
+                ],
+              ),
+            ),
+          ),
+
+          // Bottom Full-Width CTA Strip (Neon Lime with Black Border)
+          GestureDetector(
+            onTap: () => context.go('/consult'),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              decoration: const BoxDecoration(
+                color: NeoBrutalism.lime,
+                borderRadius: BorderRadius.vertical(bottom: Radius.circular(22)),
+                border: Border(
+                  top: BorderSide(color: Colors.black, width: 2),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: const [
+                  Text(
+                    'Mulai Konseling',
+                    style: TextStyle(
+                      fontFamily: 'Plus Jakarta Sans',
+                      fontSize: 13,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.black,
+                    ),
+                  ),
+                  SizedBox(width: 6),
+                  Icon(Icons.arrow_forward, size: 14, color: Colors.black),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Hero Card 2: Total Balance Card (Neon Lime with Protruding Portfolio Button) ──
+
+  Widget _buildTotalBalanceHeroCard(
+    double totalBalance,
+    double dailyPnl,
+    double pnlPercentage,
+    bool isPnlPositive,
+    NumberFormat currencyFormat,
+    List wallets,
+  ) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        // Main Lime Card Body
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
+          decoration: BoxDecoration(
+            color: NeoBrutalism.lime,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: Colors.black, width: 2),
+            boxShadow: NeoBrutalism.shadow(yOffset: 4),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Row 1: TOTAL BALANCE + Toggle Eye
+              Row(
+                children: [
+                  const Text(
+                    'TOTAL BALANCE',
+                    style: TextStyle(
+                      fontFamily: 'Plus Jakarta Sans',
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.6,
+                      color: NeoBrutalism.dark,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  GestureDetector(
+                    onTap: () => setState(() => _obscureBalance = !_obscureBalance),
+                    child: Icon(
+                      _obscureBalance ? Icons.visibility_off : Icons.visibility,
+                      size: 16,
+                      color: NeoBrutalism.dark,
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 6),
+
+              // Row 2: Big Balance Amount
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  const Text(
+                    'Rp ',
+                    style: TextStyle(
+                      fontFamily: 'Plus Jakarta Sans',
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: NeoBrutalism.dark,
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      _obscureBalance
+                          ? '••••••••'
+                          : currencyFormat.format(totalBalance).replaceAll('Rp ', ''),
+                      style: const TextStyle(
+                        fontFamily: 'Plus Jakarta Sans',
+                        fontSize: 28,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -1.4,
+                        color: NeoBrutalism.dark,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 8),
+
+              // Row 3: Daily PnL Indicator Pill
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.92),
+                  borderRadius: BorderRadius.circular(9999),
+                  border: Border.all(color: Colors.black, width: 2),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'Hari ini ',
+                      style: TextStyle(
+                        fontFamily: 'Plus Jakarta Sans',
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: NeoBrutalism.dark,
+                      ),
+                    ),
+                    Icon(
+                      isPnlPositive ? Icons.trending_up : Icons.trending_down,
+                      size: 13,
+                      color: isPnlPositive ? const Color(0xFF10B981) : const Color(0xFFDC2626),
+                    ),
+                    const SizedBox(width: 2),
+                    Text(
+                      '${isPnlPositive ? "+" : ""}${currencyFormat.format(dailyPnl)} (${isPnlPositive ? "+" : ""}${pnlPercentage.toStringAsFixed(1)}%)',
+                      style: TextStyle(
+                        fontFamily: 'Plus Jakarta Sans',
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: isPnlPositive ? const Color(0xFF10B981) : const Color(0xFFDC2626),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              // Row 4: Sub-wallets Horizontal List
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                physics: const ClampingScrollPhysics(),
+                child: Row(
+                  children: [
+                    ...wallets.take(3).map((w) {
+                      IconData wIcon = Icons.account_balance;
+                      if (w.type == 'E-Wallet') {
+                        wIcon = Icons.account_balance_wallet;
+                      } else if (w.type == 'Cash') {
+                        wIcon = Icons.shopping_bag_outlined;
+                      } else if (w.type == 'Crypto' || w.type == 'Stock' || w.type == 'Mutual Fund') {
+                        wIcon = Icons.show_chart;
+                      }
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: _buildWalletPill(
+                          w.name,
+                          currencyFormat.format(w.balance),
+                          icon: wIcon,
+                          onTap: () => context.push('/wallet/${w.id}'),
+                        ),
+                      );
+                    }),
+
+                    // Plus Add Wallet Button
+                    GestureDetector(
+                      onTap: () => context.push('/wallet/add'),
+                      child: Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(9999),
+                          border: Border.all(color: Colors.black, width: 2),
+                          boxShadow: NeoBrutalism.shadow(yOffset: 2),
+                        ),
+                        child: const Icon(Icons.add, size: 18, color: Colors.black),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // Portfolio Button (Overlapping Top-Right Corner: Protruding TOP and RIGHT)
+        Positioned(
+          top: -12,
+          right: -10,
+          child: GestureDetector(
+            onTap: () => context.push('/reporting'),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(9999),
+                border: Border.all(color: Colors.black, width: 2),
+                boxShadow: NeoBrutalism.shadow(yOffset: 2),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: const [
+                  Icon(Icons.pie_chart_outline, size: 14, color: Colors.black),
+                  SizedBox(width: 4),
+                  Text(
+                    'Portfolio',
+                    style: TextStyle(
+                      fontFamily: 'Plus Jakarta Sans',
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.black,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
