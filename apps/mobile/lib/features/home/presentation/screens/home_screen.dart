@@ -632,7 +632,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             left: 20,
                             right: 20,
                             child: SizedBox(
-                              height: 220,
+                              height: 196,
                               child: PageView(
                                 controller: _heroController,
                                 clipBehavior: Clip.none,
@@ -651,7 +651,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                           // ── Hero Page Indicator Dots (Positioned directly below the Hero Card) ──
                           Positioned(
-                            top: 228,
+                            top: 218,
                             left: 0,
                             right: 0,
                             child: Row(
@@ -662,7 +662,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   duration: const Duration(milliseconds: 250),
                                   width: _heroPage == i ? 16 : 6,
                                   height: 6,
-                                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                                  margin: const EdgeInsets.symmetric(horizontal: 2.5),
                                   decoration: BoxDecoration(
                                     color: _heroPage == i ? NeoBrutalism.dark : const Color(0xFFD1D5DB),
                                     borderRadius: BorderRadius.circular(9999),
@@ -701,7 +701,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           // Top Content Area
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
+              padding: const EdgeInsets.fromLTRB(18, 16, 18, 10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -711,26 +711,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     'Hi, $userName',
                     style: const TextStyle(
                       fontFamily: 'Plus Jakarta Sans',
-                      fontSize: 20,
+                      fontSize: 18,
                       fontWeight: FontWeight.w900,
                       color: Colors.white,
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   // Financial Consultation Copywriting
                   const Text(
                     'Bagaimana kondisi finansialmu, baik secara pribadi, keluarga, pasangan maupun bisnis. Kamu bisa konsultasikan disini, yuk booking jadwalnya!',
                     style: TextStyle(
                       fontFamily: 'Plus Jakarta Sans',
-                      fontSize: 12,
+                      fontSize: 11.5,
                       fontWeight: FontWeight.w500,
                       color: Colors.white,
-                      height: 1.4,
+                      height: 1.35,
                     ),
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 4),
                 ],
               ),
             ),
@@ -741,7 +740,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             onTap: () => context.go('/consult'),
             child: Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 12),
+              padding: const EdgeInsets.symmetric(vertical: 10),
               decoration: const BoxDecoration(
                 color: NeoBrutalism.lime,
                 borderRadius: BorderRadius.vertical(bottom: Radius.circular(22)),
@@ -797,6 +796,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
               // Row 1: TOTAL BALANCE + Toggle Eye
               Row(
@@ -950,7 +950,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
         // ── Portfolio Pill Button (Positioned Overlapping Top-Right Corner: protruding TOP and RIGHT!) ──
         Positioned(
-          top: -12,
+          top: 15,
           right: -10,
           child: GestureDetector(
             onTap: () => context.push('/reporting'),
