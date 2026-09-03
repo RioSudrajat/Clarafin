@@ -222,7 +222,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 top: BorderSide(color: Colors.black, width: 2),
                               ),
                             ),
-                            padding: const EdgeInsets.only(top: 165, bottom: 24),
+                            padding: const EdgeInsets.only(top: 155, bottom: 24),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -269,7 +269,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                                 const SizedBox(height: 24),
 
-                                // ── Section: Expert Help Banner (Smooth Spacing & No Cramped Transition) ──
+                                // ── Section: Expert Help Banner ──
                                 Padding(
                                   padding: const EdgeInsets.symmetric(horizontal: 14),
                                   child: Column(
@@ -629,27 +629,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           // ── Hero PageView (Index 0: Konsultasi Finansial Card | Index 1: Total Balance Card) ──
                           Positioned(
                             top: 0,
-                            left: 14,
-                            right: 14,
+                            left: 20,
+                            right: 20,
                             child: SizedBox(
-                              height: 228,
+                              height: 220,
                               child: PageView(
                                 controller: _heroController,
                                 clipBehavior: Clip.none,
                                 physics: const PageScrollPhysics(),
                                 onPageChanged: (i) => setState(() => _heroPage = i),
                                 children: [
-                                  // ── Slide 0: Konsultasi Finansial Card (Teal/Blue from Gradient) ──
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                                    child: _buildConsultationHeroCard(userName),
-                                  ),
+                                  // ── Slide 0: Konsultasi Finansial Card (Deep Teal from Gradient) ──
+                                  _buildConsultationHeroCard(userName),
 
-                                  // ── Slide 1: Total Balance Card (Neon Lime with Protruding Portfolio Button) ──
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                                    child: _buildTotalBalanceHeroCard(totalBalance, dailyPnl, pnlPercentage, isPnlPositive, currencyFormat, wallets),
-                                  ),
+                                  // ── Slide 1: Total Balance Card (Restored exact composition & positioning) ──
+                                  _buildTotalBalanceHeroCard(totalBalance, dailyPnl, pnlPercentage, isPnlPositive, currencyFormat, wallets),
                                 ],
                               ),
                             ),
@@ -657,7 +651,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                           // ── Hero Page Indicator Dots (Positioned directly below the Hero Card) ──
                           Positioned(
-                            top: 232,
+                            top: 228,
                             left: 0,
                             right: 0,
                             child: Row(
@@ -707,7 +701,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           // Top Content Area
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(18, 16, 18, 12),
+              padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -717,7 +711,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     'Hi, $userName',
                     style: const TextStyle(
                       fontFamily: 'Plus Jakarta Sans',
-                      fontSize: 18,
+                      fontSize: 20,
                       fontWeight: FontWeight.w900,
                       color: Colors.white,
                     ),
@@ -731,12 +725,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
                       color: Colors.white,
-                      height: 1.35,
+                      height: 1.4,
                     ),
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 4),
                 ],
               ),
             ),
@@ -778,7 +772,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  // ── Hero Card 2: Total Balance Card (Neon Lime with Protruding Portfolio Button) ──
+  // ── Hero Card 2: Total Balance Card (100% Original Exact Composition & Placement Restored) ──
 
   Widget _buildTotalBalanceHeroCard(
     double totalBalance,
@@ -791,10 +785,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        // Main Lime Card Body
+        // Lime Balance Card Body
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
+          padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
           decoration: BoxDecoration(
             color: NeoBrutalism.lime,
             borderRadius: BorderRadius.circular(24),
@@ -829,7 +823,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ],
               ),
 
-              const SizedBox(height: 6),
+              const SizedBox(height: 8),
 
               // Row 2: Big Balance Amount
               Row(
@@ -852,7 +846,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           : currencyFormat.format(totalBalance).replaceAll('Rp ', ''),
                       style: const TextStyle(
                         fontFamily: 'Plus Jakarta Sans',
-                        fontSize: 28,
+                        fontSize: 30,
                         fontWeight: FontWeight.w900,
                         letterSpacing: -1.4,
                         color: NeoBrutalism.dark,
@@ -863,7 +857,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ],
               ),
 
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
 
               // Row 3: Daily PnL Indicator Pill
               Container(
@@ -904,7 +898,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
               ),
 
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
 
               // Row 4: Sub-wallets Horizontal List
               SingleChildScrollView(
@@ -954,7 +948,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ),
 
-        // Portfolio Button (Overlapping Top-Right Corner: Protruding TOP and RIGHT)
+        // ── Portfolio Pill Button (Positioned Overlapping Top-Right Corner: protruding TOP and RIGHT!) ──
         Positioned(
           top: -12,
           right: -10,
