@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_svg/flutter_svg.dart';
-import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/neo_brutalism_decorations.dart';
 import '../../../../core/providers/mock_providers.dart';
 import 'package:intl/intl.dart';
 
@@ -15,24 +14,17 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   bool _obscureBalance = false;
-  int _carouselPage = 0;
-  late final PageController _pageController;
-
-  @override
-  void initState() {
-    super.initState();
-    _pageController = PageController();
-  }
+  int _bannerPage = 0;
+  late final PageController _bannerController = PageController();
 
   @override
   void dispose() {
-    _pageController.dispose();
+    _bannerController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
     final userName = ref.watch(userNameProvider);
     final transactions = ref.watch(transactionsProvider);
     final wallets = ref.watch(walletsProvider);
@@ -50,95 +42,147 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final pnlPercentage = totalBalance > 0 ? (dailyPnl / totalBalance * 100) : 0.0;
     final isPnlPositive = dailyPnl >= 0;
 
-    // Dynamic month
-    final currentMonth = DateFormat('MMMM yyyy', 'id_ID').format(now);
-
     return Scaffold(
-      backgroundColor: AppColors.surface,
-      body: SafeArea(
-        bottom: false,
-        child: Stack(
-          children: [
-            Column(
+      backgroundColor: const Color(0xFFF9FAFB),
+      body: Stack(
+        children: [
+          // ── Background Gradient Header ──
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 240,
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color(0xFF0F758A), // Deep teal from Figma
+                    Color(0xFF1E8F9B),
+                    Color(0xFFBFFF00), // Lime green accent
+                  ],
+                  stops: [0.0, 0.5, 1.0],
+                ),
+              ),
+            ),
+          ),
+
+          SafeArea(
+            bottom: false,
+            child: Column(
               children: [
-                // ── Pinned Header ──
+                // ── Top Bar / Pinned Header ──
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // Editable greeting
+                      // User Greeting & Name
                       GestureDetector(
                         onTap: () => _showEditNameDialog(context, ref, userName),
-                        child: Row(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Hi, ', style: textTheme.titleMedium?.copyWith(color: AppColors.textSecondary)),
-                            Text(userName, style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
-                            const Text(' 👋', style: TextStyle(fontSize: 18)),
-                            const SizedBox(width: 4),
-                            Icon(Icons.edit, size: 14, color: AppColors.textSecondary.withValues(alpha: 0.5)),
+                            Text(
+                              'Welcome back,',
+                              style: TextStyle(
+                                fontFamily: 'Plus Jakarta Sans',
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.white.withValues(alpha: 0.85),
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Row(
+                              children: [
+                                Text(
+                                  userName,
+                                  style: const TextStyle(
+                                    fontFamily: 'Plus Jakarta Sans',
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                    shadows: [
+                                      Shadow(
+                                        color: Colors.black26,
+                                        offset: Offset(0, 2),
+                                        blurRadius: 3,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                const Icon(Icons.edit_outlined, size: 14, color: Colors.white70),
+                              ],
+                            ),
                           ],
                         ),
                       ),
+
+                      // Notification Bell & Profile Avatar
                       Row(
                         children: [
-                          // Message icon → Chat Consultant
-                          IconButton(
-                            icon: SvgPicture.asset(
-                              'assets/icons/message-circle-dots-svgrepo-com.svg',
-                              width: 24,
-                              height: 24,
-                              colorFilter: const ColorFilter.mode(
-                                AppColors.textPrimary,
-                                BlendMode.srcIn,
-                              ),
+                          // Notification Bell (Neo-Brutalism Button)
+                          GestureDetector(
+                            onTap: () {},
+                            child: Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                Container(
+                                  width: 36,
+                                  height: 36,
+                                  decoration: NeoBrutalism.circleDecoration(
+                                    backgroundColor: Colors.white,
+                                    shadowOffset: 2,
+                                    borderWidth: 2,
+                                  ),
+                                  child: const Icon(
+                                    Icons.notifications_outlined,
+                                    size: 20,
+                                    color: Colors.black,
+                                  ),
+                                ),
+                                // Lime Notification Badge Dot
+                                Positioned(
+                                  top: -1,
+                                  right: -1,
+                                  child: Container(
+                                    width: 10,
+                                    height: 10,
+                                    decoration: BoxDecoration(
+                                      color: NeoBrutalism.lime,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: Colors.black, width: 2),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                            onPressed: () => context.push('/session'),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
                           ),
-                          // Notification bell
-                          Stack(
-                            children: [
-                              IconButton(
-                                icon: SvgPicture.asset(
-                                  'assets/icons/notification-svgrepo-com.svg',
-                                  width: 26,
-                                  height: 26,
-                                  colorFilter: const ColorFilter.mode(
-                                    AppColors.textPrimary,
-                                    BlendMode.srcIn,
-                                  ),
-                                ),
-                                onPressed: () {},
-                              ),
-                              Positioned(
-                                top: 12,
-                                right: 12,
-                                child: Container(
-                                  width: 8,
-                                  height: 8,
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primary,
-                                    shape: BoxShape.circle,
-                                    border: Border.all(color: Colors.white, width: 1),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+                          const SizedBox(width: 12),
+
+                          // User Avatar (Neo-Brutalism Border)
                           GestureDetector(
                             onTap: () => context.push('/profile'),
                             child: Container(
                               padding: const EdgeInsets.all(2),
                               decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.25),
                                 shape: BoxShape.circle,
-                                border: Border.all(color: AppColors.primary, width: 2),
+                                border: Border.all(color: Colors.black, width: 2),
                               ),
-                              child: const CircleAvatar(
-                                radius: 16,
-                                backgroundColor: Colors.grey,
-                                backgroundImage: NetworkImage('https://i.pravatar.cc/150?img=11'),
+                              child: Container(
+                                width: 34,
+                                height: 34,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.black, width: 1.5),
+                                  image: const DecorationImage(
+                                    image: NetworkImage('https://i.pravatar.cc/150?img=11'),
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
                               ),
                             ),
                           ),
@@ -148,471 +192,652 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
                 ),
 
-                const SizedBox(height: 4),
+                const SizedBox(height: 8),
 
-                // Scrollable Content
+                // ── Scrollable Body ──
                 Expanded(
                   child: SingleChildScrollView(
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        // ── section_total_balance_hero ──
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: IntrinsicHeight(
-                  child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Portfolio Preview Box
-                    GestureDetector(
-                      onTap: () => context.push('/reporting'),
-                      child: Container(
-                        width: 72,
-                        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-                        decoration: BoxDecoration(
-                          color: AppColors.accentBlue,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))],
-                        ),
-                        child: Column(
-                          children: [
-                            Container(
-                              width: 32,
-                              height: 32,
-                              decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                              child: const Icon(Icons.pie_chart, color: Colors.teal, size: 20),
-                            ),
-                            const Spacer(),
-                            const Text('View\nPortfolio', textAlign: TextAlign.center, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.teal)),
-                            const SizedBox(height: 8),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    // Balance Card
-                    Expanded(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))],
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      const Text('TOTAL BALANCE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.black54)),
-                                      const SizedBox(width: 4),
-                                      GestureDetector(
-                                        onTap: () => setState(() => _obscureBalance = !_obscureBalance),
-                                        child: Icon(_obscureBalance ? Icons.visibility_off : Icons.visibility, size: 14, color: Colors.black54),
-                                      ),
-                                      const Spacer(),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                        decoration: BoxDecoration(
-                                          color: Colors.black.withValues(alpha: 0.08),
-                                          borderRadius: BorderRadius.circular(10),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
+                        // ── Total Balance Hero Card ──
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: Column(
+                            children: [
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(18),
+                                decoration: BoxDecoration(
+                                  color: NeoBrutalism.lime,
+                                  borderRadius: BorderRadius.circular(24),
+                                  border: Border.all(color: Colors.black, width: 2),
+                                  boxShadow: NeoBrutalism.shadow(yOffset: 4),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // Row 1: TOTAL BALANCE + Toggle Eye + Portfolio Button
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Row(
                                           children: [
-                                            const Icon(Icons.calendar_today, size: 10, color: Colors.black54),
-                                            const SizedBox(width: 4),
-                                            Text(currentMonth, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: Colors.black54)),
+                                            const Text(
+                                              'TOTAL BALANCE',
+                                              style: TextStyle(
+                                                fontFamily: 'Plus Jakarta Sans',
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w700,
+                                                letterSpacing: 0.6,
+                                                color: NeoBrutalism.dark,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 6),
+                                            GestureDetector(
+                                              onTap: () => setState(() => _obscureBalance = !_obscureBalance),
+                                              child: Icon(
+                                                _obscureBalance ? Icons.visibility_off : Icons.visibility,
+                                                size: 16,
+                                                color: NeoBrutalism.dark,
+                                              ),
+                                            ),
                                           ],
                                         ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Row(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    children: [
-                                      const Text('Rp ', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.black87)),
-                                      Expanded(
-                                        child: Text(
-                                          _obscureBalance ? '••••••••' : currencyFormat.format(totalBalance).replaceAll('Rp ', ''),
-                                          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.black, height: 1),
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                    decoration: BoxDecoration(color: Colors.black87, borderRadius: BorderRadius.circular(20)),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        const Text('Hari ini ', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.white)),
-                                        Icon(
-                                          isPnlPositive ? Icons.trending_up : Icons.trending_down,
-                                          size: 10,
-                                          color: isPnlPositive ? AppColors.success : Colors.redAccent,
-                                        ),
-                                        Text(
-                                          '${isPnlPositive ? "+" : ""}${currencyFormat.format(dailyPnl)} (${isPnlPositive ? "+" : ""}${pnlPercentage.toStringAsFixed(1)}%)',
-                                          style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: isPnlPositive ? AppColors.success : Colors.redAccent),
+                                        // Portfolio Button
+                                        GestureDetector(
+                                          onTap: () => context.push('/reporting'),
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white,
+                                              borderRadius: BorderRadius.circular(9999),
+                                              border: Border.all(color: Colors.black, width: 2),
+                                              boxShadow: NeoBrutalism.shadow(yOffset: 2),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: const [
+                                                Icon(Icons.pie_chart_outline, size: 13, color: Colors.black),
+                                                SizedBox(width: 4),
+                                                Text(
+                                                  'Portfolio',
+                                                  style: TextStyle(
+                                                    fontFamily: 'Plus Jakarta Sans',
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: Colors.black,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
                                         ),
                                       ],
+                                    ),
+
+                                    const SizedBox(height: 8),
+
+                                    // Row 2: Big Balance Text
+                                    Row(
+                                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                                      textBaseline: TextBaseline.alphabetic,
+                                      children: [
+                                        const Text(
+                                          'Rp ',
+                                          style: TextStyle(
+                                            fontFamily: 'Plus Jakarta Sans',
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w700,
+                                            color: NeoBrutalism.dark,
+                                          ),
+                                        ),
+                                        Expanded(
+                                          child: Text(
+                                            _obscureBalance
+                                                ? '••••••••'
+                                                : currencyFormat.format(totalBalance).replaceAll('Rp ', ''),
+                                            style: const TextStyle(
+                                              fontFamily: 'Plus Jakarta Sans',
+                                              fontSize: 30,
+                                              fontWeight: FontWeight.w900,
+                                              letterSpacing: -1.4,
+                                              color: NeoBrutalism.dark,
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+
+                                    const SizedBox(height: 10),
+
+                                    // Row 3: Daily PnL Indicator Pill
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withValues(alpha: 0.92),
+                                        borderRadius: BorderRadius.circular(9999),
+                                        border: Border.all(color: Colors.black, width: 2),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Text(
+                                            'Hari ini ',
+                                            style: TextStyle(
+                                              fontFamily: 'Plus Jakarta Sans',
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w700,
+                                              color: NeoBrutalism.dark,
+                                            ),
+                                          ),
+                                          Icon(
+                                            isPnlPositive ? Icons.trending_up : Icons.trending_down,
+                                            size: 13,
+                                            color: isPnlPositive ? const Color(0xFF10B981) : const Color(0xFFDC2626),
+                                          ),
+                                          const SizedBox(width: 2),
+                                          Text(
+                                            '${isPnlPositive ? "+" : ""}${currencyFormat.format(dailyPnl)} (${isPnlPositive ? "+" : ""}${pnlPercentage.toStringAsFixed(1)}%)',
+                                            style: TextStyle(
+                                              fontFamily: 'Plus Jakarta Sans',
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w700,
+                                              color: isPnlPositive ? const Color(0xFF10B981) : const Color(0xFFDC2626),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+
+                                    const SizedBox(height: 14),
+
+                                    // Row 4: Sub-wallets Horizontal List
+                                    SingleChildScrollView(
+                                      scrollDirection: Axis.horizontal,
+                                      child: Row(
+                                        children: [
+                                          ...wallets.take(3).map((w) {
+                                            IconData wIcon = Icons.account_balance;
+                                            if (w.type == 'E-Wallet') {
+                                              wIcon = Icons.account_balance_wallet;
+                                            } else if (w.type == 'Cash') {
+                                              wIcon = Icons.shopping_bag_outlined;
+                                            } else if (w.type == 'Crypto' || w.type == 'Stock' || w.type == 'Mutual Fund') {
+                                              wIcon = Icons.show_chart;
+                                            }
+                                            return Padding(
+                                              padding: const EdgeInsets.only(right: 8),
+                                              child: _buildWalletPill(
+                                                w.name,
+                                                currencyFormat.format(w.balance),
+                                                icon: wIcon,
+                                                onTap: () => context.push('/wallet/${w.id}'),
+                                              ),
+                                            );
+                                          }),
+
+                                          // Plus Add Wallet Button
+                                          GestureDetector(
+                                            onTap: () => context.push('/wallet/add'),
+                                            child: Container(
+                                              width: 32,
+                                              height: 32,
+                                              decoration: BoxDecoration(
+                                                color: Colors.white,
+                                                borderRadius: BorderRadius.circular(9999),
+                                                border: Border.all(color: Colors.black, width: 2),
+                                                boxShadow: NeoBrutalism.shadow(yOffset: 2),
+                                              ),
+                                              child: const Icon(Icons.add, size: 18, color: Colors.black),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              const SizedBox(height: 10),
+
+                              // Page Indicator Dots below Balance Card
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Container(
+                                    width: 16,
+                                    height: 6,
+                                    decoration: BoxDecoration(
+                                      color: NeoBrutalism.dark,
+                                      borderRadius: BorderRadius.circular(9999),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 5),
+                                  Container(
+                                    width: 6,
+                                    height: 6,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFD1D5DB),
+                                      borderRadius: BorderRadius.circular(9999),
                                     ),
                                   ),
                                 ],
                               ),
-                            ),
-                            // Wallet list inside card (Redesigned with Lime Yellow background)
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-                              decoration: const BoxDecoration(
-                                color: AppColors.primary,
-                                borderRadius: BorderRadius.vertical(bottom: Radius.circular(16)),
-                              ),
-                              child: SingleChildScrollView(
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 20),
+
+                        // ── Main Content Container (White sheet with border) ──
+                        Container(
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                            border: Border.all(color: Colors.black, width: 2),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 24),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // ── Section: Quick Actions ──
+                              SingleChildScrollView(
                                 scrollDirection: Axis.horizontal,
+                                padding: const EdgeInsets.symmetric(horizontal: 20),
                                 child: Row(
                                   children: [
-                                    ...wallets.take(3).map((w) {
-                                      IconData wIcon = Icons.account_balance;
-                                      if (w.type == 'E-Wallet') {
-                                        wIcon = Icons.account_balance_wallet;
-                                      } else if (w.type == 'Cash') {
-                                        wIcon = Icons.shopping_bag;
-                                      } else if (w.type == 'Crypto' || w.type == 'Stock' || w.type == 'Mutual Fund') {
-                                        wIcon = Icons.show_chart;
-                                      }
-                                      return Padding(
-                                        padding: const EdgeInsets.only(right: 6),
-                                        child: _buildWalletPill(
-                                          w.name.length > 10 ? w.name.substring(0, 10) : w.name,
-                                          currencyFormat.format(w.balance),
-                                          icon: wIcon,
-                                          onTap: () => context.push('/wallet/${w.id}'),
+                                    _buildFeatureAction(
+                                      icon: Icons.smart_toy_outlined,
+                                      label: 'AI Budget',
+                                      onTap: () => context.push('/session'),
+                                    ),
+                                    _buildFeatureAction(
+                                      icon: Icons.history,
+                                      label: 'History',
+                                      onTap: () => context.push('/transaction/history'),
+                                    ),
+                                    _buildFeatureAction(
+                                      icon: Icons.credit_card_outlined,
+                                      label: 'Score',
+                                      onTap: () => context.go('/budget'),
+                                    ),
+                                    _buildFeatureAction(
+                                      icon: Icons.bar_chart_outlined,
+                                      label: 'Report',
+                                      onTap: () => context.push('/reporting'),
+                                    ),
+                                    _buildFeatureAction(
+                                      icon: Icons.receipt_long_outlined,
+                                      label: 'Bills',
+                                      onTap: () => context.go('/budget'),
+                                    ),
+                                    _buildFeatureAction(
+                                      icon: Icons.account_balance_wallet_outlined,
+                                      label: 'E-Wallet',
+                                      onTap: () => context.go('/wallet'),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              const SizedBox(height: 24),
+
+                              // ── Section: Expert Help Banner ──
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 20),
+                                child: Column(
+                                  children: [
+                                    SizedBox(
+                                      height: 136,
+                                      child: PageView(
+                                        controller: _bannerController,
+                                        onPageChanged: (i) => setState(() => _bannerPage = i),
+                                        children: [
+                                          _buildMatchExpertBanner(
+                                            tag: 'EXPERT HELP',
+                                            title: 'Bingung mencari konsultan?',
+                                            buttonText: 'MATCH',
+                                            onTap: () => context.go('/consult'),
+                                          ),
+                                          _buildMatchExpertBanner(
+                                            tag: 'AI ADVISOR',
+                                            title: 'Analisis budgeting kamu dengan AI',
+                                            buttonText: 'TRY NOW',
+                                            onTap: () => context.push('/session'),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(height: 10),
+                                    // Banner Indicators
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: List.generate(
+                                        2,
+                                        (i) => Container(
+                                          width: _bannerPage == i ? 16 : 6,
+                                          height: 6,
+                                          margin: const EdgeInsets.symmetric(horizontal: 3),
+                                          decoration: BoxDecoration(
+                                            color: _bannerPage == i ? NeoBrutalism.dark : const Color(0xFFD1D5DB),
+                                            borderRadius: BorderRadius.circular(9999),
+                                          ),
                                         ),
-                                      );
-                                    }),
-                                    // Add wallet button (High-contrast for Lime Yellow background)
-                                    GestureDetector(
-                                      onTap: () => context.push('/wallet/add'),
-                                      child: Container(
-                                        width: 32,
-                                        height: 32,
-                                        decoration: BoxDecoration(
-                                          color: Colors.black.withValues(alpha: 0.08),
-                                          borderRadius: BorderRadius.circular(8),
-                                          border: Border.all(color: Colors.black.withValues(alpha: 0.12)),
-                                        ),
-                                        child: const Icon(Icons.add, size: 16, color: Colors.black54),
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                ),
-              ),
-              const SizedBox(height: 24),
 
-              // ── section_quick_actions ──
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Row(
-                  children: [
-                    _buildFeatureAction(Icons.account_balance_wallet, 'Budget', onTap: () => context.go('/budget')),
-                    _buildFeatureAction(Icons.history, 'History', onTap: () => context.push('/transaction/history')),
-                    _buildFeatureAction(Icons.smart_toy, 'AI Halofin', onTap: () => context.push('/session')),
-                    _buildFeatureAction(Icons.credit_score, 'Score'),
-                    _buildFeatureAction(Icons.insert_chart, 'Report', onTap: () => context.push('/reporting')),
-                    _buildFeatureAction(Icons.receipt_long, 'Bills', onTap: () => context.go('/budget')),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
+                              const SizedBox(height: 24),
 
-              // ── section_carousel_banners ──
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Column(
-                  children: [
-                    SizedBox(
-                      height: 120,
-                      child: PageView(
-                        controller: _pageController,
-                        onPageChanged: (i) => setState(() => _carouselPage = i),
-                        children: [
-                          _buildBannerCard(
-                            icon: Icons.star,
-                            iconColor: Colors.amber,
-                            title: 'Match Expert',
-                            subtitle: 'Temukan konsultan yang pas sesuai budget dan masalah finansialmu.',
-                            ctaText: 'Coba Sekarang',
-                            onTap: () => context.go('/consult'),
-                          ),
-                          _buildBannerCard(
-                            icon: Icons.lightbulb,
-                            iconColor: Colors.orange,
-                            title: 'Smart Recommendation',
-                            subtitle: 'Lihat rekomendasi otomatis berdasarkan pola keuanganmu.',
-                            ctaText: 'Lihat',
-                          ),
-                          _buildBannerCard(
-                            icon: Icons.campaign,
-                            iconColor: Colors.blue,
-                            title: 'Promo Spesial',
-                            subtitle: 'Nikmati diskon 50% konsultasi pertama untuk pengguna baru.',
-                            ctaText: 'Klaim',
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    // Bar indicators
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(3, (i) => AnimatedContainer(
-                        duration: const Duration(milliseconds: 300),
-                        width: _carouselPage == i ? 24 : 12,
-                        height: 4,
-                        margin: const EdgeInsets.symmetric(horizontal: 3),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(2),
-                          color: _carouselPage == i ? AppColors.primary : Colors.grey.shade300,
-                        ),
-                      )),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // ── section_monthly_finance ──
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Keuangan Bulan Ini', style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 12),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 4))],
-                      ),
-                      child: Column(
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.all(20),
-                            child: Column(
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: const [
-                                    Text('Budget', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                                    Text('75%', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(6),
-                                  child: LinearProgressIndicator(
-                                    value: 0.75,
-                                    backgroundColor: Colors.grey.shade200,
-                                    valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
-                                    minHeight: 8,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Row(
-                                  children: const [
-                                    Text('terpakai ', style: TextStyle(fontSize: 10, color: Colors.black54)),
-                                    Text('Rp 7.500.000', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
-                                    Text(' / Rp 10.000.000', style: TextStyle(fontSize: 10, color: Colors.black54)),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                          const Divider(height: 1, color: AppColors.divider),
-                          Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary.withValues(alpha: 0.1),
-                              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 36,
-                                  height: 36,
-                                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.primary.withValues(alpha: 0.3))),
-                                  child: const Icon(Icons.smart_toy, color: AppColors.primaryDark, size: 20),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: SingleChildScrollView(
-                                    scrollDirection: Axis.horizontal,
-                                    child: Row(
-                                      children: [
-                                        _buildAssistantPrompt('Target nabung yang realistis?'),
-                                        const SizedBox(width: 8),
-                                        _buildAssistantPrompt('Cara naikkan tabungan?'),
-                                      ],
+                              // ── Section: Keuangan Bulan Ini ──
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 20),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Keuangan Bulan Ini',
+                                      style: TextStyle(
+                                        fontFamily: 'Plus Jakarta Sans',
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w700,
+                                        color: NeoBrutalism.dark,
+                                      ),
                                     ),
-                                  ),
+                                    const SizedBox(height: 12),
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        color: NeoBrutalism.surfaceWarm,
+                                        borderRadius: BorderRadius.circular(24),
+                                        border: Border.all(color: Colors.black, width: 2),
+                                        boxShadow: NeoBrutalism.shadow(yOffset: 4),
+                                      ),
+                                      padding: const EdgeInsets.all(20),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          // Budget Header Row
+                                          Row(
+                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                            children: const [
+                                              Text(
+                                                'Budget',
+                                                style: TextStyle(
+                                                  fontFamily: 'Plus Jakarta Sans',
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: NeoBrutalism.dark,
+                                                ),
+                                              ),
+                                              Text(
+                                                '75%',
+                                                style: TextStyle(
+                                                  fontFamily: 'Plus Jakarta Sans',
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w900,
+                                                  color: NeoBrutalism.dark,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+
+                                          const SizedBox(height: 12),
+
+                                          // Neo-Brutalism Progress Bar
+                                          Container(
+                                            height: 14,
+                                            width: double.infinity,
+                                            decoration: BoxDecoration(
+                                              color: Colors.white,
+                                              borderRadius: BorderRadius.circular(9999),
+                                              border: Border.all(color: Colors.black, width: 2),
+                                            ),
+                                            child: FractionallySizedBox(
+                                              alignment: Alignment.centerLeft,
+                                              widthFactor: 0.75,
+                                              child: Container(
+                                                decoration: BoxDecoration(
+                                                  color: NeoBrutalism.lime,
+                                                  borderRadius: const BorderRadius.horizontal(
+                                                    left: Radius.circular(9999),
+                                                    right: Radius.circular(9999),
+                                                  ),
+                                                  border: const Border(
+                                                    right: BorderSide(color: Colors.black, width: 2),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+
+                                          const SizedBox(height: 10),
+
+                                          // Text info: terpakai Rp ... / Rp ...
+                                          RichText(
+                                            text: const TextSpan(
+                                              style: TextStyle(
+                                                fontFamily: 'Plus Jakarta Sans',
+                                                fontSize: 12,
+                                                color: Color(0xFF4B5563),
+                                              ),
+                                              children: [
+                                                TextSpan(text: 'terpakai '),
+                                                TextSpan(
+                                                  text: 'Rp 7.500.000',
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.w700,
+                                                    color: NeoBrutalism.dark,
+                                                  ),
+                                                ),
+                                                TextSpan(text: ' / Rp 10.000.000'),
+                                              ],
+                                            ),
+                                          ),
+
+                                          const Padding(
+                                            padding: EdgeInsets.symmetric(vertical: 14),
+                                            child: Divider(
+                                              height: 1,
+                                              thickness: 1,
+                                              color: Colors.black,
+                                            ),
+                                          ),
+
+                                          // Bot button + Prompt Pills
+                                          Row(
+                                            children: [
+                                              GestureDetector(
+                                                onTap: () => context.push('/session'),
+                                                child: Container(
+                                                  width: 40,
+                                                  height: 40,
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.white,
+                                                    shape: BoxShape.circle,
+                                                    border: Border.all(color: Colors.black, width: 2),
+                                                    boxShadow: NeoBrutalism.shadow(yOffset: 2),
+                                                  ),
+                                                  child: const Icon(
+                                                    Icons.smart_toy_outlined,
+                                                    size: 20,
+                                                    color: NeoBrutalism.dark,
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 10),
+                                              Expanded(
+                                                child: SingleChildScrollView(
+                                                  scrollDirection: Axis.horizontal,
+                                                  child: Row(
+                                                    children: [
+                                                      _buildAssistantPromptPill('Target nabung realistis?', onTap: () => context.push('/session')),
+                                                      const SizedBox(width: 8),
+                                                      _buildAssistantPromptPill('Cara naikkan tabungan?', onTap: () => context.push('/session')),
+                                                      const SizedBox(width: 8),
+                                                      _buildAssistantPromptPill('Tips hemat akhir bulan', onTap: () => context.push('/session')),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
+                              ),
+
+                              const SizedBox(height: 24),
+
+                              // ── Section: Recent Activity ──
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 20),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Text(
+                                      'Recent Activity',
+                                      style: TextStyle(
+                                        fontFamily: 'Plus Jakarta Sans',
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w700,
+                                        color: NeoBrutalism.dark,
+                                      ),
+                                    ),
+                                    GestureDetector(
+                                      onTap: () => context.push('/transaction/history'),
+                                      child: Container(
+                                        width: 32,
+                                        height: 32,
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          shape: BoxShape.circle,
+                                          border: Border.all(color: Colors.black, width: 2),
+                                          boxShadow: NeoBrutalism.shadow(yOffset: 2),
+                                        ),
+                                        child: const Icon(Icons.search, size: 16, color: NeoBrutalism.dark),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              const SizedBox(height: 12),
+
+                              // Transaction List Items
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 20),
+                                child: ListView.builder(
+                                  shrinkWrap: true,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  padding: EdgeInsets.zero,
+                                  itemCount: transactions.take(3).length,
+                                  itemBuilder: (context, index) {
+                                    final tx = transactions[index];
+                                    final isExpense = tx.type == 'expense' || tx.type == 'transfer';
+                                    final amountText = '${isExpense ? "- " : "+ "}${currencyFormat.format(tx.amount)}';
+
+                                    // Category styling from design
+                                    Color iconBg;
+                                    Color iconColor;
+                                    IconData txIcon;
+
+                                    if (index == 0) {
+                                      iconBg = NeoBrutalism.dark;
+                                      iconColor = Colors.white;
+                                      txIcon = Icons.directions_car;
+                                    } else if (index == 1) {
+                                      iconBg = NeoBrutalism.lime;
+                                      iconColor = NeoBrutalism.dark;
+                                      txIcon = Icons.coffee_outlined;
+                                    } else {
+                                      iconBg = NeoBrutalism.coral;
+                                      iconColor = const Color(0xFFB91C1C);
+                                      txIcon = Icons.play_circle_outline;
+                                    }
+
+                                    return Container(
+                                      margin: const EdgeInsets.only(bottom: 12),
+                                      padding: const EdgeInsets.all(14),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(24),
+                                        border: Border.all(color: Colors.black, width: 2),
+                                        boxShadow: NeoBrutalism.shadow(yOffset: 3),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          // Circular category icon badge
+                                          Container(
+                                            width: 48,
+                                            height: 48,
+                                            decoration: BoxDecoration(
+                                              color: iconBg,
+                                              shape: BoxShape.circle,
+                                              border: Border.all(color: Colors.black, width: 2),
+                                            ),
+                                            child: Icon(txIcon, size: 20, color: iconColor),
+                                          ),
+                                          const SizedBox(width: 14),
+                                          // Title & Subtitle
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  tx.title,
+                                                  style: const TextStyle(
+                                                    fontFamily: 'Plus Jakarta Sans',
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.w900,
+                                                    color: NeoBrutalism.dark,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                  '${DateFormat('h:mm a').format(tx.date)} • ${DateFormat('d MMM').format(tx.date)}',
+                                                  style: const TextStyle(
+                                                    fontFamily: 'Plus Jakarta Sans',
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: NeoBrutalism.textMuted,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          // Amount
+                                          Text(
+                                            amountText,
+                                            style: const TextStyle(
+                                              fontFamily: 'Plus Jakarta Sans',
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w900,
+                                              color: NeoBrutalism.dark,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+
+                              const SizedBox(height: 110), // Padding above floating bottom nav bar
+                            ],
                           ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // ── section_recent_activity ──
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Recent Activity', style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-                    GestureDetector(
-                      onTap: () => context.push('/transaction/history'),
-                      child: const Icon(Icons.search, color: Colors.black54),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 8),
-              ListView.builder(
-                shrinkWrap: true,
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: transactions.take(3).length,
-                itemBuilder: (context, index) {
-                  final tx = transactions[index];
-                  final isExpense = tx.type == 'expense' || tx.type == 'transfer';
-                  final amountText = '${isExpense ? "- " : "+ "}${currencyFormat.format(tx.amount)}';
-
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    decoration: BoxDecoration(
-                      color: AppColors.background,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                      leading: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(color: isExpense ? Colors.red.withValues(alpha: 0.1) : Colors.green.withValues(alpha: 0.1), shape: BoxShape.circle),
-                        child: Icon(isExpense ? Icons.local_taxi : Icons.coffee, size: 16, color: isExpense ? AppColors.error : AppColors.success),
-                      ),
-                      title: Text(tx.title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                      subtitle: Text('${tx.category} • ${DateFormat('d MMM').format(tx.date)}', style: const TextStyle(fontSize: 10, color: Colors.black54)),
-                      trailing: Text(amountText, style: textTheme.bodyMedium?.copyWith(color: Colors.black87, fontWeight: FontWeight.bold)),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 120), // Padding for floating bottom nav
+                        ),
                       ],
                     ),
                   ),
                 ),
               ],
             ),
-        // Branch Session FAB
-        Positioned(
-          bottom: 110,
-          right: 20,
-          child: GestureDetector(
-            onTap: () => context.push('/ai-chat'),
-            child: Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                color: AppColors.primary,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.4),
-                    blurRadius: 12,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: const Icon(Icons.support_agent, color: Colors.black, size: 26),
-            ),
-          ),
-        ),
-      ]),
-      ),
-    );
-  }
-  // ── Edit Name Dialog ──
-
-  void _showEditNameDialog(BuildContext context, WidgetRef ref, String currentName) {
-    final controller = TextEditingController(text: currentName);
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Edit Nama', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: InputDecoration(
-            hintText: 'Masukkan nama kamu',
-            filled: true,
-            fillColor: Colors.grey.shade50,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey.shade200),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: AppColors.primary, width: 2),
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text('Batal', style: TextStyle(color: Colors.grey.shade600)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final newName = controller.text.trim();
-              if (newName.isNotEmpty) {
-                ref.read(userNameProvider.notifier).state = newName;
-              }
-              Navigator.of(ctx).pop();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.black,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            child: const Text('Simpan', style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -625,11 +850,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.06),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.black.withValues(alpha: 0.1)),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(9999),
+          border: Border.all(color: Colors.black, width: 2),
+          boxShadow: NeoBrutalism.shadow(yOffset: 2),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -637,17 +863,32 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             Container(
               width: 20,
               height: 20,
-              decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-              child: Icon(icon ?? Icons.account_balance, size: 12, color: Colors.black),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF3F4F6),
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.black54, width: 1),
+              ),
+              child: Icon(icon ?? Icons.account_balance, size: 11, color: Colors.black),
             ),
             const SizedBox(width: 6),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(name, style: const TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Colors.black54)),
-                Text(balance, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.black87)),
-              ],
+            Text(
+              name,
+              style: const TextStyle(
+                fontFamily: 'Plus Jakarta Sans',
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF6B7280),
+              ),
+            ),
+            const SizedBox(width: 4),
+            Text(
+              balance,
+              style: const TextStyle(
+                fontFamily: 'Plus Jakarta Sans',
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: NeoBrutalism.dark,
+              ),
             ),
           ],
         ),
@@ -655,105 +896,216 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Widget _buildFeatureAction(IconData icon, String label, {VoidCallback? onTap}) {
+  Widget _buildFeatureAction({required IconData icon, required String label, VoidCallback? onTap}) {
     return GestureDetector(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.only(right: 16),
+        padding: const EdgeInsets.only(right: 14),
         child: Column(
           children: [
             Container(
-              height: 48,
-              width: 48,
+              height: 56,
+              width: 56,
               decoration: BoxDecoration(
-                color: Colors.grey.shade50,
+                color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.grey.shade200),
+                border: Border.all(color: Colors.black, width: 2),
+                boxShadow: NeoBrutalism.shadow(yOffset: 3),
               ),
-              child: Icon(icon, color: Colors.grey.shade800),
+              child: Icon(icon, color: NeoBrutalism.dark, size: 24),
             ),
             const SizedBox(height: 6),
-            Text(label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.black54)),
+            Text(
+              label,
+              style: const TextStyle(
+                fontFamily: 'Plus Jakarta Sans',
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: NeoBrutalism.dark,
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildBannerCard({
-    required IconData icon,
-    required Color iconColor,
+  Widget _buildMatchExpertBanner({
+    required String tag,
     required String title,
-    required String subtitle,
-    required String ctaText,
+    required String buttonText,
     VoidCallback? onTap,
   }) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 2),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey.shade100),
-        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 2))],
+        color: NeoBrutalism.mint,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.black, width: 2),
+        boxShadow: NeoBrutalism.shadow(yOffset: 4),
       ),
       child: Row(
         children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: iconColor.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(icon, color: iconColor, size: 24),
-          ),
-          const SizedBox(width: 14),
           Expanded(
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900)),
-                const SizedBox(height: 4),
-                Text(subtitle, style: const TextStyle(fontSize: 11, color: Colors.black54, height: 1.3), maxLines: 2, overflow: TextOverflow.ellipsis),
+                Row(
+                  children: [
+                    const Icon(Icons.verified_user_outlined, size: 13, color: NeoBrutalism.dark),
+                    const SizedBox(width: 4),
+                    Text(
+                      tag,
+                      style: const TextStyle(
+                        fontFamily: 'Plus Jakarta Sans',
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.5,
+                        color: NeoBrutalism.dark,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontFamily: 'Plus Jakarta Sans',
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                    color: NeoBrutalism.dark,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                GestureDetector(
+                  onTap: onTap,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: NeoBrutalism.lime,
+                      borderRadius: BorderRadius.circular(9999),
+                      border: Border.all(color: Colors.black, width: 2),
+                      boxShadow: NeoBrutalism.shadow(yOffset: 2),
+                    ),
+                    child: Text(
+                      buttonText,
+                      style: const TextStyle(
+                        fontFamily: 'Plus Jakarta Sans',
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.5,
+                        color: NeoBrutalism.dark,
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: onTap,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: AppColors.primary,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Row(
-                children: [
-                  Text(ctaText, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.black)),
-                  const SizedBox(width: 4),
-                  const Icon(Icons.arrow_forward, size: 12, color: Colors.black),
-                ],
-              ),
+          const SizedBox(width: 12),
+          // Large White Circle Badge on the right
+          Container(
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.black, width: 2),
+              boxShadow: NeoBrutalism.shadow(yOffset: 2),
             ),
+            child: const Icon(Icons.groups_outlined, size: 30, color: NeoBrutalism.dark),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildAssistantPrompt(String text) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
-        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 2, offset: Offset(0, 1))],
+  Widget _buildAssistantPromptPill(String text, {VoidCallback? onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(9999),
+          border: Border.all(color: Colors.black, width: 2),
+          boxShadow: NeoBrutalism.shadow(yOffset: 2),
+        ),
+        child: Text(
+          text,
+          style: const TextStyle(
+            fontFamily: 'Plus Jakarta Sans',
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: NeoBrutalism.dark,
+          ),
+        ),
       ),
-      child: Text(text, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500)),
+    );
+  }
+
+  // ── Edit Name Dialog ──
+
+  void _showEditNameDialog(BuildContext context, WidgetRef ref, String currentName) {
+    final controller = TextEditingController(text: currentName);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: Colors.black, width: 2),
+        ),
+        title: const Text(
+          'Edit Nama',
+          style: TextStyle(
+            fontFamily: 'Plus Jakarta Sans',
+            fontWeight: FontWeight.w900,
+            fontSize: 16,
+          ),
+        ),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: InputDecoration(
+            hintText: 'Masukkan nama kamu',
+            filled: true,
+            fillColor: Colors.grey.shade100,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.black, width: 2),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.black, width: 2),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Batal', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final newName = controller.text.trim();
+              if (newName.isNotEmpty) {
+                ref.read(userNameProvider.notifier).state = newName;
+              }
+              Navigator.of(ctx).pop();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: NeoBrutalism.lime,
+              foregroundColor: Colors.black,
+              elevation: 0,
+              side: const BorderSide(color: Colors.black, width: 2),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: const Text('Simpan', style: TextStyle(fontWeight: FontWeight.w900)),
+          ),
+        ],
+      ),
     );
   }
 }
-
