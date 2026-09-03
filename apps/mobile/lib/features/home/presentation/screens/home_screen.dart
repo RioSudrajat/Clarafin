@@ -43,11 +43,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final isPnlPositive = dailyPnl >= 0;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
+      backgroundColor: Colors.white,
       body: Stack(
         children: [
-          // ── 1. Full-Screen Gradient Background ──
-          Positioned.fill(
+          // ── 1. Top Gradient Background (Behind Header and Top Half of Balance Card) ──
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 320,
             child: Container(
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
@@ -58,165 +62,164 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     Color(0xFF198696),
                     Color(0xFF8AD830),
                     Color(0xFFBFFF00), // Bright Lime Green
-                    Color(0xFFF9FAFB), // Smooth transition to base
                   ],
-                  stops: [0.0, 0.22, 0.55, 0.82, 1.0],
+                  stops: [0.0, 0.25, 0.65, 1.0],
                 ),
               ),
             ),
           ),
 
-          // ── 2. Main Content with Clamping Physics (No Stretchy Overscroll) ──
+          // ── 2. Fixed / Absolute Header & Scrollable Body ──
           SafeArea(
             bottom: false,
-            child: ScrollConfiguration(
-              behavior: const ScrollBehavior().copyWith(
-                overscroll: false,
-                physics: const ClampingScrollPhysics(),
-              ),
-              child: SingleChildScrollView(
-                physics: const ClampingScrollPhysics(),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // ── Header / Top Bar ──
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          // User Greeting & Name (Tap to edit)
-                          GestureDetector(
-                            onTap: () => _showEditNameDialog(context, ref, userName),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Column(
+              children: [
+                // ── Fixed / Pinned Header (Stays in place, does not scroll) ──
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // User Greeting & Name (Tap to edit)
+                      GestureDetector(
+                        onTap: () => _showEditNameDialog(context, ref, userName),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Welcome back,',
+                              style: TextStyle(
+                                fontFamily: 'Plus Jakarta Sans',
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.white.withValues(alpha: 0.85),
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Row(
                               children: [
                                 Text(
-                                  'Welcome back,',
-                                  style: TextStyle(
+                                  userName,
+                                  style: const TextStyle(
                                     fontFamily: 'Plus Jakarta Sans',
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
-                                    color: Colors.white.withValues(alpha: 0.85),
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                    shadows: [
+                                      Shadow(
+                                        color: Colors.black26,
+                                        offset: Offset(0, 2),
+                                        blurRadius: 3,
+                                      ),
+                                    ],
                                   ),
                                 ),
-                                const SizedBox(height: 2),
-                                Row(
-                                  children: [
-                                    Text(
-                                      userName,
-                                      style: const TextStyle(
-                                        fontFamily: 'Plus Jakarta Sans',
-                                        fontSize: 24,
-                                        fontWeight: FontWeight.w700,
-                                        color: Colors.white,
-                                        shadows: [
-                                          Shadow(
-                                            color: Colors.black26,
-                                            offset: Offset(0, 2),
-                                            blurRadius: 3,
-                                          ),
-                                        ],
-                                      ),
+                                const SizedBox(width: 6),
+                                const Icon(Icons.edit_outlined, size: 14, color: Colors.white70),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Notification Bell & Profile Avatar
+                      Row(
+                        children: [
+                          // Notification Bell
+                          GestureDetector(
+                            onTap: () {},
+                            child: Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                Container(
+                                  width: 36,
+                                  height: 36,
+                                  decoration: NeoBrutalism.circleDecoration(
+                                    backgroundColor: Colors.white,
+                                    shadowOffset: 2,
+                                    borderWidth: 2,
+                                  ),
+                                  child: const Icon(
+                                    Icons.notifications_outlined,
+                                    size: 20,
+                                    color: Colors.black,
+                                  ),
+                                ),
+                                // Lime Notification Badge Dot
+                                Positioned(
+                                  top: -1,
+                                  right: -1,
+                                  child: Container(
+                                    width: 10,
+                                    height: 10,
+                                    decoration: BoxDecoration(
+                                      color: NeoBrutalism.lime,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: Colors.black, width: 2),
                                     ),
-                                    const SizedBox(width: 6),
-                                    const Icon(Icons.edit_outlined, size: 14, color: Colors.white70),
-                                  ],
+                                  ),
                                 ),
                               ],
                             ),
                           ),
+                          const SizedBox(width: 12),
 
-                          // Notification Bell & Profile Avatar
-                          Row(
-                            children: [
-                              // Notification Bell
-                              GestureDetector(
-                                onTap: () {},
-                                child: Stack(
-                                  clipBehavior: Clip.none,
-                                  children: [
-                                    Container(
-                                      width: 36,
-                                      height: 36,
-                                      decoration: NeoBrutalism.circleDecoration(
-                                        backgroundColor: Colors.white,
-                                        shadowOffset: 2,
-                                        borderWidth: 2,
-                                      ),
-                                      child: const Icon(
-                                        Icons.notifications_outlined,
-                                        size: 20,
-                                        color: Colors.black,
-                                      ),
-                                    ),
-                                    // Lime Notification Badge Dot
-                                    Positioned(
-                                      top: -1,
-                                      right: -1,
-                                      child: Container(
-                                        width: 10,
-                                        height: 10,
-                                        decoration: BoxDecoration(
-                                          color: NeoBrutalism.lime,
-                                          shape: BoxShape.circle,
-                                          border: Border.all(color: Colors.black, width: 2),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                          // User Profile Avatar
+                          GestureDetector(
+                            onTap: () => context.push('/profile'),
+                            child: Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.25),
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.black, width: 2),
                               ),
-                              const SizedBox(width: 12),
-
-                              // User Profile Avatar
-                              GestureDetector(
-                                onTap: () => context.push('/profile'),
-                                child: Container(
-                                  padding: const EdgeInsets.all(2),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.25),
-                                    shape: BoxShape.circle,
-                                    border: Border.all(color: Colors.black, width: 2),
-                                  ),
-                                  child: Container(
-                                    width: 34,
-                                    height: 34,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      border: Border.all(color: Colors.black, width: 1.5),
-                                      image: const DecorationImage(
-                                        image: NetworkImage('https://i.pravatar.cc/150?img=11'),
-                                        fit: BoxFit.cover,
-                                      ),
-                                    ),
+                              child: Container(
+                                width: 34,
+                                height: 34,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.black, width: 1.5),
+                                  image: const DecorationImage(
+                                    image: NetworkImage('https://i.pravatar.cc/150?img=11'),
+                                    fit: BoxFit.cover,
                                   ),
                                 ),
                               ),
-                            ],
+                            ),
                           ),
                         ],
                       ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 8),
+
+                // ── Scrollable Body ──
+                Expanded(
+                  child: ScrollConfiguration(
+                    behavior: const ScrollBehavior().copyWith(
+                      overscroll: false,
+                      physics: const ClampingScrollPhysics(),
                     ),
-
-                    const SizedBox(height: 12),
-
-                    // ── White Sheet Container with Overlapping Total Balance Card ──
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: SingleChildScrollView(
+                      physics: const ClampingScrollPhysics(),
                       child: Stack(
                         clipBehavior: Clip.none,
                         children: [
-                          // ── White Rounded Container (starts at Y=85, cutting behind the Balance Card) ──
+                          // ── Full-Width White Sheet Container (Edge-to-Edge, rounded top corners) ──
                           Container(
                             margin: const EdgeInsets.only(top: 85),
                             width: double.infinity,
-                            decoration: BoxDecoration(
+                            decoration: const BoxDecoration(
                               color: Colors.white,
-                              borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-                              border: Border.all(color: Colors.black, width: 2),
+                              borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+                              border: Border(
+                                top: BorderSide(color: Colors.black, width: 2),
+                              ),
                             ),
-                            padding: const EdgeInsets.only(top: 150, bottom: 24),
+                            padding: const EdgeInsets.only(top: 155, bottom: 24),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -224,7 +227,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 SingleChildScrollView(
                                   scrollDirection: Axis.horizontal,
                                   physics: const ClampingScrollPhysics(),
-                                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                                  padding: const EdgeInsets.symmetric(horizontal: 20),
                                   child: Row(
                                     children: [
                                       _buildFeatureAction(
@@ -263,9 +266,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                                 const SizedBox(height: 24),
 
-                                // ── Section: Expert Help Banner (Enhanced Height & Unclipped Shadow) ──
+                                // ── Section: Expert Help Banner ──
                                 Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                                  padding: const EdgeInsets.symmetric(horizontal: 20),
                                   child: Column(
                                     children: [
                                       SizedBox(
@@ -322,7 +325,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                                 // ── Section: Keuangan Bulan Ini ──
                                 Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                                  padding: const EdgeInsets.symmetric(horizontal: 20),
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
@@ -483,7 +486,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                                 // ── Section: Recent Activity ──
                                 Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                                  padding: const EdgeInsets.symmetric(horizontal: 20),
                                   child: Row(
                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
@@ -518,7 +521,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                                 // Transaction List Items
                                 Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                                  padding: const EdgeInsets.symmetric(horizontal: 20),
                                   child: ListView.builder(
                                     shrinkWrap: true,
                                     physics: const NeverScrollableScrollPhysics(),
@@ -622,8 +625,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           // ── Total Balance Hero Card (Overlapping Boundary between Gradient & White Container) ──
                           Positioned(
                             top: 0,
-                            left: 6,
-                            right: 6,
+                            left: 20,
+                            right: 20,
                             child: Stack(
                               clipBehavior: Clip.none,
                               children: [
@@ -790,10 +793,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   ),
                                 ),
 
-                                // ── Portfolio Pill Button (Positioned Overlapping Top-Right Edge of Balance Card) ──
+                                // ── Portfolio Pill Button (Positioned Overlapping Top-Right Corner: protruding TOP and RIGHT!) ──
                                 Positioned(
                                   top: -12,
-                                  right: 14,
+                                  right: -10,
                                   child: GestureDetector(
                                     onTap: () => context.push('/reporting'),
                                     child: Container(
@@ -858,9 +861,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ],
                       ),
                     ),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
           ),
         ],
