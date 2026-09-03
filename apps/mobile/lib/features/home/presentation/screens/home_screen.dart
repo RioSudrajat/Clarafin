@@ -787,7 +787,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         // Lime Balance Card Body
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+          padding: const EdgeInsets.only(top: 18, bottom: 12),
           decoration: BoxDecoration(
             color: NeoBrutalism.lime,
             borderRadius: BorderRadius.circular(24),
@@ -798,112 +798,124 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Row 1: TOTAL BALANCE + Toggle Eye
-              Row(
-                children: [
-                  const Text(
-                    'TOTAL BALANCE',
-                    style: TextStyle(
-                      fontFamily: 'Plus Jakarta Sans',
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.6,
-                      color: NeoBrutalism.dark,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  GestureDetector(
-                    onTap: () => setState(() => _obscureBalance = !_obscureBalance),
-                    child: Icon(
-                      _obscureBalance ? Icons.visibility_off : Icons.visibility,
-                      size: 16,
-                      color: NeoBrutalism.dark,
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 8),
-
-              // Row 2: Big Balance Amount
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
-                children: [
-                  const Text(
-                    'Rp ',
-                    style: TextStyle(
-                      fontFamily: 'Plus Jakarta Sans',
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: NeoBrutalism.dark,
-                    ),
-                  ),
-                  Expanded(
-                    child: Text(
-                      _obscureBalance
-                          ? '••••••••'
-                          : currencyFormat.format(totalBalance).replaceAll('Rp ', ''),
-                      style: const TextStyle(
-                        fontFamily: 'Plus Jakarta Sans',
-                        fontSize: 30,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -1.4,
-                        color: NeoBrutalism.dark,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 10),
-
-              // Row 3: Daily PnL Indicator Pill
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.92),
-                  borderRadius: BorderRadius.circular(9999),
-                  border: Border.all(color: Colors.black, width: 2),
-                ),
-                child: Row(
+              // Rows 1-3 with 18px horizontal padding
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text(
-                      'Hari ini ',
-                      style: TextStyle(
-                        fontFamily: 'Plus Jakarta Sans',
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        color: NeoBrutalism.dark,
+                    // Row 1: TOTAL BALANCE + Toggle Eye
+                    Row(
+                      children: [
+                        const Text(
+                          'TOTAL BALANCE',
+                          style: TextStyle(
+                            fontFamily: 'Plus Jakarta Sans',
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.6,
+                            color: NeoBrutalism.dark,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        GestureDetector(
+                          onTap: () => setState(() => _obscureBalance = !_obscureBalance),
+                          child: Icon(
+                            _obscureBalance ? Icons.visibility_off : Icons.visibility,
+                            size: 16,
+                            color: NeoBrutalism.dark,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 8),
+
+                    // Row 2: Big Balance Amount
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
+                      children: [
+                        const Text(
+                          'Rp ',
+                          style: TextStyle(
+                            fontFamily: 'Plus Jakarta Sans',
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: NeoBrutalism.dark,
+                          ),
+                        ),
+                        Expanded(
+                          child: Text(
+                            _obscureBalance
+                                ? '••••••••'
+                                : currencyFormat.format(totalBalance).replaceAll('Rp ', ''),
+                            style: const TextStyle(
+                              fontFamily: 'Plus Jakarta Sans',
+                              fontSize: 30,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -1.4,
+                              color: NeoBrutalism.dark,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    // Row 3: Daily PnL Indicator Pill
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.92),
+                        borderRadius: BorderRadius.circular(9999),
+                        border: Border.all(color: Colors.black, width: 2),
                       ),
-                    ),
-                    Icon(
-                      isPnlPositive ? Icons.trending_up : Icons.trending_down,
-                      size: 13,
-                      color: isPnlPositive ? const Color(0xFF10B981) : const Color(0xFFDC2626),
-                    ),
-                    const SizedBox(width: 2),
-                    Text(
-                      '${isPnlPositive ? "+" : ""}${currencyFormat.format(dailyPnl)} (${isPnlPositive ? "+" : ""}${pnlPercentage.toStringAsFixed(1)}%)',
-                      style: TextStyle(
-                        fontFamily: 'Plus Jakarta Sans',
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        color: isPnlPositive ? const Color(0xFF10B981) : const Color(0xFFDC2626),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text(
+                            'Hari ini ',
+                            style: TextStyle(
+                              fontFamily: 'Plus Jakarta Sans',
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: NeoBrutalism.dark,
+                            ),
+                          ),
+                          Icon(
+                            isPnlPositive ? Icons.trending_up : Icons.trending_down,
+                            size: 13,
+                            color: isPnlPositive ? const Color(0xFF10B981) : const Color(0xFFDC2626),
+                          ),
+                          const SizedBox(width: 2),
+                          Text(
+                            '${isPnlPositive ? "+" : ""}${currencyFormat.format(dailyPnl)} (${isPnlPositive ? "+" : ""}${pnlPercentage.toStringAsFixed(1)}%)',
+                            style: TextStyle(
+                              fontFamily: 'Plus Jakarta Sans',
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: isPnlPositive ? const Color(0xFF10B981) : const Color(0xFFDC2626),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
               ),
 
-              const SizedBox(height: 14),
+              const SizedBox(height: 10),
 
-              // Row 4: Sub-wallets Horizontal List
+              // Row 4: Sub-wallets Horizontal List (Edge-to-edge scroll without clipping)
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
+                clipBehavior: Clip.none,
                 physics: const ClampingScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 18),
                 child: Row(
                   children: [
                     ...wallets.take(3).map((w) {
