@@ -795,7 +795,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                                 // ── Portfolio Pill Button (Positioned Overlapping Top-Right Corner: protruding TOP and RIGHT!) ──
                                 Positioned(
-                                  top: -12,
+                                  top: 15,
                                   right: -10,
                                   child: GestureDetector(
                                     onTap: () => context.push('/reporting'),
