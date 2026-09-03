@@ -787,6 +787,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         // Lime Balance Card Body
         Container(
           width: double.infinity,
+          clipBehavior: Clip.antiAlias,
           padding: const EdgeInsets.only(top: 18, bottom: 12),
           decoration: BoxDecoration(
             color: NeoBrutalism.lime,
@@ -910,50 +911,52 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
               const SizedBox(height: 10),
 
-              // Row 4: Sub-wallets Horizontal List (Edge-to-edge scroll without clipping)
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                clipBehavior: Clip.none,
-                physics: const ClampingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 18),
-                child: Row(
-                  children: [
-                    ...wallets.take(3).map((w) {
-                      IconData wIcon = Icons.account_balance;
-                      if (w.type == 'E-Wallet') {
-                        wIcon = Icons.account_balance_wallet;
-                      } else if (w.type == 'Cash') {
-                        wIcon = Icons.shopping_bag_outlined;
-                      } else if (w.type == 'Crypto' || w.type == 'Stock' || w.type == 'Mutual Fund') {
-                        wIcon = Icons.show_chart;
-                      }
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: _buildWalletPill(
-                          w.name,
-                          currencyFormat.format(w.balance),
-                          icon: wIcon,
-                          onTap: () => context.push('/wallet/${w.id}'),
-                        ),
-                      );
-                    }),
+              // Row 4: Sub-wallets Horizontal List (Bounded cleanly to card edges without spilling)
+              SizedBox(
+                width: double.infinity,
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  physics: const ClampingScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                  child: Row(
+                    children: [
+                      ...wallets.take(3).map((w) {
+                        IconData wIcon = Icons.account_balance;
+                        if (w.type == 'E-Wallet') {
+                          wIcon = Icons.account_balance_wallet;
+                        } else if (w.type == 'Cash') {
+                          wIcon = Icons.shopping_bag_outlined;
+                        } else if (w.type == 'Crypto' || w.type == 'Stock' || w.type == 'Mutual Fund') {
+                          wIcon = Icons.show_chart;
+                        }
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: _buildWalletPill(
+                            w.name,
+                            currencyFormat.format(w.balance),
+                            icon: wIcon,
+                            onTap: () => context.push('/wallet/${w.id}'),
+                          ),
+                        );
+                      }),
 
-                    // Plus Add Wallet Button
-                    GestureDetector(
-                      onTap: () => context.push('/wallet/add'),
-                      child: Container(
-                        width: 32,
-                        height: 32,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(9999),
-                          border: Border.all(color: Colors.black, width: 2),
-                          boxShadow: NeoBrutalism.shadow(yOffset: 2),
+                      // Plus Add Wallet Button
+                      GestureDetector(
+                        onTap: () => context.push('/wallet/add'),
+                        child: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: Colors.black, width: 2),
+                            boxShadow: NeoBrutalism.shadow(yOffset: 2),
+                          ),
+                          child: const Icon(Icons.add, size: 20, color: Colors.black),
                         ),
-                        child: const Icon(Icons.add, size: 18, color: Colors.black),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -1003,45 +1006,54 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(9999),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(color: Colors.black, width: 2),
           boxShadow: NeoBrutalism.shadow(yOffset: 2),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Container(
-              width: 20,
-              height: 20,
+              width: 26,
+              height: 26,
               decoration: BoxDecoration(
                 color: const Color(0xFFF3F4F6),
                 shape: BoxShape.circle,
                 border: Border.all(color: Colors.black54, width: 1),
               ),
-              child: Icon(icon ?? Icons.account_balance, size: 11, color: Colors.black),
+              child: Icon(icon ?? Icons.account_balance, size: 13, color: Colors.black),
             ),
-            const SizedBox(width: 6),
-            Text(
-              name,
-              style: const TextStyle(
-                fontFamily: 'Plus Jakarta Sans',
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF6B7280),
-              ),
-            ),
-            const SizedBox(width: 4),
-            Text(
-              balance,
-              style: const TextStyle(
-                fontFamily: 'Plus Jakarta Sans',
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
-                color: NeoBrutalism.dark,
-              ),
+            const SizedBox(width: 8),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  name,
+                  style: const TextStyle(
+                    fontFamily: 'Plus Jakarta Sans',
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF6B7280),
+                    height: 1.1,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  balance,
+                  style: const TextStyle(
+                    fontFamily: 'Plus Jakarta Sans',
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                    color: NeoBrutalism.dark,
+                    height: 1.1,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
