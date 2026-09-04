@@ -466,6 +466,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                                   child: SingleChildScrollView(
                                                     scrollDirection: Axis.horizontal,
                                                     physics: const ClampingScrollPhysics(),
+                                                    clipBehavior: Clip.none,
+                                                    padding: const EdgeInsets.fromLTRB(0, 2, 0, 4),
                                                     child: Row(
                                                       children: [
                                                         _buildAssistantPromptPill('Target nabung realistis?', onTap: () => context.push('/session')),
