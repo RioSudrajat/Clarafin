@@ -632,7 +632,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             left: 20,
                             right: 20,
                             child: SizedBox(
-                              height: 196,
+                              height: 204,
                               child: PageView(
                                 controller: _heroController,
                                 clipBehavior: Clip.none,
@@ -651,7 +651,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                           // ── Hero Page Indicator Dots (Positioned directly below the Hero Card) ──
                           Positioned(
-                            top: 218,
+                            top: 224,
                             left: 0,
                             right: 0,
                             child: Row(
@@ -917,7 +917,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   physics: const ClampingScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                  clipBehavior: Clip.none,
+                  padding: const EdgeInsets.fromLTRB(18, 0, 18, 6),
                   child: Row(
                     children: [
                       ...wallets.take(3).map((w) {
