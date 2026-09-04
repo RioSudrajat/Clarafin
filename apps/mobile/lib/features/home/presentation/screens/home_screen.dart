@@ -271,7 +271,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                                 // ── Section: Expert Help Banner ──
                                 Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                                  padding: const EdgeInsets.symmetric(horizontal: 12),
                                   child: Column(
                                     children: [
                                       SizedBox(
@@ -283,7 +283,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                           onPageChanged: (i) => setState(() => _bannerPage = i),
                                           children: [
                                             Padding(
-                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                               child: _buildMatchExpertBanner(
                                                 tag: 'EXPERT HELP',
                                                 title: 'Bingung mencari konsultan?',
@@ -292,7 +292,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                               ),
                                             ),
                                             Padding(
-                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                               child: _buildMatchExpertBanner(
                                                 tag: 'AI ADVISOR',
                                                 title: 'Analisis budgeting kamu dengan AI',
@@ -661,8 +661,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           // ── Hero PageView (Index 0: Konsultasi Finansial Card | Index 1: Total Balance Card) ──
                           Positioned(
                             top: 0,
-                            left: 20,
-                            right: 20,
+                            left: 12,
+                            right: 12,
                             child: SizedBox(
                               height: 204,
                               child: PageView(
@@ -671,11 +671,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 physics: const PageScrollPhysics(),
                                 onPageChanged: (i) => setState(() => _heroPage = i),
                                 children: [
-                                  // ── Slide 0: Konsultasi Finansial Card (Deep Teal from Gradient) ──
-                                  _buildConsultationHeroCard(userName),
+                                  // ── Slide 0: Konsultasi Finansial Card (Matches reference design) ──
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                                    child: _buildConsultationHeroCard(),
+                                  ),
 
                                   // ── Slide 1: Total Balance Card (Restored exact composition & positioning) ──
-                                  _buildTotalBalanceHeroCard(totalBalance, dailyPnl, pnlPercentage, isPnlPositive, currencyFormat, wallets),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                                    child: _buildTotalBalanceHeroCard(totalBalance, dailyPnl, pnlPercentage, isPnlPositive, currencyFormat, wallets),
+                                  ),
                                 ],
                               ),
                             ),
@@ -718,85 +724,115 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   // ── Hero Card 1: Konsultasi Finansial (Deep Teal / Blue from Gradient) ──
 
-  Widget _buildConsultationHeroCard(String userName) {
+  // ── Hero Card 1: Konsultasi Finansial (Matches reference design) ──
+
+  Widget _buildConsultationHeroCard() {
     return Container(
       width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F758A), // Deep teal from header gradient
+        color: const Color(0xFF0E6976), // Deep teal matching reference image
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: Colors.black, width: 2),
         boxShadow: NeoBrutalism.shadow(yOffset: 4),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Top Content Area
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(18, 16, 18, 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  // Greeting
-                  Text(
-                    'Hi, $userName',
-                    style: const TextStyle(
-                      fontFamily: 'Plus Jakarta Sans',
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.white,
+          // Top Row: FINANCE CONSULT + Title on left, Lime group icon circle on right
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Text(
+                      'FINANCE CONSULT',
+                      style: TextStyle(
+                        fontFamily: 'Plus Jakarta Sans',
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                        letterSpacing: 0.5,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  // Financial Consultation Copywriting
-                  const Text(
-                    'Bagaimana kondisi finansialmu, baik secara pribadi, keluarga, pasangan maupun bisnis. Kamu bisa konsultasikan disini, yuk booking jadwalnya!',
-                    style: TextStyle(
-                      fontFamily: 'Plus Jakarta Sans',
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.white,
-                      height: 1.35,
+                    SizedBox(height: 6),
+                    Text(
+                      'Atur uangmu\nbareng ahlinya.',
+                      style: TextStyle(
+                        fontFamily: 'Plus Jakarta Sans',
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                        height: 1.15,
+                        letterSpacing: -0.6,
+                      ),
                     ),
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // Bottom Full-Width CTA Strip (Neon Lime with Black Border)
-          GestureDetector(
-            onTap: () => context.go('/consult'),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              decoration: const BoxDecoration(
-                color: NeoBrutalism.lime,
-                borderRadius: BorderRadius.vertical(bottom: Radius.circular(22)),
-                border: Border(
-                  top: BorderSide(color: Colors.black, width: 2),
+                  ],
                 ),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: const [
-                  Text(
-                    'Mulai Konseling',
+              const SizedBox(width: 12),
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: NeoBrutalism.lime,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.black, width: 2),
+                  boxShadow: NeoBrutalism.shadow(yOffset: 2),
+                ),
+                child: const Icon(
+                  Icons.groups_rounded,
+                  size: 26,
+                  color: Colors.black,
+                ),
+              ),
+            ],
+          ),
+
+          // Bottom Row: Subtitle on left, Lime 'MULAI' pill button on right
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              const Expanded(
+                child: Text(
+                  'Cocokkan dengan konsultan\nyang paham tujuanmu.',
+                  style: TextStyle(
+                    fontFamily: 'Plus Jakarta Sans',
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white,
+                    height: 1.25,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              GestureDetector(
+                onTap: () => context.go('/consult'),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: NeoBrutalism.lime,
+                    borderRadius: BorderRadius.circular(9999),
+                    border: Border.all(color: Colors.black, width: 2),
+                    boxShadow: NeoBrutalism.shadow(yOffset: 2),
+                  ),
+                  child: const Text(
+                    'MULAI',
                     style: TextStyle(
                       fontFamily: 'Plus Jakarta Sans',
-                      fontSize: 13,
+                      fontSize: 12,
                       fontWeight: FontWeight.w900,
                       color: Colors.black,
+                      letterSpacing: 0.5,
                     ),
                   ),
-                  SizedBox(width: 6),
-                  Icon(Icons.arrow_forward, size: 14, color: Colors.black),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
         ],
       ),
