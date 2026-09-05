@@ -1524,38 +1524,33 @@ class _HomeHeroHeaderDelegate extends SliverPersistentHeaderDelegate {
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        // 1. Dark Teal Gradient Background
+        // 1. Dark Teal Gradient Background (Clipped to region ABOVE white sheet boundary)
         Positioned.fill(
-          child: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Color(0xFF0F758A), // Deep teal
-                  Color(0xFF198696),
-                  Color(0xFF8AD830),
-                  Color(0xFFBFFF00), // Bright Lime Green
-                ],
-                stops: [0.0, 0.25, 0.65, 1.0],
+          child: ClipPath(
+            clipper: _TealHeaderClipper(whiteSheetTop: whiteSheetTop),
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color(0xFF0F758A), // Deep teal
+                    Color(0xFF198696),
+                    Color(0xFF8AD830),
+                    Color(0xFFBFFF00), // Bright Lime Green
+                  ],
+                  stops: [0.0, 0.25, 0.65, 1.0],
+                ),
               ),
             ),
           ),
         ),
 
-        // 2. White Sheet Top Boundary (Moves up with scroll, pins at collapsed limit)
-        Positioned(
-          top: whiteSheetTop,
-          left: 0,
-          right: 0,
-          bottom: -2,
-          child: Container(
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-              border: Border(
-                top: BorderSide(color: Colors.black, width: 2),
-              ),
+        // 2. White Sheet Top Boundary Curve & 2px Black Border (No solid white fill below)
+        Positioned.fill(
+          child: IgnorePointer(
+            child: CustomPaint(
+              painter: _WhiteSheetBorderPainter(whiteSheetTop: whiteSheetTop),
             ),
           ),
         ),
@@ -1610,4 +1605,88 @@ class _HomeHeroHeaderDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   bool shouldRebuild(covariant _HomeHeroHeaderDelegate oldDelegate) => true;
+}
+
+// ── Teal Gradient Clipper: Clips exactly to region ABOVE the curved white sheet ──
+
+class _TealHeaderClipper extends CustomClipper<Path> {
+  final double whiteSheetTop;
+  final double cornerRadius;
+
+  const _TealHeaderClipper({
+    required this.whiteSheetTop,
+    this.cornerRadius = 28.0,
+  });
+
+  @override
+  Path getClip(Size size) {
+    final fullRect = Path()..addRect(Rect.fromLTWH(0, 0, size.width, size.height + 2000));
+    final whiteSheetRRect = Path()
+      ..addRRect(
+        RRect.fromRectAndCorners(
+          Rect.fromLTWH(
+            0,
+            whiteSheetTop,
+            size.width,
+            size.height + 2000,
+          ),
+          topLeft: Radius.circular(cornerRadius),
+          topRight: Radius.circular(cornerRadius),
+        ),
+      );
+
+    return Path.combine(PathOperation.difference, fullRect, whiteSheetRRect);
+  }
+
+  @override
+  bool shouldReclip(covariant _TealHeaderClipper oldClipper) {
+    return oldClipper.whiteSheetTop != whiteSheetTop ||
+        oldClipper.cornerRadius != cornerRadius;
+  }
+}
+
+// ── White Sheet Top Border Painter: Draws 2px black line along the curve ──
+
+class _WhiteSheetBorderPainter extends CustomPainter {
+  final double whiteSheetTop;
+  final double cornerRadius;
+
+  const _WhiteSheetBorderPainter({
+    required this.whiteSheetTop,
+    this.cornerRadius = 28.0,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.black
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0;
+
+    final r = cornerRadius;
+    final y = whiteSheetTop;
+    final w = size.width;
+
+    final path = Path();
+    path.moveTo(0, y + r);
+    path.arcToPoint(
+      Offset(r, y),
+      radius: Radius.circular(r),
+      clockwise: true,
+    );
+    path.lineTo(w - r, y);
+    path.arcToPoint(
+      Offset(w, y + r),
+      radius: Radius.circular(r),
+      clockwise: true,
+    );
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _WhiteSheetBorderPainter oldPainter) {
+    return oldPainter.whiteSheetTop != whiteSheetTop ||
+        oldPainter.cornerRadius != cornerRadius;
+  }
 }
