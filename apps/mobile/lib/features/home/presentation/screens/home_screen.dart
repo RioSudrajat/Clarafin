@@ -28,6 +28,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     super.dispose();
   }
 
+  double _evaluateProgressInterval(
+    double progress,
+    double begin,
+    double end, {
+    Curve curve = Curves.easeInOut,
+  }) {
+    if (progress <= begin) return 0.0;
+    if (progress >= end) return 1.0;
+    final t = (progress - begin) / (end - begin);
+    return curve.transform(t);
+  }
+
   @override
   Widget build(BuildContext context) {
     final userName = ref.watch(userNameProvider);
@@ -645,201 +657,239 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   // ── Hero Card 1: Konsultasi Finansial (Matches reference design & collapsible) ──
 
   Widget _buildConsultationHeroCard(double progress, String userName) {
-    final isCollapsed = progress >= 0.35;
+    final expandedProgress = _evaluateProgressInterval(progress, 0.05, 0.42, curve: Curves.easeIn);
+    final expandedOpacity = (1.0 - expandedProgress).clamp(0.0, 1.0);
+    final expandedTranslationY = -12.0 * expandedProgress;
+
+    final collapsedProgress = _evaluateProgressInterval(progress, 0.28, 0.68, curve: Curves.easeOut);
+    final collapsedOpacity = collapsedProgress.clamp(0.0, 1.0);
+    final collapsedTranslationY = 8.0 * (1.0 - collapsedProgress);
 
     return Container(
       width: double.infinity,
       height: double.infinity,
-      padding: EdgeInsets.symmetric(
-        horizontal: 20,
-        vertical: isCollapsed ? 12 : 18,
-      ),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: const Color(0xFF0E6976), // Deep teal matching reference image
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: Colors.black, width: 2),
-        boxShadow: NeoBrutalism.shadow(yOffset: isCollapsed ? 2 : 4),
+        boxShadow: NeoBrutalism.shadow(yOffset: lerpDouble(4.0, 2.0, progress)!),
       ),
-      child: isCollapsed
-          ? Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => _showEditNameDialog(context, ref, userName),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Flexible(
-                          child: Text(
-                            'Hi, $userName',
-                            style: const TextStyle(
-                              fontFamily: 'Plus Jakarta Sans',
-                              fontSize: 16,
-                              fontWeight: FontWeight.w900,
-                              color: Colors.white,
-                              letterSpacing: -0.5,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        const Icon(Icons.edit_outlined, size: 12, color: Colors.white70),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                GestureDetector(
-                  onTap: () => context.go('/consult'),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                    decoration: BoxDecoration(
-                      color: NeoBrutalism.lime,
-                      borderRadius: BorderRadius.circular(9999),
-                      border: Border.all(color: Colors.black, width: 2),
-                      boxShadow: NeoBrutalism.shadow(yOffset: 1.5),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: const [
-                        Text(
-                          'Mulai Konseling',
-                          style: TextStyle(
-                            fontFamily: 'Plus Jakarta Sans',
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.black,
-                            letterSpacing: 0.3,
-                          ),
-                        ),
-                        SizedBox(width: 3),
-                        Icon(Icons.chevron_right, size: 14, color: Colors.black),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            )
-          : FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerLeft,
-              child: SizedBox(
-                width: 330,
-                height: 162,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    // Top Row: Hi, [userName] + Title on left, Lime group icon circle on right
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Column(
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // ── 1. Expanded Content (Fades out & shifts slightly up) ──
+          if (expandedOpacity > 0.001)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              height: 198,
+              child: IgnorePointer(
+                ignoring: expandedOpacity < 0.5,
+                child: Opacity(
+                  opacity: expandedOpacity,
+                  child: Transform.translate(
+                    offset: Offset(0, expandedTranslationY),
+                    child: Padding(
+                      padding: const EdgeInsets.all(18),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          // Top Row: Hi, [userName] + Title on left, Lime group icon circle on right
+                          Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              GestureDetector(
-                                onTap: () => _showEditNameDialog(context, ref, userName),
-                                child: Row(
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Text(
-                                      'Hi, $userName',
-                                      style: const TextStyle(
-                                        fontFamily: 'Plus Jakarta Sans',
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w800,
-                                        color: Colors.white,
-                                        letterSpacing: 0.5,
+                                    GestureDetector(
+                                      onTap: () => _showEditNameDialog(context, ref, userName),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            'Hi, $userName',
+                                            style: const TextStyle(
+                                              fontFamily: 'Plus Jakarta Sans',
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w800,
+                                              color: Colors.white,
+                                              letterSpacing: 0.5,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 4),
+                                          const Icon(Icons.edit_outlined, size: 11, color: Colors.white70),
+                                        ],
                                       ),
                                     ),
-                                    const SizedBox(width: 4),
-                                    const Icon(Icons.edit_outlined, size: 11, color: Colors.white70),
+                                    const SizedBox(height: 6),
+                                    const Text(
+                                      'Atur uangmu\nbareng ahlinya.',
+                                      style: TextStyle(
+                                        fontFamily: 'Plus Jakarta Sans',
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.w900,
+                                        color: Colors.white,
+                                        height: 1.15,
+                                        letterSpacing: -0.6,
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ),
-                              const SizedBox(height: 6),
-                              const Text(
-                                'Atur uangmu\nbareng ahlinya.',
-                                style: TextStyle(
-                                  fontFamily: 'Plus Jakarta Sans',
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w900,
-                                  color: Colors.white,
-                                  height: 1.15,
-                                  letterSpacing: -0.6,
+                              const SizedBox(width: 12),
+                              Container(
+                                width: 50,
+                                height: 50,
+                                decoration: BoxDecoration(
+                                  color: NeoBrutalism.lime,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.black, width: 2),
+                                  boxShadow: NeoBrutalism.shadow(yOffset: 2),
+                                ),
+                                child: const Icon(
+                                  Icons.groups_rounded,
+                                  size: 26,
+                                  color: Colors.black,
                                 ),
                               ),
                             ],
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        Container(
-                          width: 50,
-                          height: 50,
-                          decoration: BoxDecoration(
-                            color: NeoBrutalism.lime,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.black, width: 2),
-                            boxShadow: NeoBrutalism.shadow(yOffset: 2),
-                          ),
-                          child: const Icon(
-                            Icons.groups_rounded,
-                            size: 26,
-                            color: Colors.black,
-                          ),
-                        ),
-                      ],
-                    ),
 
-                    // Bottom Row: Subtitle on left, Lime 'MULAI' pill button on right
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        const Expanded(
-                          child: Text(
-                            'Cocokkan dengan konsultan\nyang paham tujuanmu.',
-                            style: TextStyle(
-                              fontFamily: 'Plus Jakarta Sans',
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.white,
-                              height: 1.25,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        GestureDetector(
-                          onTap: () => context.go('/consult'),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: NeoBrutalism.lime,
-                              borderRadius: BorderRadius.circular(9999),
-                              border: Border.all(color: Colors.black, width: 2),
-                              boxShadow: NeoBrutalism.shadow(yOffset: 2),
-                            ),
-                            child: const Text(
-                              'MULAI',
-                              style: TextStyle(
-                                fontFamily: 'Plus Jakarta Sans',
-                                fontSize: 12,
-                                fontWeight: FontWeight.w900,
-                                color: Colors.black,
-                                letterSpacing: 0.5,
+                          // Bottom Row: Subtitle on left, Lime 'MULAI' pill button on right
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              const Expanded(
+                                child: Text(
+                                  'Cocokkan dengan konsultan\nyang paham tujuanmu.',
+                                  style: TextStyle(
+                                    fontFamily: 'Plus Jakarta Sans',
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.white,
+                                    height: 1.25,
+                                  ),
+                                ),
                               ),
-                            ),
+                              const SizedBox(width: 12),
+                              GestureDetector(
+                                onTap: () => context.go('/consult'),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: NeoBrutalism.lime,
+                                    borderRadius: BorderRadius.circular(9999),
+                                    border: Border.all(color: Colors.black, width: 2),
+                                    boxShadow: NeoBrutalism.shadow(yOffset: 2),
+                                  ),
+                                  child: const Text(
+                                    'MULAI',
+                                    style: TextStyle(
+                                      fontFamily: 'Plus Jakarta Sans',
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w900,
+                                      color: Colors.black,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
+
+          // ── 2. Collapsed Content (Fades in & shifts gently into center) ──
+          if (collapsedOpacity > 0.001)
+            Positioned.fill(
+              child: IgnorePointer(
+                ignoring: collapsedOpacity < 0.5,
+                child: Opacity(
+                  opacity: collapsedOpacity,
+                  child: Transform.translate(
+                    offset: Offset(0, collapsedTranslationY),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 18),
+                      child: Center(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () => _showEditNameDialog(context, ref, userName),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Flexible(
+                                      child: Text(
+                                        'Hi, $userName',
+                                        style: const TextStyle(
+                                          fontFamily: 'Plus Jakarta Sans',
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w900,
+                                          color: Colors.white,
+                                          letterSpacing: -0.5,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    const Icon(Icons.edit_outlined, size: 12, color: Colors.white70),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            GestureDetector(
+                              onTap: () => context.go('/consult'),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                                decoration: BoxDecoration(
+                                  color: NeoBrutalism.lime,
+                                  borderRadius: BorderRadius.circular(9999),
+                                  border: Border.all(color: Colors.black, width: 2),
+                                  boxShadow: NeoBrutalism.shadow(yOffset: 1.5),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: const [
+                                    Text(
+                                      'Mulai Konseling',
+                                      style: TextStyle(
+                                        fontFamily: 'Plus Jakarta Sans',
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w800,
+                                        color: Colors.black,
+                                        letterSpacing: 0.3,
+                                      ),
+                                    ),
+                                    SizedBox(width: 3),
+                                    Icon(Icons.chevron_right, size: 14, color: Colors.black),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 
@@ -854,97 +904,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     List wallets,
     double progress,
   ) {
-    final isCollapsed = progress >= 0.35;
+    final expandedProgress = _evaluateProgressInterval(progress, 0.05, 0.42, curve: Curves.easeIn);
+    final expandedOpacity = (1.0 - expandedProgress).clamp(0.0, 1.0);
+    final expandedTranslationY = -12.0 * expandedProgress;
 
-    if (isCollapsed) {
-      return Container(
-        width: double.infinity,
-        height: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-        decoration: BoxDecoration(
-          color: NeoBrutalism.lime,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.black, width: 2),
-          boxShadow: NeoBrutalism.shadow(yOffset: 2),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Expanded(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    'TOTAL: ',
-                    style: TextStyle(
-                      fontFamily: 'Plus Jakarta Sans',
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.5,
-                      color: NeoBrutalism.dark,
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: () => setState(() => _obscureBalance = !_obscureBalance),
-                    child: Icon(
-                      _obscureBalance ? Icons.visibility_off : Icons.visibility,
-                      size: 15,
-                      color: NeoBrutalism.dark,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Flexible(
-                    child: Text(
-                      _obscureBalance
-                          ? '••••••••'
-                          : currencyFormat.format(totalBalance),
-                      style: const TextStyle(
-                        fontFamily: 'Plus Jakarta Sans',
-                        fontSize: 15,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -0.8,
-                        color: NeoBrutalism.dark,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            GestureDetector(
-              onTap: () => context.push('/reporting'),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(9999),
-                  border: Border.all(color: Colors.black, width: 2),
-                  boxShadow: NeoBrutalism.shadow(yOffset: 1.5),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: const [
-                    Text(
-                      'Portfolio',
-                      style: TextStyle(
-                        fontFamily: 'Plus Jakarta Sans',
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.black,
-                      ),
-                    ),
-                    SizedBox(width: 3),
-                    Icon(Icons.chevron_right, size: 14, color: Colors.black),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
+    final collapsedProgress = _evaluateProgressInterval(progress, 0.28, 0.68, curve: Curves.easeOut);
+    final collapsedOpacity = collapsedProgress.clamp(0.0, 1.0);
+    final collapsedTranslationY = 8.0 * (1.0 - collapsedProgress);
 
     return Stack(
       clipBehavior: Clip.none,
@@ -954,223 +920,344 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           width: double.infinity,
           height: double.infinity,
           clipBehavior: Clip.antiAlias,
-          padding: const EdgeInsets.only(top: 18, bottom: 12),
           decoration: BoxDecoration(
             color: NeoBrutalism.lime,
             borderRadius: BorderRadius.circular(24),
             border: Border.all(color: Colors.black, width: 2),
-            boxShadow: NeoBrutalism.shadow(yOffset: 4),
+            boxShadow: NeoBrutalism.shadow(yOffset: lerpDouble(4.0, 2.0, progress)!),
           ),
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.topLeft,
-            child: SizedBox(
-              width: 330,
-              height: 164,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Rows 1-3 with 18px horizontal padding
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 18),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Row 1: TOTAL BALANCE + Toggle Eye
-                        Row(
-                          children: [
-                            const Text(
-                              'TOTAL BALANCE',
-                              style: TextStyle(
-                                fontFamily: 'Plus Jakarta Sans',
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.6,
-                                color: NeoBrutalism.dark,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            GestureDetector(
-                              onTap: () => setState(() => _obscureBalance = !_obscureBalance),
-                              child: Icon(
-                                _obscureBalance ? Icons.visibility_off : Icons.visibility,
-                                size: 16,
-                                color: NeoBrutalism.dark,
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 8),
-
-                        // Row 2: Big Balance Amount
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.baseline,
-                          textBaseline: TextBaseline.alphabetic,
-                          children: [
-                            const Text(
-                              'Rp ',
-                              style: TextStyle(
-                                fontFamily: 'Plus Jakarta Sans',
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700,
-                                color: NeoBrutalism.dark,
-                              ),
-                            ),
-                            Expanded(
-                              child: Text(
-                                _obscureBalance
-                                    ? '••••••••'
-                                    : currencyFormat.format(totalBalance).replaceAll('Rp ', ''),
-                                style: const TextStyle(
-                                  fontFamily: 'Plus Jakarta Sans',
-                                  fontSize: 30,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: -1.4,
-                                  color: NeoBrutalism.dark,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 10),
-
-                        // Row 3: Daily PnL Indicator Pill
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.92),
-                            borderRadius: BorderRadius.circular(9999),
-                            border: Border.all(color: Colors.black, width: 2),
-                          ),
-                          child: Row(
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // ── 1. Expanded Content (Fades out & shifts slightly up) ──
+              if (expandedOpacity > 0.001)
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: 198,
+                  child: IgnorePointer(
+                    ignoring: expandedOpacity < 0.5,
+                    child: Opacity(
+                      opacity: expandedOpacity,
+                      child: Transform.translate(
+                        offset: Offset(0, expandedTranslationY),
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 18, bottom: 12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Text(
-                                'Hari ini ',
-                                style: TextStyle(
-                                  fontFamily: 'Plus Jakarta Sans',
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w700,
-                                  color: NeoBrutalism.dark,
+                              // Rows 1-3 with 18px horizontal padding
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 18),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    // Row 1: TOTAL BALANCE + Toggle Eye
+                                    Row(
+                                      children: [
+                                        const Text(
+                                          'TOTAL BALANCE',
+                                          style: TextStyle(
+                                            fontFamily: 'Plus Jakarta Sans',
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w700,
+                                            letterSpacing: 0.6,
+                                            color: NeoBrutalism.dark,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        GestureDetector(
+                                          onTap: () => setState(() => _obscureBalance = !_obscureBalance),
+                                          child: Icon(
+                                            _obscureBalance ? Icons.visibility_off : Icons.visibility,
+                                            size: 16,
+                                            color: NeoBrutalism.dark,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+
+                                    const SizedBox(height: 8),
+
+                                    // Row 2: Big Balance Amount
+                                    Row(
+                                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                                      textBaseline: TextBaseline.alphabetic,
+                                      children: [
+                                        const Text(
+                                          'Rp ',
+                                          style: TextStyle(
+                                            fontFamily: 'Plus Jakarta Sans',
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w700,
+                                            color: NeoBrutalism.dark,
+                                          ),
+                                        ),
+                                        Expanded(
+                                          child: Text(
+                                            _obscureBalance
+                                                ? '••••••••'
+                                                : currencyFormat.format(totalBalance).replaceAll('Rp ', ''),
+                                            style: const TextStyle(
+                                              fontFamily: 'Plus Jakarta Sans',
+                                              fontSize: 30,
+                                              fontWeight: FontWeight.w900,
+                                              letterSpacing: -1.4,
+                                              color: NeoBrutalism.dark,
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+
+                                    const SizedBox(height: 10),
+
+                                    // Row 3: Daily PnL Indicator Pill
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withValues(alpha: 0.92),
+                                        borderRadius: BorderRadius.circular(9999),
+                                        border: Border.all(color: Colors.black, width: 2),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Text(
+                                            'Hari ini ',
+                                            style: TextStyle(
+                                              fontFamily: 'Plus Jakarta Sans',
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w700,
+                                              color: NeoBrutalism.dark,
+                                            ),
+                                          ),
+                                          Icon(
+                                            isPnlPositive ? Icons.trending_up : Icons.trending_down,
+                                            size: 13,
+                                            color: isPnlPositive ? const Color(0xFF10B981) : const Color(0xFFDC2626),
+                                          ),
+                                          const SizedBox(width: 2),
+                                          Text(
+                                            '${isPnlPositive ? "+" : ""}${currencyFormat.format(dailyPnl)} (${isPnlPositive ? "+" : ""}${pnlPercentage.toStringAsFixed(1)}%)',
+                                            style: TextStyle(
+                                              fontFamily: 'Plus Jakarta Sans',
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w700,
+                                              color: isPnlPositive ? const Color(0xFF10B981) : const Color(0xFFDC2626),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                              Icon(
-                                isPnlPositive ? Icons.trending_up : Icons.trending_down,
-                                size: 13,
-                                color: isPnlPositive ? const Color(0xFF10B981) : const Color(0xFFDC2626),
-                              ),
-                              const SizedBox(width: 2),
-                              Text(
-                                '${isPnlPositive ? "+" : ""}${currencyFormat.format(dailyPnl)} (${isPnlPositive ? "+" : ""}${pnlPercentage.toStringAsFixed(1)}%)',
-                                style: TextStyle(
-                                  fontFamily: 'Plus Jakarta Sans',
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w700,
-                                  color: isPnlPositive ? const Color(0xFF10B981) : const Color(0xFFDC2626),
+
+                              const SizedBox(height: 10),
+
+                              // Row 4: Sub-wallets Horizontal List (Bounded cleanly to card edges without spilling)
+                              SizedBox(
+                                width: double.infinity,
+                                child: SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  physics: const ClampingScrollPhysics(),
+                                  clipBehavior: Clip.none,
+                                  padding: const EdgeInsets.fromLTRB(18, 0, 18, 6),
+                                  child: Row(
+                                    children: [
+                                      ...wallets.take(3).map((w) {
+                                        IconData wIcon = Icons.account_balance;
+                                        if (w.type == 'E-Wallet') {
+                                          wIcon = Icons.account_balance_wallet;
+                                        } else if (w.type == 'Cash') {
+                                          wIcon = Icons.shopping_bag_outlined;
+                                        } else if (w.type == 'Crypto' || w.type == 'Stock' || w.type == 'Mutual Fund') {
+                                          wIcon = Icons.show_chart;
+                                        }
+                                        return Padding(
+                                          padding: const EdgeInsets.only(right: 8),
+                                          child: _buildWalletPill(
+                                            w.name,
+                                            currencyFormat.format(w.balance),
+                                            icon: wIcon,
+                                            onTap: () => context.push('/wallet/${w.id}'),
+                                          ),
+                                        );
+                                      }),
+
+                                      // Plus Add Wallet Button
+                                      GestureDetector(
+                                        onTap: () => context.push('/wallet/add'),
+                                        child: Container(
+                                          width: 40,
+                                          height: 40,
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            borderRadius: BorderRadius.circular(16),
+                                            border: Border.all(color: Colors.black, width: 2),
+                                            boxShadow: NeoBrutalism.shadow(yOffset: 2),
+                                          ),
+                                          child: const Icon(Icons.add, size: 20, color: Colors.black),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ],
                           ),
                         ),
-                      ],
+                      ),
                     ),
                   ),
+                ),
 
-                  const SizedBox(height: 10),
+              // ── 2. Collapsed Content (Fades in & shifts gently into center) ──
+              if (collapsedOpacity > 0.001)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    ignoring: collapsedOpacity < 0.5,
+                    child: Opacity(
+                      opacity: collapsedOpacity,
+                      child: Transform.translate(
+                        offset: Offset(0, collapsedTranslationY),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 18),
+                          child: Center(
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Expanded(
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Text(
+                                        'TOTAL: ',
+                                        style: TextStyle(
+                                          fontFamily: 'Plus Jakarta Sans',
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w800,
+                                          letterSpacing: 0.5,
+                                          color: NeoBrutalism.dark,
+                                        ),
+                                      ),
+                                      GestureDetector(
+                                        onTap: () => setState(() => _obscureBalance = !_obscureBalance),
+                                        child: Icon(
+                                          _obscureBalance ? Icons.visibility_off : Icons.visibility,
+                                          size: 15,
+                                          color: NeoBrutalism.dark,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Flexible(
+                                        child: Text(
+                                          _obscureBalance
+                                              ? '••••••••'
+                                              : currencyFormat.format(totalBalance),
+                                          style: const TextStyle(
+                                            fontFamily: 'Plus Jakarta Sans',
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w900,
+                                            letterSpacing: -0.8,
+                                            color: NeoBrutalism.dark,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                GestureDetector(
+                                  onTap: () => context.push('/reporting'),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(9999),
+                                      border: Border.all(color: Colors.black, width: 2),
+                                      boxShadow: NeoBrutalism.shadow(yOffset: 1.5),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: const [
+                                        Text(
+                                          'Portfolio',
+                                          style: TextStyle(
+                                            fontFamily: 'Plus Jakarta Sans',
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w800,
+                                            color: Colors.black,
+                                          ),
+                                        ),
+                                        SizedBox(width: 3),
+                                        Icon(Icons.chevron_right, size: 14, color: Colors.black),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
 
-                  // Row 4: Sub-wallets Horizontal List (Bounded cleanly to card edges without spilling)
-                  SizedBox(
-                    width: double.infinity,
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      physics: const ClampingScrollPhysics(),
-                      clipBehavior: Clip.none,
-                      padding: const EdgeInsets.fromLTRB(18, 0, 18, 6),
+        // ── Portfolio Pill Button (Protruding TOP-RIGHT, fades out with expanded state) ──
+        if (expandedOpacity > 0.001)
+          Positioned(
+            top: 15,
+            right: -10,
+            child: IgnorePointer(
+              ignoring: expandedOpacity < 0.5,
+              child: Opacity(
+                opacity: expandedOpacity,
+                child: Transform.translate(
+                  offset: Offset(0, expandedTranslationY),
+                  child: GestureDetector(
+                    onTap: () => context.push('/reporting'),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(9999),
+                        border: Border.all(color: Colors.black, width: 2),
+                        boxShadow: NeoBrutalism.shadow(yOffset: 2),
+                      ),
                       child: Row(
-                        children: [
-                          ...wallets.take(3).map((w) {
-                            IconData wIcon = Icons.account_balance;
-                            if (w.type == 'E-Wallet') {
-                              wIcon = Icons.account_balance_wallet;
-                            } else if (w.type == 'Cash') {
-                              wIcon = Icons.shopping_bag_outlined;
-                            } else if (w.type == 'Crypto' || w.type == 'Stock' || w.type == 'Mutual Fund') {
-                              wIcon = Icons.show_chart;
-                            }
-                            return Padding(
-                              padding: const EdgeInsets.only(right: 8),
-                              child: _buildWalletPill(
-                                w.name,
-                                currencyFormat.format(w.balance),
-                                icon: wIcon,
-                                onTap: () => context.push('/wallet/${w.id}'),
-                              ),
-                            );
-                          }),
-
-                          // Plus Add Wallet Button
-                          GestureDetector(
-                            onTap: () => context.push('/wallet/add'),
-                            child: Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: Colors.black, width: 2),
-                                boxShadow: NeoBrutalism.shadow(yOffset: 2),
-                              ),
-                              child: const Icon(Icons.add, size: 20, color: Colors.black),
+                        mainAxisSize: MainAxisSize.min,
+                        children: const [
+                          Icon(Icons.pie_chart_outline, size: 14, color: Colors.black),
+                          SizedBox(width: 4),
+                          Text(
+                            'Portfolio',
+                            style: TextStyle(
+                              fontFamily: 'Plus Jakarta Sans',
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.black,
                             ),
                           ),
                         ],
                       ),
                     ),
                   ),
-                ],
+                ),
               ),
             ),
           ),
-        ),
-
-        // ── Portfolio Pill Button (Positioned Overlapping Top-Right Corner: protruding TOP and RIGHT!) ──
-        Positioned(
-          top: 15,
-          right: -10,
-          child: GestureDetector(
-            onTap: () => context.push('/reporting'),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(9999),
-                border: Border.all(color: Colors.black, width: 2),
-                boxShadow: NeoBrutalism.shadow(yOffset: 2),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: const [
-                  Icon(Icons.pie_chart_outline, size: 14, color: Colors.black),
-                  SizedBox(width: 4),
-                  Text(
-                    'Portfolio',
-                    style: TextStyle(
-                      fontFamily: 'Plus Jakarta Sans',
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.black,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
       ],
     );
   }
