@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/theme/neo_brutalism_decorations.dart';
 import '../../../../core/providers/mock_providers.dart';
 import 'package:intl/intl.dart';
+import '../widgets/services_grid_widget.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -111,46 +112,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                                // ── Quick Actions Row ──
-                                SingleChildScrollView(
-                                  scrollDirection: Axis.horizontal,
-                                  physics: const ClampingScrollPhysics(),
-                                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                                  child: Row(
-                                    children: [
-                                      _buildFeatureAction(
-                                        icon: Icons.smart_toy_outlined,
-                                        label: 'AI Budget',
-                                        onTap: () => context.push('/session'),
-                                      ),
-                                      _buildFeatureAction(
-                                        icon: Icons.history,
-                                        label: 'History',
-                                        onTap: () => context.push('/transaction/history'),
-                                      ),
-                                      _buildFeatureAction(
-                                        icon: Icons.credit_card_outlined,
-                                        label: 'Score',
-                                        onTap: () => context.go('/budget'),
-                                      ),
-                                      _buildFeatureAction(
-                                        icon: Icons.bar_chart_outlined,
-                                        label: 'Report',
-                                        onTap: () => context.push('/reporting'),
-                                      ),
-                                      _buildFeatureAction(
-                                        icon: Icons.receipt_long_outlined,
-                                        label: 'Bills',
-                                        onTap: () => context.go('/budget'),
-                                      ),
-                                      _buildFeatureAction(
-                                        icon: Icons.account_balance_wallet_outlined,
-                                        label: 'E-Wallet',
-                                        onTap: () => context.go('/wallet'),
-                                      ),
-                                    ],
-                                  ),
-                                ),
+                                // ── Layanan Section (Grid 2 Baris x 4 Kolom, Notion Style) ──
+                                const ServicesGridWidget(),
 
                                 const SizedBox(height: 24),
 
@@ -1286,39 +1249,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Widget _buildFeatureAction({required IconData icon, required String label, VoidCallback? onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.only(right: 14),
-        child: Column(
-          children: [
-            Container(
-              height: 56,
-              width: 56,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.black, width: 2),
-                boxShadow: NeoBrutalism.shadow(yOffset: 3),
-              ),
-              child: Icon(icon, color: NeoBrutalism.dark, size: 24),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              label,
-              style: const TextStyle(
-                fontFamily: 'Plus Jakarta Sans',
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: NeoBrutalism.dark,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+
 
   Widget _buildMatchExpertBanner({
     required String tag,
@@ -1619,11 +1550,10 @@ class _HomeHeroHeaderDelegate extends SliverPersistentHeaderDelegate {
 
 class _TealHeaderClipper extends CustomClipper<Path> {
   final double whiteSheetTop;
-  final double cornerRadius;
+  static const double cornerRadius = 28.0;
 
   const _TealHeaderClipper({
     required this.whiteSheetTop,
-    this.cornerRadius = 28.0,
   });
 
   @override
@@ -1638,8 +1568,8 @@ class _TealHeaderClipper extends CustomClipper<Path> {
             size.width,
             size.height + 2000,
           ),
-          topLeft: Radius.circular(cornerRadius),
-          topRight: Radius.circular(cornerRadius),
+          topLeft: const Radius.circular(cornerRadius),
+          topRight: const Radius.circular(cornerRadius),
         ),
       );
 
@@ -1648,8 +1578,7 @@ class _TealHeaderClipper extends CustomClipper<Path> {
 
   @override
   bool shouldReclip(covariant _TealHeaderClipper oldClipper) {
-    return oldClipper.whiteSheetTop != whiteSheetTop ||
-        oldClipper.cornerRadius != cornerRadius;
+    return oldClipper.whiteSheetTop != whiteSheetTop;
   }
 }
 
@@ -1657,11 +1586,10 @@ class _TealHeaderClipper extends CustomClipper<Path> {
 
 class _WhiteSheetBorderPainter extends CustomPainter {
   final double whiteSheetTop;
-  final double cornerRadius;
+  static const double cornerRadius = 28.0;
 
   const _WhiteSheetBorderPainter({
     required this.whiteSheetTop,
-    this.cornerRadius = 28.0,
   });
 
   @override
@@ -1694,7 +1622,6 @@ class _WhiteSheetBorderPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _WhiteSheetBorderPainter oldPainter) {
-    return oldPainter.whiteSheetTop != whiteSheetTop ||
-        oldPainter.cornerRadius != cornerRadius;
+    return oldPainter.whiteSheetTop != whiteSheetTop;
   }
 }
