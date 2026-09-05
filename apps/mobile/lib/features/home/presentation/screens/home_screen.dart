@@ -907,9 +907,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final actionTranslationX = 16.0 * (1.0 - actionProgress);
 
     // ── 3. Anchored Persistent Balance Amount (Absolute position, scales font & keeps crisp anchor) ──
-    // In expanded: below TOTAL BALANCE, so top: 44.0, left: 18.0.
+    // In expanded: below TOTAL BALANCE, so top: 40.0, left: 18.0.
     // In collapsed: vertically centered in 64px card, so top: 19.0, left: 18.0.
-    final nominalTop = lerpDouble(44.0, 19.0, progress)!;
+    final nominalTop = lerpDouble(40.0, 19.0, progress)!;
     final nominalLeft = 18.0;
     final nominalFontSize = lerpDouble(30.0, 16.5, progress)!;
     final rpFontSize = lerpDouble(15.0, 13.0, progress)!;
@@ -956,63 +956,71 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              // Row 1: TOTAL BALANCE (word 'TOTAL BALANCE' which disappears upon collapse)
-                              const Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 18),
-                                child: Text(
-                                  'TOTAL BALANCE',
-                                  style: TextStyle(
-                                    fontFamily: 'Plus Jakarta Sans',
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 0.6,
-                                    color: NeoBrutalism.dark,
-                                  ),
-                                ),
-                              ),
-
-                              // Placeholder for anchored nominal (height 40 + 10 margin = 50)
-                              const SizedBox(height: 48),
-
-                              // Row 3: Daily PnL Indicator Pill
+                              // Rows 1-3 with 18px horizontal padding (100% exact structure restored from ca1f18d)
                               Padding(
                                 padding: const EdgeInsets.symmetric(horizontal: 18),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.92),
-                                    borderRadius: BorderRadius.circular(9999),
-                                    border: Border.all(color: Colors.black, width: 2),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Text(
-                                        'Hari ini ',
-                                        style: TextStyle(
-                                          fontFamily: 'Plus Jakarta Sans',
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.w700,
-                                          color: NeoBrutalism.dark,
-                                        ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    // Row 1: TOTAL BALANCE (word 'TOTAL BALANCE' which disappears upon collapse)
+                                    const Text(
+                                      'TOTAL BALANCE',
+                                      style: TextStyle(
+                                        fontFamily: 'Plus Jakarta Sans',
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: 0.6,
+                                        color: NeoBrutalism.dark,
                                       ),
-                                      Icon(
-                                        isPnlPositive ? Icons.trending_up : Icons.trending_down,
-                                        size: 13,
-                                        color: isPnlPositive ? const Color(0xFF10B981) : const Color(0xFFDC2626),
+                                    ),
+
+                                    const SizedBox(height: 8),
+
+                                    // Space occupied by Row 2 (Rp + 30px nominal text height)
+                                    const SizedBox(height: 38),
+
+                                    const SizedBox(height: 10),
+
+                                    // Row 3: Daily PnL Indicator Pill
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withValues(alpha: 0.92),
+                                        borderRadius: BorderRadius.circular(9999),
+                                        border: Border.all(color: Colors.black, width: 2),
                                       ),
-                                      const SizedBox(width: 2),
-                                      Text(
-                                        '${isPnlPositive ? "+" : ""}${currencyFormat.format(dailyPnl)} (${isPnlPositive ? "+" : ""}${pnlPercentage.toStringAsFixed(1)}%)',
-                                        style: TextStyle(
-                                          fontFamily: 'Plus Jakarta Sans',
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.w700,
-                                          color: isPnlPositive ? const Color(0xFF10B981) : const Color(0xFFDC2626),
-                                        ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Text(
+                                            'Hari ini ',
+                                            style: TextStyle(
+                                              fontFamily: 'Plus Jakarta Sans',
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w700,
+                                              color: NeoBrutalism.dark,
+                                            ),
+                                          ),
+                                          Icon(
+                                            isPnlPositive ? Icons.trending_up : Icons.trending_down,
+                                            size: 13,
+                                            color: isPnlPositive ? const Color(0xFF10B981) : const Color(0xFFDC2626),
+                                          ),
+                                          const SizedBox(width: 2),
+                                          Text(
+                                            '${isPnlPositive ? "+" : ""}${currencyFormat.format(dailyPnl)} (${isPnlPositive ? "+" : ""}${pnlPercentage.toStringAsFixed(1)}%)',
+                                            style: TextStyle(
+                                              fontFamily: 'Plus Jakarta Sans',
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w700,
+                                              color: isPnlPositive ? const Color(0xFF10B981) : const Color(0xFFDC2626),
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                    ],
-                                  ),
+                                    ),
+                                  ],
                                 ),
                               ),
 
