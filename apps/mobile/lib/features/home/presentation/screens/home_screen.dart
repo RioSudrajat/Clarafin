@@ -657,13 +657,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   // ── Hero Card 1: Konsultasi Finansial (Matches reference design & collapsible) ──
 
   Widget _buildConsultationHeroCard(double progress, String userName) {
-    final expandedProgress = _evaluateProgressInterval(progress, 0.05, 0.42, curve: Curves.easeIn);
-    final expandedOpacity = (1.0 - expandedProgress).clamp(0.0, 1.0);
-    final expandedTranslationY = -12.0 * expandedProgress;
+    // ── 1. Curtain Animation (Delay 0.0-0.10, moves upward -32px and fades out by 0.52) ──
+    final curtainProgress = _evaluateProgressInterval(progress, 0.10, 0.52, curve: Curves.easeIn);
+    final curtainOpacity = (1.0 - curtainProgress).clamp(0.0, 1.0);
+    final curtainTranslationY = -32.0 * curtainProgress;
 
-    final collapsedProgress = _evaluateProgressInterval(progress, 0.28, 0.68, curve: Curves.easeOut);
-    final collapsedOpacity = collapsedProgress.clamp(0.0, 1.0);
-    final collapsedTranslationY = 8.0 * (1.0 - collapsedProgress);
+    // ── 2. Collapsed Action Button Animation (Slides from right +16px and fades in 0.35 to 0.75) ──
+    final actionProgress = _evaluateProgressInterval(progress, 0.35, 0.75, curve: Curves.easeOut);
+    final actionOpacity = actionProgress.clamp(0.0, 1.0);
+    final actionTranslationX = 16.0 * (1.0 - actionProgress);
+
+    // ── 3. Anchored Persistent Greeting (Absolute position, scales font & keeps crisp anchor) ──
+    final greetingTop = lerpDouble(18.0, 20.0, progress)!;
+    final greetingLeft = 20.0;
+    final greetingFontSize = lerpDouble(13.0, 16.0, progress)!;
+    final greetingFontWeight = progress >= 0.45 ? FontWeight.w900 : FontWeight.w800;
+    final greetingLetterSpacing = lerpDouble(0.4, -0.5, progress)!;
+    final editIconSize = lerpDouble(11.0, 13.0, progress)!;
+    final greetingRightBound = lerpDouble(70.0, 155.0, progress)!;
 
     return Container(
       width: double.infinity,
@@ -678,26 +689,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          // ── 1. Expanded Content (Fades out & shifts slightly up) ──
-          if (expandedOpacity > 0.001)
+          // ── Curtain Layer: Disappearing content that rolls upward like a curtain ──
+          if (curtainOpacity > 0.001)
             Positioned(
               top: 0,
               left: 0,
               right: 0,
               height: 198,
               child: IgnorePointer(
-                ignoring: expandedOpacity < 0.5,
+                ignoring: curtainOpacity < 0.5,
                 child: Opacity(
-                  opacity: expandedOpacity,
+                  opacity: curtainOpacity,
                   child: Transform.translate(
-                    offset: Offset(0, expandedTranslationY),
+                    offset: Offset(0, curtainTranslationY),
                     child: Padding(
                       padding: const EdgeInsets.all(18),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          // Top Row: Hi, [userName] + Title on left, Lime group icon circle on right
+                          // Top Row: Spacer for anchored greeting + Title on left, Lime group icon on right
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -705,29 +716,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    GestureDetector(
-                                      onTap: () => _showEditNameDialog(context, ref, userName),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Text(
-                                            'Hi, $userName',
-                                            style: const TextStyle(
-                                              fontFamily: 'Plus Jakarta Sans',
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w800,
-                                              color: Colors.white,
-                                              letterSpacing: 0.5,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 4),
-                                          const Icon(Icons.edit_outlined, size: 11, color: Colors.white70),
-                                        ],
-                                      ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    const Text(
+                                  children: const [
+                                    // Spacing matching the anchored Hi, [userName] height
+                                    SizedBox(height: 20),
+                                    SizedBox(height: 6),
+                                    Text(
                                       'Atur uangmu\nbareng ahlinya.',
                                       style: TextStyle(
                                         fontFamily: 'Plus Jakarta Sans',
@@ -809,78 +802,77 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             ),
 
-          // ── 2. Collapsed Content (Fades in & shifts gently into center) ──
-          if (collapsedOpacity > 0.001)
-            Positioned.fill(
+          // ── Anchored Persistent Greeting: Hi, [userName] (Never disappears, smoothly scales) ──
+          Positioned(
+            top: greetingTop,
+            left: greetingLeft,
+            right: greetingRightBound,
+            child: GestureDetector(
+              onTap: () => _showEditNameDialog(context, ref, userName),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Flexible(
+                    child: Text(
+                      'Hi, $userName',
+                      style: TextStyle(
+                        fontFamily: 'Plus Jakarta Sans',
+                        fontSize: greetingFontSize,
+                        fontWeight: greetingFontWeight,
+                        color: Colors.white,
+                        letterSpacing: greetingLetterSpacing,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Icon(Icons.edit_outlined, size: editIconSize, color: Colors.white70),
+                ],
+              ),
+            ),
+          ),
+
+          // ── Collapsed Action Button: Mulai Konseling > (Slides in from right) ──
+          if (actionOpacity > 0.001)
+            Positioned(
+              top: 0,
+              bottom: 0,
+              right: 16,
               child: IgnorePointer(
-                ignoring: collapsedOpacity < 0.5,
+                ignoring: actionOpacity < 0.5,
                 child: Opacity(
-                  opacity: collapsedOpacity,
+                  opacity: actionOpacity,
                   child: Transform.translate(
-                    offset: Offset(0, collapsedTranslationY),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 18),
-                      child: Center(
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Expanded(
-                              child: GestureDetector(
-                                onTap: () => _showEditNameDialog(context, ref, userName),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Flexible(
-                                      child: Text(
-                                        'Hi, $userName',
-                                        style: const TextStyle(
-                                          fontFamily: 'Plus Jakarta Sans',
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w900,
-                                          color: Colors.white,
-                                          letterSpacing: -0.5,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 4),
-                                    const Icon(Icons.edit_outlined, size: 12, color: Colors.white70),
-                                  ],
+                    offset: Offset(actionTranslationX, 0),
+                    child: Center(
+                      child: GestureDetector(
+                        onTap: () => context.go('/consult'),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                          decoration: BoxDecoration(
+                            color: NeoBrutalism.lime,
+                            borderRadius: BorderRadius.circular(9999),
+                            border: Border.all(color: Colors.black, width: 2),
+                            boxShadow: NeoBrutalism.shadow(yOffset: 1.5),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: const [
+                              Text(
+                                'Mulai Konseling',
+                                style: TextStyle(
+                                  fontFamily: 'Plus Jakarta Sans',
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.black,
+                                  letterSpacing: 0.3,
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 10),
-                            GestureDetector(
-                              onTap: () => context.go('/consult'),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                                decoration: BoxDecoration(
-                                  color: NeoBrutalism.lime,
-                                  borderRadius: BorderRadius.circular(9999),
-                                  border: Border.all(color: Colors.black, width: 2),
-                                  boxShadow: NeoBrutalism.shadow(yOffset: 1.5),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: const [
-                                    Text(
-                                      'Mulai Konseling',
-                                      style: TextStyle(
-                                        fontFamily: 'Plus Jakarta Sans',
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w800,
-                                        color: Colors.black,
-                                        letterSpacing: 0.3,
-                                      ),
-                                    ),
-                                    SizedBox(width: 3),
-                                    Icon(Icons.chevron_right, size: 14, color: Colors.black),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
+                              SizedBox(width: 3),
+                              Icon(Icons.chevron_right, size: 14, color: Colors.black),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -904,13 +896,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     List wallets,
     double progress,
   ) {
-    final expandedProgress = _evaluateProgressInterval(progress, 0.05, 0.42, curve: Curves.easeIn);
-    final expandedOpacity = (1.0 - expandedProgress).clamp(0.0, 1.0);
-    final expandedTranslationY = -12.0 * expandedProgress;
+    // ── 1. Curtain Animation (Delay 0.0-0.10, moves upward -32px and fades out by 0.52) ──
+    final curtainProgress = _evaluateProgressInterval(progress, 0.10, 0.52, curve: Curves.easeIn);
+    final curtainOpacity = (1.0 - curtainProgress).clamp(0.0, 1.0);
+    final curtainTranslationY = -32.0 * curtainProgress;
 
-    final collapsedProgress = _evaluateProgressInterval(progress, 0.28, 0.68, curve: Curves.easeOut);
-    final collapsedOpacity = collapsedProgress.clamp(0.0, 1.0);
-    final collapsedTranslationY = 8.0 * (1.0 - collapsedProgress);
+    // ── 2. Collapsed Action Button Animation (Slides from right +16px and fades in 0.35 to 0.75) ──
+    final actionProgress = _evaluateProgressInterval(progress, 0.35, 0.75, curve: Curves.easeOut);
+    final actionOpacity = actionProgress.clamp(0.0, 1.0);
+    final actionTranslationX = 16.0 * (1.0 - actionProgress);
+
+    // ── 3. Anchored Persistent Balance Amount (Absolute position, scales font & keeps crisp anchor) ──
+    // In expanded: below TOTAL BALANCE, so top: 44.0, left: 18.0.
+    // In collapsed: vertically centered in 64px card, so top: 19.0, left: 18.0.
+    final nominalTop = lerpDouble(44.0, 19.0, progress)!;
+    final nominalLeft = 18.0;
+    final nominalFontSize = lerpDouble(30.0, 16.5, progress)!;
+    final rpFontSize = lerpDouble(15.0, 13.0, progress)!;
+    final eyeIconSize = lerpDouble(17.0, 15.0, progress)!;
+    final nominalRightBound = lerpDouble(75.0, 125.0, progress)!;
+
+    final formattedAmount = _obscureBalance
+        ? '••••••••'
+        : currencyFormat.format(totalBalance).replaceAll('Rp ', '');
 
     return Stack(
       clipBehavior: Clip.none,
@@ -929,138 +937,88 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // ── 1. Expanded Content (Fades out & shifts slightly up) ──
-              if (expandedOpacity > 0.001)
+              // ── Curtain Layer: TOTAL BALANCE label, PnL pill, Sub-wallets ──
+              if (curtainOpacity > 0.001)
                 Positioned(
                   top: 0,
                   left: 0,
                   right: 0,
                   height: 198,
                   child: IgnorePointer(
-                    ignoring: expandedOpacity < 0.5,
+                    ignoring: curtainOpacity < 0.5,
                     child: Opacity(
-                      opacity: expandedOpacity,
+                      opacity: curtainOpacity,
                       child: Transform.translate(
-                        offset: Offset(0, expandedTranslationY),
+                        offset: Offset(0, curtainTranslationY),
                         child: Padding(
                           padding: const EdgeInsets.only(top: 18, bottom: 12),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              // Rows 1-3 with 18px horizontal padding
+                              // Row 1: TOTAL BALANCE (word 'TOTAL BALANCE' which disappears upon collapse)
+                              const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 18),
+                                child: Text(
+                                  'TOTAL BALANCE',
+                                  style: TextStyle(
+                                    fontFamily: 'Plus Jakarta Sans',
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.6,
+                                    color: NeoBrutalism.dark,
+                                  ),
+                                ),
+                              ),
+
+                              // Placeholder for anchored nominal (height 40 + 10 margin = 50)
+                              const SizedBox(height: 48),
+
+                              // Row 3: Daily PnL Indicator Pill
                               Padding(
                                 padding: const EdgeInsets.symmetric(horizontal: 18),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    // Row 1: TOTAL BALANCE + Toggle Eye
-                                    Row(
-                                      children: [
-                                        const Text(
-                                          'TOTAL BALANCE',
-                                          style: TextStyle(
-                                            fontFamily: 'Plus Jakarta Sans',
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w700,
-                                            letterSpacing: 0.6,
-                                            color: NeoBrutalism.dark,
-                                          ),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.92),
+                                    borderRadius: BorderRadius.circular(9999),
+                                    border: Border.all(color: Colors.black, width: 2),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Text(
+                                        'Hari ini ',
+                                        style: TextStyle(
+                                          fontFamily: 'Plus Jakarta Sans',
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w700,
+                                          color: NeoBrutalism.dark,
                                         ),
-                                        const SizedBox(width: 6),
-                                        GestureDetector(
-                                          onTap: () => setState(() => _obscureBalance = !_obscureBalance),
-                                          child: Icon(
-                                            _obscureBalance ? Icons.visibility_off : Icons.visibility,
-                                            size: 16,
-                                            color: NeoBrutalism.dark,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-
-                                    const SizedBox(height: 8),
-
-                                    // Row 2: Big Balance Amount
-                                    Row(
-                                      crossAxisAlignment: CrossAxisAlignment.baseline,
-                                      textBaseline: TextBaseline.alphabetic,
-                                      children: [
-                                        const Text(
-                                          'Rp ',
-                                          style: TextStyle(
-                                            fontFamily: 'Plus Jakarta Sans',
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.w700,
-                                            color: NeoBrutalism.dark,
-                                          ),
-                                        ),
-                                        Expanded(
-                                          child: Text(
-                                            _obscureBalance
-                                                ? '••••••••'
-                                                : currencyFormat.format(totalBalance).replaceAll('Rp ', ''),
-                                            style: const TextStyle(
-                                              fontFamily: 'Plus Jakarta Sans',
-                                              fontSize: 30,
-                                              fontWeight: FontWeight.w900,
-                                              letterSpacing: -1.4,
-                                              color: NeoBrutalism.dark,
-                                            ),
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-
-                                    const SizedBox(height: 10),
-
-                                    // Row 3: Daily PnL Indicator Pill
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withValues(alpha: 0.92),
-                                        borderRadius: BorderRadius.circular(9999),
-                                        border: Border.all(color: Colors.black, width: 2),
                                       ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          const Text(
-                                            'Hari ini ',
-                                            style: TextStyle(
-                                              fontFamily: 'Plus Jakarta Sans',
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.w700,
-                                              color: NeoBrutalism.dark,
-                                            ),
-                                          ),
-                                          Icon(
-                                            isPnlPositive ? Icons.trending_up : Icons.trending_down,
-                                            size: 13,
-                                            color: isPnlPositive ? const Color(0xFF10B981) : const Color(0xFFDC2626),
-                                          ),
-                                          const SizedBox(width: 2),
-                                          Text(
-                                            '${isPnlPositive ? "+" : ""}${currencyFormat.format(dailyPnl)} (${isPnlPositive ? "+" : ""}${pnlPercentage.toStringAsFixed(1)}%)',
-                                            style: TextStyle(
-                                              fontFamily: 'Plus Jakarta Sans',
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.w700,
-                                              color: isPnlPositive ? const Color(0xFF10B981) : const Color(0xFFDC2626),
-                                            ),
-                                          ),
-                                        ],
+                                      Icon(
+                                        isPnlPositive ? Icons.trending_up : Icons.trending_down,
+                                        size: 13,
+                                        color: isPnlPositive ? const Color(0xFF10B981) : const Color(0xFFDC2626),
                                       ),
-                                    ),
-                                  ],
+                                      const SizedBox(width: 2),
+                                      Text(
+                                        '${isPnlPositive ? "+" : ""}${currencyFormat.format(dailyPnl)} (${isPnlPositive ? "+" : ""}${pnlPercentage.toStringAsFixed(1)}%)',
+                                        style: TextStyle(
+                                          fontFamily: 'Plus Jakarta Sans',
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w700,
+                                          color: isPnlPositive ? const Color(0xFF10B981) : const Color(0xFFDC2626),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
 
                               const SizedBox(height: 10),
 
-                              // Row 4: Sub-wallets Horizontal List (Bounded cleanly to card edges without spilling)
+                              // Row 4: Sub-wallets Horizontal List
                               SizedBox(
                                 width: double.infinity,
                                 child: SingleChildScrollView(
@@ -1117,93 +1075,90 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
                 ),
 
-              // ── 2. Collapsed Content (Fades in & shifts gently into center) ──
-              if (collapsedOpacity > 0.001)
-                Positioned.fill(
+              // ── Anchored Persistent Nominal: Rp [Nominal] [Eye Icon on Right] ──
+              Positioned(
+                top: nominalTop,
+                left: nominalLeft,
+                right: nominalRightBound,
+                child: GestureDetector(
+                  onTap: () => setState(() => _obscureBalance = !_obscureBalance),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    children: [
+                      Text(
+                        'Rp ',
+                        style: TextStyle(
+                          fontFamily: 'Plus Jakarta Sans',
+                          fontSize: rpFontSize,
+                          fontWeight: FontWeight.w700,
+                          color: NeoBrutalism.dark,
+                        ),
+                      ),
+                      Flexible(
+                        child: Text(
+                          formattedAmount,
+                          style: TextStyle(
+                            fontFamily: 'Plus Jakarta Sans',
+                            fontSize: nominalFontSize,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: lerpDouble(-1.4, -0.8, progress)!,
+                            color: NeoBrutalism.dark,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Icon(
+                        _obscureBalance ? Icons.visibility_off : Icons.visibility,
+                        size: eyeIconSize,
+                        color: NeoBrutalism.dark,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // ── Collapsed Action Button: Portfolio > (Slides in from right) ──
+              if (actionOpacity > 0.001)
+                Positioned(
+                  top: 0,
+                  bottom: 0,
+                  right: 16,
                   child: IgnorePointer(
-                    ignoring: collapsedOpacity < 0.5,
+                    ignoring: actionOpacity < 0.5,
                     child: Opacity(
-                      opacity: collapsedOpacity,
+                      opacity: actionOpacity,
                       child: Transform.translate(
-                        offset: Offset(0, collapsedTranslationY),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 18),
-                          child: Center(
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Expanded(
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Text(
-                                        'TOTAL: ',
-                                        style: TextStyle(
-                                          fontFamily: 'Plus Jakarta Sans',
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w800,
-                                          letterSpacing: 0.5,
-                                          color: NeoBrutalism.dark,
-                                        ),
-                                      ),
-                                      GestureDetector(
-                                        onTap: () => setState(() => _obscureBalance = !_obscureBalance),
-                                        child: Icon(
-                                          _obscureBalance ? Icons.visibility_off : Icons.visibility,
-                                          size: 15,
-                                          color: NeoBrutalism.dark,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Flexible(
-                                        child: Text(
-                                          _obscureBalance
-                                              ? '••••••••'
-                                              : currencyFormat.format(totalBalance),
-                                          style: const TextStyle(
-                                            fontFamily: 'Plus Jakarta Sans',
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.w900,
-                                            letterSpacing: -0.8,
-                                            color: NeoBrutalism.dark,
-                                          ),
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                GestureDetector(
-                                  onTap: () => context.push('/reporting'),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(9999),
-                                      border: Border.all(color: Colors.black, width: 2),
-                                      boxShadow: NeoBrutalism.shadow(yOffset: 1.5),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: const [
-                                        Text(
-                                          'Portfolio',
-                                          style: TextStyle(
-                                            fontFamily: 'Plus Jakarta Sans',
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w800,
-                                            color: Colors.black,
-                                          ),
-                                        ),
-                                        SizedBox(width: 3),
-                                        Icon(Icons.chevron_right, size: 14, color: Colors.black),
-                                      ],
+                        offset: Offset(actionTranslationX, 0),
+                        child: Center(
+                          child: GestureDetector(
+                            onTap: () => context.push('/reporting'),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(9999),
+                                border: Border.all(color: Colors.black, width: 2),
+                                boxShadow: NeoBrutalism.shadow(yOffset: 1.5),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: const [
+                                  Text(
+                                    'Portfolio',
+                                    style: TextStyle(
+                                      fontFamily: 'Plus Jakarta Sans',
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.black,
                                     ),
                                   ),
-                                ),
-                              ],
+                                  SizedBox(width: 3),
+                                  Icon(Icons.chevron_right, size: 14, color: Colors.black),
+                                ],
+                              ),
                             ),
                           ),
                         ),
@@ -1215,17 +1170,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ),
 
-        // ── Portfolio Pill Button (Protruding TOP-RIGHT, fades out with expanded state) ──
-        if (expandedOpacity > 0.001)
+        // ── Portfolio Pill Button (Protruding TOP-RIGHT in Expanded State, rolls up with curtain) ──
+        if (curtainOpacity > 0.001)
           Positioned(
             top: 15,
             right: -10,
             child: IgnorePointer(
-              ignoring: expandedOpacity < 0.5,
+              ignoring: curtainOpacity < 0.5,
               child: Opacity(
-                opacity: expandedOpacity,
+                opacity: curtainOpacity,
                 child: Transform.translate(
-                  offset: Offset(0, expandedTranslationY),
+                  offset: Offset(0, curtainTranslationY),
                   child: GestureDetector(
                     onTap: () => context.push('/reporting'),
                     child: Container(
@@ -1564,7 +1519,7 @@ class _HomeHeroHeaderDelegate extends SliverPersistentHeaderDelegate {
     final cardHeight = lerpDouble(198.0, 64.0, progress)!;
     final dotsOpacity = (1.0 - progress * 3.5).clamp(0.0, 1.0);
     final cardTop = topSafeArea + 62.0;
-    final whiteSheetTop = lerpDouble(cardTop + 100.0, cardTop + 68.0, progress)!;
+    final whiteSheetTop = cardTop + (cardHeight / 2);
 
     return Stack(
       clipBehavior: Clip.none,
