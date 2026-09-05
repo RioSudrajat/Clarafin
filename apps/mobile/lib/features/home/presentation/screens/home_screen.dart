@@ -2,6 +2,7 @@ import 'dart:ui' show lerpDouble;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/theme/neo_brutalism_decorations.dart';
 import '../../../../core/providers/mock_providers.dart';
 import 'package:intl/intl.dart';
@@ -539,39 +540,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        // Halofin Brand Logo & Name
+        // Clarafin Brand Logo & Name
         Row(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: NeoBrutalism.lime,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.black, width: 2),
-                boxShadow: NeoBrutalism.shadow(yOffset: 2),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: Image.asset(
-                  'assets/images/logo_halofin.png',
-                  fit: BoxFit.cover,
-                ),
-              ),
+            Image.asset(
+              'assets/images/logo_clarafin_symbol.png',
+              height: 34,
+              fit: BoxFit.contain,
             ),
             const SizedBox(width: 10),
-            const Text(
-              'halofin',
-              style: TextStyle(
-                fontFamily: 'Plus Jakarta Sans',
-                fontSize: 24,
-                fontWeight: FontWeight.w900,
+            Text(
+              'clarafin',
+              style: GoogleFonts.quicksand(
+                fontSize: 26,
+                fontWeight: FontWeight.w800,
                 color: Colors.white,
-                letterSpacing: -1.0,
-                shadows: [
+                letterSpacing: -0.5,
+                shadows: const [
                   Shadow(
-                    color: Colors.black38,
+                    color: Colors.black26,
                     offset: Offset(0, 2),
                     blurRadius: 4,
                   ),
