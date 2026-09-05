@@ -664,7 +664,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             left: 12,
                             right: 12,
                             child: SizedBox(
-                              height: 204,
+                              height: 198,
                               child: PageView(
                                 controller: _heroController,
                                 clipBehavior: Clip.none,
@@ -689,7 +689,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                           // ── Hero Page Indicator Dots (Positioned directly below the Hero Card) ──
                           Positioned(
-                            top: 224,
+                            top: 220,
                             left: 0,
                             right: 0,
                             child: Row(
@@ -729,6 +729,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget _buildConsultationHeroCard() {
     return Container(
       width: double.infinity,
+      height: double.infinity,
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
       decoration: BoxDecoration(
         color: const Color(0xFF0E6976), // Deep teal matching reference image
@@ -855,6 +856,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         // Lime Balance Card Body
         Container(
           width: double.infinity,
+          height: double.infinity,
           clipBehavior: Clip.antiAlias,
           padding: const EdgeInsets.only(top: 18, bottom: 12),
           decoration: BoxDecoration(
