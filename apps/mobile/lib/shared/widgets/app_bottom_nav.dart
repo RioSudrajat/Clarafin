@@ -55,13 +55,13 @@ class AppBottomNav extends ConsumerWidget {
             clipBehavior: Clip.none,
             alignment: Alignment.center,
             children: [
-              // Floating Pill Navbar Container
+              // Floating Box Navbar Container (Rounded corners)
               Container(
                 height: 64,
                 width: double.infinity,
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(9999),
+                  borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: Colors.black, width: 2),
                   boxShadow: NeoBrutalism.shadow(yOffset: 4),
                 ),
