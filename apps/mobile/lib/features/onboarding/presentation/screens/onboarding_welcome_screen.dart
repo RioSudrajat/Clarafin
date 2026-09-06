@@ -31,7 +31,7 @@ class OnboardingWelcomeScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: AppSpacing.xxl),
                     Text(
-                      'Selamat Datang di HaloFin',
+                      'Selamat Datang di Clarafin',
                       style: Theme.of(context).textTheme.displaySmall,
                       textAlign: TextAlign.center,
                     ),

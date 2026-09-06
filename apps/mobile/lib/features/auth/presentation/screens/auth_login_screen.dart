@@ -36,7 +36,7 @@ class _AuthLoginScreenState extends State<AuthLoginScreen> {
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     const Text(
-                      'Halofin',
+                      'Clarafin',
                       style: TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.w900,

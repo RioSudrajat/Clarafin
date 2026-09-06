@@ -65,7 +65,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       body: CustomScrollView(
         physics: const ClampingScrollPhysics(),
         slivers: [
-          // ── Pinned Collapsible Hero Header (Halofin Logo + Hero Card) ──
+          // ── Pinned Collapsible Hero Header (Clarafin Logo + Hero Card) ──
           SliverPersistentHeader(
             pinned: true,
             delegate: _HomeHeroHeaderDelegate(
@@ -1494,7 +1494,7 @@ class _HomeHeroHeaderDelegate extends SliverPersistentHeaderDelegate {
           ),
         ),
 
-        // 3. Top App Bar (Halofin Logo + Bell + Avatar)
+        // 3. Top App Bar (Clarafin Logo + Bell + Avatar)
         Positioned(
           top: topSafeArea + 8,
           left: 20,

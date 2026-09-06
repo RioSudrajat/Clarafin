@@ -87,7 +87,7 @@ class _BranchSessionScreenState extends State<BranchSessionScreen> {
       ),
       _SessionData(
         id: 's3',
-        name: 'PT HaloFin Insurance',
+        name: 'PT Clarafin Insurance',
         role: 'Review Portofolio Asuransi',
         sessionTitle: 'Evaluasi Polis & Klaim',
         subtitle: 'Selesai pada: 12 Jan 2026',

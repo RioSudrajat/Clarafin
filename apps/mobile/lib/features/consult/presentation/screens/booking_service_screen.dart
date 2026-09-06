@@ -42,7 +42,7 @@ class _BookingServiceScreenState extends ConsumerState<BookingServiceScreen> {
       title: 'Quick Consult',
       subtitle: 'Premium',
       shortDesc: 'Konseling keuangan praktis via chat/call/video call.',
-      fullDesc: 'Konseling keuangan praktis via chat/call/video call dengan perencana keuangan Halofin. Cocok untuk pembahasan masalah keuangan jangka pendek atau review portofolio cepat.',
+      fullDesc: 'Konseling keuangan praktis via chat/call/video call dengan perencana keuangan Clarafin. Cocok untuk pembahasan masalah keuangan jangka pendek atau review portofolio cepat.',
       basePricePerSession: 399000.0,
       features: [
         'Perencana keuangan berpengalaman >5 tahun',
@@ -58,7 +58,7 @@ class _BookingServiceScreenState extends ConsumerState<BookingServiceScreen> {
       basePricePerSession: 599000.0,
       features: [
         'Perencana keuangan senior berpengalaman >8 tahun',
-        'Akses premium ke tools analisis cashflow Halofin',
+        'Akses premium ke tools analisis cashflow Clarafin',
         'Dibuatkan blueprint perencanaan keuangan kustom (.pdf)',
         'Pendampingan intensif selama periode paket sesi'
       ],

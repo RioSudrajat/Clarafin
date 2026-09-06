@@ -166,7 +166,7 @@ class _AiChatScreenState extends State<AiChatScreen>
           ),
           const SizedBox(width: 10),
           const Text(
-            'HaloFin AI',
+            'Clarafin AI',
             style: TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 17,
@@ -231,7 +231,7 @@ class _AiChatScreenState extends State<AiChatScreen>
           ),
           const SizedBox(height: 28),
           const Text(
-            'Halo! Saya HaloFin AI 🤖',
+            'Halo! Saya Clarafin AI 🤖',
             style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.bold,
@@ -572,7 +572,7 @@ class _AiChatScreenState extends State<AiChatScreen>
                 minLines: 1,
                 style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
                 decoration: InputDecoration(
-                  hintText: 'Tanya HaloFin AI...',
+                  hintText: 'Tanya Clarafin AI...',
                   hintStyle: TextStyle(
                     color: AppColors.textSecondary.withValues(alpha: 0.6),
                     fontSize: 14,

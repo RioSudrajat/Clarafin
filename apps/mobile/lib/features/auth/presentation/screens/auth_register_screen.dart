@@ -37,7 +37,7 @@ class _AuthRegisterScreenState extends State<AuthRegisterScreen> {
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     const Text(
-                      'Halofin',
+                      'Clarafin',
                       style: TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.w900,

@@ -388,7 +388,7 @@ void _showPremiumUpgradeSheet(BuildContext context, String featureName) {
                   Navigator.pop(ctx);
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('Terima kasih! Kamu sekarang terdaftar di HaloFin Premium 🚀'),
+                      content: Text('Terima kasih! Kamu sekarang terdaftar di Clarafin Premium 🚀'),
                       backgroundColor: Color(0xFFD97706),
                       behavior: SnackBarBehavior.floating,
                     ),
