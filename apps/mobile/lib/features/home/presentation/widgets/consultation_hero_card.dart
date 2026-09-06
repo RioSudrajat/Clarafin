@@ -142,7 +142,7 @@ class ConsultationHeroCard extends StatelessWidget {
                               ),
                               const SizedBox(width: 12),
                               GestureDetector(
-                                onTap: () => context.go('/consult'),
+                                onTap: () => context.push('/match-expert'),
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 8),
                                   decoration: BoxDecoration(

@@ -33,6 +33,7 @@ import '../features/session/presentation/screens/branch_session_screen.dart';
 import '../features/session/presentation/screens/ai_chat_screen.dart';
 import '../features/consult/presentation/screens/consult_chat_screen.dart';
 import '../features/transaction/presentation/screens/transaction_success_screen.dart';
+import '../features/match_expert/presentation/screens/match_expert_screen.dart';
 
 // Keys for each navigator branch
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -256,6 +257,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: '/ai-chat',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const AiChatScreen(),
+      ),
+      GoRoute(
+        path: '/match-expert',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const MatchExpertScreen(),
       ),
     ],
   );

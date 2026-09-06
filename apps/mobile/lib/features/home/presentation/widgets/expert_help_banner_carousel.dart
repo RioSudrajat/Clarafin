@@ -39,7 +39,7 @@ class _ExpertHelpBannerCarouselState extends State<ExpertHelpBannerCarousel> {
                     tag: 'EXPERT HELP',
                     title: 'Bingung mencari konsultan?',
                     buttonText: 'MATCH',
-                    onTap: () => context.go('/consult'),
+                    onTap: () => context.push('/match-expert'),
                   ),
                 ),
                 Padding(

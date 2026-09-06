@@ -86,7 +86,7 @@ class _ConsultListScreenState extends State<ConsultListScreen> {
                    Align(
                      alignment: Alignment.centerRight,
                      child: ElevatedButton(
-                       onPressed: () {},
+                       onPressed: () => context.push('/match-expert'),
                        style: ElevatedButton.styleFrom(
                          backgroundColor: AppColors.primary,
                          foregroundColor: Colors.black,
