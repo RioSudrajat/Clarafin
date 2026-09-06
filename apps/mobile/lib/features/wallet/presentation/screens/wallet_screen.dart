@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -10,6 +9,7 @@ import '../../../../shared/widgets/filter_chip_widget.dart';
 import '../../../../shared/widgets/interactive_donut_chart.dart';
 import '../../../../core/providers/mock_providers.dart';
 import '../../../../core/models/wallet_model.dart';
+import '../../../../core/institutions/institution_logo_widget.dart';
 
 class WalletScreen extends ConsumerStatefulWidget {
   const WalletScreen({super.key});
@@ -242,15 +242,12 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  height: 40,
-                  width: 40,
-                  decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-                  alignment: Alignment.center,
-                  child: Text(
-                    wallet.name.substring(0, min(3, wallet.name.length)).toUpperCase(),
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
-                  ),
+                InstitutionLogoWidget(
+                  institutionId: wallet.institutionId,
+                  walletName: wallet.name,
+                  walletType: wallet.type,
+                  size: 40,
+                  borderWidth: 1.5,
                 ),
                 const Icon(Icons.more_horiz, color: Colors.grey, size: 20),
               ],

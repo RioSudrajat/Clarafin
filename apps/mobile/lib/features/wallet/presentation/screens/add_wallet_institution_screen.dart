@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+
+import '../../../../core/institutions/institution_logo_widget.dart';
+import '../../../../core/institutions/institution_model.dart';
+import '../../../../core/institutions/institution_registry.dart';
 import '../../../../core/theme/app_colors.dart';
 import 'manual_wallet_entry_screen.dart';
 
@@ -13,28 +17,9 @@ class AddWalletInstitutionScreen extends StatefulWidget {
 class _AddWalletInstitutionScreenState extends State<AddWalletInstitutionScreen> {
   String _searchQuery = '';
 
-  final _banks = [
-    _Institution('BCA', 'Bank', Icons.account_balance, true),
-    _Institution('Mandiri', 'Bank', Icons.account_balance, true),
-    _Institution('BRI', 'Bank', Icons.account_balance, true),
-    _Institution('Bank Syariah Indonesia', 'Bank', Icons.account_balance, false),
-    _Institution('BNI', 'Bank', Icons.account_balance, true),
-  ];
-
-  final _ewallets = [
-    _Institution('GoPay', 'E-Wallet', Icons.account_balance_wallet, true),
-    _Institution('OVO', 'E-Wallet', Icons.account_balance_wallet, true),
-    _Institution('DANA', 'E-Wallet', Icons.account_balance_wallet, true),
-    _Institution('ShopeePay', 'E-Wallet', Icons.account_balance_wallet, false),
-  ];
-
-  final _investments = [
-    _Institution('Stockbit', 'Stock', Icons.show_chart, false),
-    _Institution('Pintu Crypto', 'Crypto', Icons.currency_bitcoin, false),
-    _Institution('Emas Fisik/Digital', 'Bond', Icons.diamond, false),
-    _Institution('Cash / Dompet Tunai', 'Cash', Icons.wallet, false),
-    _Institution('Bibit Reksadana', 'Mutual Fund', Icons.pie_chart, false),
-  ];
+  final List<InstitutionModel> _banks = InstitutionRegistry.popularBanks;
+  final List<InstitutionModel> _ewallets = InstitutionRegistry.ewallets;
+  final List<InstitutionModel> _investments = InstitutionRegistry.investments;
 
   @override
   Widget build(BuildContext context) {
@@ -82,10 +67,10 @@ class _AddWalletInstitutionScreenState extends State<AddWalletInstitutionScreen>
     );
   }
 
-  Widget _buildSection(String title, List<_Institution> items) {
+  Widget _buildSection(String title, List<InstitutionModel> items) {
     final filtered = _searchQuery.isEmpty
         ? items
-        : items.where((i) => i.name.toLowerCase().contains(_searchQuery)).toList();
+        : items.where((i) => i.name.toLowerCase().contains(_searchQuery) || i.shortName.toLowerCase().contains(_searchQuery)).toList();
     if (filtered.isEmpty) return const SizedBox.shrink();
 
     return Padding(
@@ -109,14 +94,12 @@ class _AddWalletInstitutionScreenState extends State<AddWalletInstitutionScreen>
                     if (i > 0) Divider(height: 1, color: Colors.grey.shade100, indent: 60),
                     ListTile(
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                      leading: Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade100,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(inst.icon, size: 20, color: Colors.grey.shade700),
+                      leading: InstitutionLogoWidget(
+                        institutionId: inst.id,
+                        walletName: inst.name,
+                        walletType: inst.type,
+                        size: 40,
+                        borderWidth: 1.5,
                       ),
                       title: Text(inst.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
                       trailing: Row(
@@ -163,7 +146,7 @@ class _AddWalletInstitutionScreenState extends State<AddWalletInstitutionScreen>
     );
   }
 
-  void _showSyncChoiceBottomSheet(BuildContext context, _Institution institution) {
+  void _showSyncChoiceBottomSheet(BuildContext context, InstitutionModel institution) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -292,12 +275,4 @@ class _AddWalletInstitutionScreenState extends State<AddWalletInstitutionScreen>
       ),
     );
   }
-}
-
-class _Institution {
-  final String name;
-  final String type;
-  final IconData icon;
-  final bool supportsAutoSync;
-  const _Institution(this.name, this.type, this.icon, this.supportsAutoSync);
 }

@@ -104,11 +104,11 @@ class WalletsNotifier extends Notifier<List<WalletModel>> {
     });
 
     return [
-      WalletModel(id: 'w1', name: 'BCA Utama', type: 'Bank', balance: 12000000, isAutoSync: true),
-      WalletModel(id: 'w2', name: 'GoPay', type: 'E-Wallet', balance: 500000, isAutoSync: true),
-      WalletModel(id: 'w3', name: 'Investasi Bibit', type: 'Mutual Fund', balance: 10000000, isAutoSync: false, returnPercentage: 5.0),
-      WalletModel(id: 'w4', name: 'Dompet Tunai', type: 'Cash', balance: 2000000, isAutoSync: false),
-      WalletModel(id: 'w5', name: 'Bitcoin', type: 'Crypto', balance: 5000000, isAutoSync: false, isVolatile: true, returnPercentage: 2.5),
+      WalletModel(id: 'w1', name: 'BCA Utama', type: 'Bank', balance: 12000000, isAutoSync: true, institutionId: 'bca'),
+      WalletModel(id: 'w2', name: 'GoPay', type: 'E-Wallet', balance: 500000, isAutoSync: true, institutionId: 'gopay'),
+      WalletModel(id: 'w3', name: 'Investasi Bibit', type: 'Mutual Fund', balance: 10000000, isAutoSync: false, returnPercentage: 5.0, institutionId: 'bibit'),
+      WalletModel(id: 'w4', name: 'Dompet Tunai', type: 'Cash', balance: 2000000, isAutoSync: false, institutionId: 'cash'),
+      WalletModel(id: 'w5', name: 'Bitcoin', type: 'Crypto', balance: 5000000, isAutoSync: false, isVolatile: true, returnPercentage: 2.5, institutionId: 'bitcoin'),
     ];
   }
 
@@ -185,8 +185,37 @@ final walletsProvider = NotifierProvider<WalletsNotifier, List<WalletModel>>(() 
 class TransactionsNotifier extends Notifier<List<TransactionModel>> {
   @override
   List<TransactionModel> build() {
+    final now = DateTime.now();
     return [
-      // June 2026
+      // Today Dynamic Transactions
+      TransactionModel(
+        id: 't_today_1',
+        title: 'Pembayaran Project Freelance',
+        category: 'Freelance',
+        amount: 350000,
+        date: DateTime(now.year, now.month, now.day, 10, 15),
+        type: 'income',
+        walletId: 'w1',
+      ),
+      TransactionModel(
+        id: 't_today_2',
+        title: 'Makan Siang Bento',
+        category: 'Makan',
+        amount: 45000,
+        date: DateTime(now.year, now.month, now.day, 12, 30),
+        type: 'expense',
+        walletId: 'w2',
+      ),
+      TransactionModel(
+        id: 't_today_3',
+        title: 'Kopi Susu Gula Aren',
+        category: 'Makan',
+        amount: 25000,
+        date: DateTime(now.year, now.month, now.day, 15, 45),
+        type: 'expense',
+        walletId: 'w2',
+      ),
+      // Historical Transactions
       TransactionModel(
         id: 't1',
         title: 'Makan Siang Bakso',
