@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 class MatchExpertOrbHeader extends StatelessWidget {
   final VoidCallback onBack;
@@ -14,14 +14,16 @@ class MatchExpertOrbHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final topPadding = MediaQuery.of(context).padding.top;
 
-    return Padding(
-      padding: EdgeInsets.fromLTRB(16, topPadding + 8, 16, 8),
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.fromLTRB(20, topPadding + 10, 20, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Back button
+          // Back button strictly left-aligned
           GestureDetector(
             onTap: onBack,
+            behavior: HitTestBehavior.opaque,
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: const [
@@ -40,7 +42,7 @@ class MatchExpertOrbHeader extends StatelessWidget {
             ),
           ),
           if (showOrb) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             // Glowing AI financial orb (inspired by ref 2.jpg to 13.jpg)
             Container(
               width: 58,

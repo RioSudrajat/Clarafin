@@ -28,6 +28,7 @@ class MatchExpertQuestion {
   final SelectionType selectionType;
   final List<MatchExpertOption> options;
   final bool isGrid; // true: 2 columns grid, false: vertical list
+  final bool isOptional;
 
   const MatchExpertQuestion({
     required this.id,
@@ -37,6 +38,7 @@ class MatchExpertQuestion {
     required this.selectionType,
     required this.options,
     this.isGrid = true,
+    this.isOptional = false,
   });
 }
 
@@ -109,7 +111,11 @@ class MatchExpertAnswerState {
 
   MatchExpertAnswerState copyWithUpdated(String questionId, dynamic value) {
     final newAnswers = Map<String, dynamic>.from(answers);
-    newAnswers[questionId] = value;
+    if (value == null) {
+      newAnswers.remove(questionId);
+    } else {
+      newAnswers[questionId] = value;
+    }
     return MatchExpertAnswerState(answers: newAnswers);
   }
 }

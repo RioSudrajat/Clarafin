@@ -24,7 +24,7 @@ class MatchExpertPodiumWidget extends StatelessWidget {
     final rank3 = consultants[2];
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [

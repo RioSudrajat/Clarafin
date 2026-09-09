@@ -34,6 +34,7 @@ class MatchExpertState {
     if (currentStep == 0) return true;
     if (currentStep > 12) return true;
     final question = MatchExpertQuestionsData.questions[currentStep - 1];
+    if (question.isOptional) return true;
     return answers.hasAnswer(question.id);
   }
 
@@ -54,7 +55,11 @@ class MatchExpertNotifier extends Notifier<MatchExpertState> {
   }
 
   void selectSingle(String questionId, String optionId) {
-    final newAnswers = state.answers.copyWithUpdated(questionId, optionId);
+    final current = state.answers.getSingle(questionId);
+    final newAnswers = state.answers.copyWithUpdated(
+      questionId,
+      current == optionId ? null : optionId,
+    );
     state = state.copyWith(answers: newAnswers);
   }
 

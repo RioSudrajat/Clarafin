@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/theme/neo_brutalism_decorations.dart';
 
@@ -19,13 +19,15 @@ class MatchExpertWelcomeView extends StatelessWidget {
 
     return Column(
       children: [
-        // Top bar with back button
-        Padding(
-          padding: EdgeInsets.fromLTRB(16, topPadding + 8, 16, 0),
+        // Top bar with back button strictly left-aligned with 20px padding
+        Container(
+          width: double.infinity,
+          padding: EdgeInsets.fromLTRB(20, topPadding + 10, 20, 0),
           child: Align(
             alignment: Alignment.centerLeft,
             child: GestureDetector(
               onTap: onBack,
+              behavior: HitTestBehavior.opaque,
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: const [
@@ -48,16 +50,16 @@ class MatchExpertWelcomeView extends StatelessWidget {
 
         Expanded(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const SizedBox(height: 36),
+                const SizedBox(height: 28),
 
                 // Large Glowing Orb
                 Container(
-                  width: 108,
-                  height: 108,
+                  width: 104,
+                  height: 104,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: const RadialGradient(
@@ -85,7 +87,7 @@ class MatchExpertWelcomeView extends StatelessWidget {
                   ),
                 ),
 
-                const SizedBox(height: 40),
+                const SizedBox(height: 32),
 
                 // Title
                 RichText(
@@ -96,7 +98,7 @@ class MatchExpertWelcomeView extends StatelessWidget {
                       fontSize: 24,
                       fontWeight: FontWeight.w800,
                       color: Colors.white,
-                      height: 1.35,
+                      height: 1.3,
                     ),
                     children: [
                       const TextSpan(text: 'Hai, Selamat datang di\n'),
@@ -110,22 +112,22 @@ class MatchExpertWelcomeView extends StatelessWidget {
                   ),
                 ),
 
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
 
                 // Body text in Clarafin context
                 const Text(
-                  'Setiap langkah finansialmu berharga, dan kamu nggak perlu jalan sendirian. Dengan Match Expert, kamu akan dipertemukan dengan konsultan keuangan tersertifikasi (CFP / Financial Planner) yang paling cocok dengan tujuan hidupmu.\n\nDi ruang konsultasi yang aman, nyaman, transparan, dan ditangani secara profesional oleh para ahli keuangan independen.',
+                  'Setiap langkah finansialmu berharga, dan kamu nggak perlu jalan sendirian. Dengan Match Expert, kamu akan dipertemukan dengan konsultan keuangan tersertifikasi (CFP® / Financial Planner) yang paling cocok dengan tujuan hidupmu.\n\nDi ruang konsultasi yang aman, nyaman, transparan, dan ditangani secara profesional oleh para ahli keuangan independen.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontFamily: 'Plus Jakarta Sans',
                     fontSize: 14,
                     fontWeight: FontWeight.w400,
                     color: Color(0xFFE2E8F0),
-                    height: 1.6,
+                    height: 1.55,
                   ),
                 ),
 
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
 
                 const Text(
                   'Yuk, temukan konsultan keuangan terbaikmu bersama Clarafin.',
@@ -135,11 +137,11 @@ class MatchExpertWelcomeView extends StatelessWidget {
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
                     color: Colors.white,
-                    height: 1.5,
+                    height: 1.4,
                   ),
                 ),
 
-                const SizedBox(height: 48),
+                const SizedBox(height: 36),
 
                 // CTA Button
                 GestureDetector(
@@ -173,7 +175,7 @@ class MatchExpertWelcomeView extends StatelessWidget {
                   ),
                 ),
 
-                const SizedBox(height: 28),
+                const SizedBox(height: 20),
 
                 // Footer "Powered by clarafin"
                 Row(
@@ -183,7 +185,7 @@ class MatchExpertWelcomeView extends StatelessWidget {
                       'Powered by ',
                       style: TextStyle(
                         fontFamily: 'Plus Jakarta Sans',
-                        fontSize: 12,
+                        fontSize: 11,
                         fontWeight: FontWeight.w500,
                         color: Color(0xFF94A3B8),
                       ),
@@ -191,7 +193,7 @@ class MatchExpertWelcomeView extends StatelessWidget {
                     Text(
                       'clarafin',
                       style: GoogleFonts.quicksand(
-                        fontSize: 15,
+                        fontSize: 14,
                         fontWeight: FontWeight.w800,
                         color: Colors.white,
                       ),
@@ -199,7 +201,7 @@ class MatchExpertWelcomeView extends StatelessWidget {
                   ],
                 ),
 
-                SizedBox(height: bottomPadding + 16),
+                SizedBox(height: bottomPadding + 14),
               ],
             ),
           ),

@@ -22,12 +22,13 @@ class MatchExpertOptionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
+      behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
         curve: Curves.easeInOut,
         padding: EdgeInsets.symmetric(
           horizontal: isGrid ? 14 : 16,
-          vertical: isGrid ? 16 : 14,
+          vertical: isGrid ? 14 : 14,
         ),
         decoration: BoxDecoration(
           color: isSelected ? NeoBrutalism.lime : Colors.white,
@@ -70,7 +71,7 @@ class MatchExpertOptionCard extends StatelessWidget {
                     fontFamily: 'Plus Jakarta Sans',
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
-                    color: NeoBrutalism.dark.withValues(alpha: 0.7),
+                    color: NeoBrutalism.dark.withValues(alpha: 0.75),
                     height: 1.3,
                   ),
                 ),
@@ -78,7 +79,7 @@ class MatchExpertOptionCard extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 12),
         _buildSelectorIndicator(),
       ],
     );
@@ -97,7 +98,7 @@ class MatchExpertOptionCard extends StatelessWidget {
             _buildSelectorIndicator(),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
@@ -124,7 +125,7 @@ class MatchExpertOptionCard extends StatelessWidget {
                   fontFamily: 'Plus Jakarta Sans',
                   fontSize: 11,
                   fontWeight: FontWeight.w500,
-                  color: NeoBrutalism.dark.withValues(alpha: 0.7),
+                  color: NeoBrutalism.dark.withValues(alpha: 0.75),
                   height: 1.2,
                 ),
               ),
@@ -142,13 +143,13 @@ class MatchExpertOptionCard extends StatelessWidget {
     if (option.emoji != null) {
       return Text(
         option.emoji!,
-        style: const TextStyle(fontSize: 24),
+        style: const TextStyle(fontSize: 26),
       );
     }
     if (option.flagCode != null) {
       return Container(
-        width: 30,
-        height: 22,
+        width: 32,
+        height: 24,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(4),
           border: Border.all(color: Colors.black, width: 1.2),
@@ -158,7 +159,7 @@ class MatchExpertOptionCard extends StatelessWidget {
           option.flagCode!,
           style: const TextStyle(
             fontFamily: 'Plus Jakarta Sans',
-            fontSize: 10,
+            fontSize: 11,
             fontWeight: FontWeight.w800,
             color: NeoBrutalism.dark,
           ),
@@ -167,15 +168,17 @@ class MatchExpertOptionCard extends StatelessWidget {
     }
     if (option.icon != null) {
       return Container(
-        padding: const EdgeInsets.all(6),
+        width: isGrid ? 38 : 42,
+        height: isGrid ? 38 : 42,
         decoration: BoxDecoration(
           color: isSelected ? Colors.white : const Color(0xFFF1F5F9),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(10),
           border: Border.all(color: Colors.black, width: 1.5),
         ),
+        alignment: Alignment.center,
         child: Icon(
           option.icon,
-          size: 20,
+          size: isGrid ? 20 : 22,
           color: NeoBrutalism.dark,
         ),
       );

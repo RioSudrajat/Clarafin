@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/theme/neo_brutalism_decorations.dart';
 import '../../domain/models/match_expert_models.dart';
 import 'match_expert_option_card.dart';
@@ -32,8 +33,9 @@ class MatchExpertQuestionScaffold extends StatelessWidget {
     final multiAnswer = answers.getMulti(question.id);
 
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Top glowing orb & back button
+        // Top glowing orb & back button (strictly left aligned)
         MatchExpertOrbHeader(onBack: onBack),
 
         // Scrollable question area
@@ -43,33 +45,9 @@ class MatchExpertQuestionScaffold extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
 
-                // Step pill
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.25),
-                      width: 1,
-                    ),
-                  ),
-                  child: Text(
-                    'Langkah ${question.stepIndex} dari 12',
-                    style: const TextStyle(
-                      fontFamily: 'Plus Jakarta Sans',
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 12),
-
-                // Title
+                // Question Title
                 Text(
                   question.title,
                   style: const TextStyle(
@@ -83,7 +61,7 @@ class MatchExpertQuestionScaffold extends StatelessWidget {
 
                 const SizedBox(height: 6),
 
-                // Subtitle
+                // Helper Subtitle
                 Text(
                   question.subtitle,
                   style: const TextStyle(
@@ -95,131 +73,211 @@ class MatchExpertQuestionScaffold extends StatelessWidget {
                   ),
                 ),
 
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
 
-                // Options list / grid
-                if (question.isGrid)
-                  GridView.builder(
-                    padding: EdgeInsets.zero,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 12,
-                      mainAxisSpacing: 12,
-                      childAspectRatio: 1.18,
-                    ),
-                    itemCount: question.options.length,
-                    itemBuilder: (context, index) {
-                      final option = question.options[index];
-                      final isSelected = isMulti
-                          ? multiAnswer.contains(option.id)
-                          : singleAnswer == option.id;
-
-                      return MatchExpertOptionCard(
-                        option: option,
-                        isSelected: isSelected,
-                        selectionType: question.selectionType,
-                        isGrid: true,
-                        onTap: () {
-                          if (isMulti) {
-                            onToggleMulti(option.id);
-                          } else {
-                            onSelectSingle(option.id);
-                          }
-                        },
-                      );
-                    },
-                  )
+                // Options Content: Special chips for Step 12, Grid for Step 2/4, List for others
+                if (question.id == 'specific_tags')
+                  _buildTagsWrap(multiAnswer)
+                else if (question.isGrid)
+                  _buildGridView(isMulti, singleAnswer, multiAnswer)
                 else
-                  ListView.separated(
-                    padding: EdgeInsets.zero,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: question.options.length,
-                    separatorBuilder: (context, index) => const SizedBox(height: 10),
-                    itemBuilder: (context, index) {
-                      final option = question.options[index];
-                      final isSelected = isMulti
-                          ? multiAnswer.contains(option.id)
-                          : singleAnswer == option.id;
+                  _buildListView(isMulti, singleAnswer, multiAnswer),
 
-                      return MatchExpertOptionCard(
-                        option: option,
-                        isSelected: isSelected,
-                        selectionType: question.selectionType,
-                        isGrid: false,
-                        onTap: () {
-                          if (isMulti) {
-                            onToggleMulti(option.id);
-                          } else {
-                            onSelectSingle(option.id);
-                          }
-                        },
-                      );
-                    },
-                  ),
-
-                const SizedBox(height: 32),
+                const SizedBox(height: 24),
               ],
             ),
           ),
         ),
 
-        // Sticky Bottom Next Button
+        // Sticky Bottom Next Button + Footer
         Container(
-          padding: EdgeInsets.fromLTRB(20, 12, 20, bottomPadding + 14),
-          decoration: BoxDecoration(
-            color: const Color(0xFF073B4C),
-            border: Border(
-              top: BorderSide(
-                color: Colors.white.withValues(alpha: 0.1),
-                width: 1,
-              ),
-            ),
-          ),
-          child: GestureDetector(
-            onTap: canProceed ? onNext : null,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              width: double.infinity,
-              height: 52,
-              decoration: BoxDecoration(
-                color: canProceed ? NeoBrutalism.lime : const Color(0xFF64748B),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: canProceed ? Colors.black : Colors.transparent,
-                  width: 2,
+          color: Colors.transparent,
+          padding: EdgeInsets.fromLTRB(20, 6, 20, bottomPadding + 10),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              GestureDetector(
+                onTap: canProceed ? onNext : null,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  width: double.infinity,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: canProceed ? NeoBrutalism.lime : const Color(0xFF334155),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: canProceed ? Colors.black : Colors.transparent,
+                      width: 2,
+                    ),
+                    boxShadow: canProceed
+                        ? NeoBrutalism.shadow(yOffset: 3)
+                        : [],
+                  ),
+                  alignment: Alignment.center,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Selanjutnya',
+                        style: TextStyle(
+                          fontFamily: 'Plus Jakarta Sans',
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: canProceed ? NeoBrutalism.dark : Colors.white60,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(
+                        Icons.arrow_forward,
+                        color: canProceed ? NeoBrutalism.dark : Colors.white60,
+                        size: 20,
+                      ),
+                    ],
+                  ),
                 ),
-                boxShadow: canProceed
-                    ? NeoBrutalism.shadow(yOffset: 3)
-                    : [],
               ),
-              alignment: Alignment.center,
-              child: Row(
+
+              const SizedBox(height: 10),
+
+              // Consistent Footer "Powered by clarafin" on every question page
+              Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    'Selanjutnya',
+                  const Text(
+                    'Powered by ',
                     style: TextStyle(
                       fontFamily: 'Plus Jakarta Sans',
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      color: canProceed ? NeoBrutalism.dark : Colors.white70,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF94A3B8),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Icon(
-                    Icons.arrow_forward,
-                    color: canProceed ? NeoBrutalism.dark : Colors.white70,
-                    size: 20,
+                  Text(
+                    'clarafin',
+                    style: GoogleFonts.quicksand(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
                   ),
                 ],
               ),
-            ),
+            ],
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildTagsWrap(Set<String> multiAnswer) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 10,
+      children: question.options.map((opt) {
+        final isSelected = multiAnswer.contains(opt.id);
+        return GestureDetector(
+          onTap: () => onToggleMulti(opt.id),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: isSelected ? NeoBrutalism.lime : Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.black, width: 2),
+              boxShadow: isSelected
+                  ? NeoBrutalism.shadow(yOffset: 3, xOffset: 1)
+                  : NeoBrutalism.shadow(yOffset: 2, xOffset: 1),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (opt.icon != null) ...[
+                  Icon(opt.icon, size: 16, color: NeoBrutalism.dark),
+                  const SizedBox(width: 6),
+                ],
+                Text(
+                  opt.title,
+                  style: const TextStyle(
+                    fontFamily: 'Plus Jakarta Sans',
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: NeoBrutalism.dark,
+                  ),
+                ),
+                if (isSelected) ...[
+                  const SizedBox(width: 6),
+                  const Icon(Icons.check, size: 14, color: NeoBrutalism.dark),
+                ],
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildGridView(bool isMulti, String? singleAnswer, Set<String> multiAnswer) {
+    return GridView.builder(
+      padding: EdgeInsets.zero,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: 1.22,
+      ),
+      itemCount: question.options.length,
+      itemBuilder: (context, index) {
+        final option = question.options[index];
+        final isSelected = isMulti
+            ? multiAnswer.contains(option.id)
+            : singleAnswer == option.id;
+
+        return MatchExpertOptionCard(
+          option: option,
+          isSelected: isSelected,
+          selectionType: question.selectionType,
+          isGrid: true,
+          onTap: () {
+            if (isMulti) {
+              onToggleMulti(option.id);
+            } else {
+              onSelectSingle(option.id);
+            }
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildListView(bool isMulti, String? singleAnswer, Set<String> multiAnswer) {
+    return ListView.separated(
+      padding: EdgeInsets.zero,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: question.options.length,
+      separatorBuilder: (context, index) => const SizedBox(height: 10),
+      itemBuilder: (context, index) {
+        final option = question.options[index];
+        final isSelected = isMulti
+            ? multiAnswer.contains(option.id)
+            : singleAnswer == option.id;
+
+        return MatchExpertOptionCard(
+          option: option,
+          isSelected: isSelected,
+          selectionType: question.selectionType,
+          isGrid: false,
+          onTap: () {
+            if (isMulti) {
+              onToggleMulti(option.id);
+            } else {
+              onSelectSingle(option.id);
+            }
+          },
+        );
+      },
     );
   }
 }

@@ -1,6 +1,7 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../domain/data/match_expert_questions_data.dart';
 import '../providers/match_expert_provider.dart';
 import '../widgets/match_expert_consultant_detail_sheet.dart';
@@ -79,14 +80,15 @@ class MatchExpertScreen extends ConsumerWidget {
 
     return Column(
       children: [
-        // Header bar with back and reset buttons
+        // Header bar with back and reset buttons (20px horizontal padding)
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               GestureDetector(
                 onTap: () => notifier.prevStep(),
+                behavior: HitTestBehavior.opaque,
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: const [
@@ -127,7 +129,7 @@ class MatchExpertScreen extends ConsumerWidget {
           ),
         ),
 
-        // Scrollable content (Podium + details)
+        // Scrollable content (Podium + details + footer)
         Expanded(
           child: SingleChildScrollView(
             child: Column(
@@ -185,6 +187,34 @@ class MatchExpertScreen extends ConsumerWidget {
                       context.push('/booking/${activeConsultant.id}/service');
                     },
                   ),
+
+                const SizedBox(height: 16),
+
+                // Consistent Footer "Powered by clarafin" on Result Page
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text(
+                      'Powered by ',
+                      style: TextStyle(
+                        fontFamily: 'Plus Jakarta Sans',
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF94A3B8),
+                      ),
+                    ),
+                    Text(
+                      'clarafin',
+                      style: GoogleFonts.quicksand(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 24),
               ],
             ),
           ),
@@ -193,3 +223,4 @@ class MatchExpertScreen extends ConsumerWidget {
     );
   }
 }
+
