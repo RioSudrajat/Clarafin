@@ -144,30 +144,30 @@ class MatchExpertQuestionsData {
       ],
     ),
 
-    // Step 5 (Ref 6.jpg): Anggaran / Tarif - Vertical List
+    // Step 5 (Ref 6.jpg): Anggaran / Tarif - 2-Column Grid
     MatchExpertQuestion(
       id: 'budget_tier',
       stepIndex: 5,
       title: 'Tipe konsultasi dan rentang tarif seperti apa yang kamu inginkan?',
       subtitle: 'Pilih salah satu',
       selectionType: SelectionType.single,
-      isGrid: false,
+      isGrid: true,
       options: [
         MatchExpertOption(
           id: 'low',
-          title: 'Harga Terendah',
+          title: 'Harga terendah',
           subtitle: '< Rp 150.000 / sesi (Pemula & first jobber)',
           icon: Icons.monetization_on_outlined,
         ),
         MatchExpertOption(
           id: 'medium',
-          title: 'Harga Menengah',
+          title: 'Harga menengah',
           subtitle: 'Rp 150.000 - Rp 350.000 / sesi (Paling diminati)',
           icon: Icons.savings_outlined,
         ),
         MatchExpertOption(
           id: 'high',
-          title: 'Harga Tertinggi',
+          title: 'Harga tertinggi',
           subtitle: '> Rp 350.000 / sesi (CFP® Senior berpengalaman)',
           icon: Icons.workspace_premium_outlined,
         ),
@@ -276,14 +276,14 @@ class MatchExpertQuestionsData {
       ],
     ),
 
-    // Step 8 (Ref 9.jpg): Preferensi Gender - Vertical List
+    // Step 8 (Ref 9.jpg): Preferensi Gender - 2-Column Grid
     MatchExpertQuestion(
       id: 'gender',
       stepIndex: 8,
       title: 'Apakah kamu memiliki preferensi gender untuk konsultanmu?',
       subtitle: 'Pilih salah satu',
       selectionType: SelectionType.single,
-      isGrid: false,
+      isGrid: true,
       options: [
         MatchExpertOption(
           id: 'male',
@@ -299,7 +299,7 @@ class MatchExpertQuestionsData {
         ),
         MatchExpertOption(
           id: 'flexible',
-          title: 'Fleksibel / Bebas',
+          title: 'Fleksibel',
           subtitle: 'Yang terpenting keahlian dan kecocokan komunikasi',
           icon: Icons.wc,
         ),

@@ -20,8 +20,6 @@ class MatchExpertOptionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isCenteredGrid = isGrid && (option.subtitle == null || option.subtitle!.isEmpty);
-
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
@@ -29,16 +27,11 @@ class MatchExpertOptionCard extends StatelessWidget {
         duration: const Duration(milliseconds: 160),
         curve: Curves.easeInOut,
         clipBehavior: Clip.antiAlias,
-        padding: isCenteredGrid
-            ? EdgeInsets.zero
-            : EdgeInsets.symmetric(
-                horizontal: isGrid ? 14 : 16,
-                vertical: isGrid ? 14 : 14,
-              ),
+        constraints: BoxConstraints(
+          minHeight: isGrid ? 0 : 64,
+        ),
         decoration: BoxDecoration(
-          color: isSelected
-              ? (isCenteredGrid ? const Color(0xFFF4FDE8) : NeoBrutalism.lime)
-              : Colors.white,
+          color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: Colors.black,
@@ -48,127 +41,21 @@ class MatchExpertOptionCard extends StatelessWidget {
               ? NeoBrutalism.shadow(yOffset: 3, xOffset: 2)
               : NeoBrutalism.shadow(yOffset: 2, xOffset: 1),
         ),
-        child: isCenteredGrid
-            ? _buildCenteredGridLayout()
-            : (isGrid ? _buildGridLayout() : _buildListLayout()),
+        child: isGrid ? _buildGridCard() : _buildListCard(),
       ),
     );
   }
 
-  Widget _buildListLayout() {
-    return Row(
-      children: [
-        _buildLeadingWidget(),
-        if (_hasLeading) const SizedBox(width: 14),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                option.title,
-                style: const TextStyle(
-                  fontFamily: 'Plus Jakarta Sans',
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: NeoBrutalism.dark,
-                  height: 1.25,
-                ),
-              ),
-              if (option.subtitle != null && option.subtitle!.isNotEmpty) ...[
-                const SizedBox(height: 3),
-                Text(
-                  option.subtitle!,
-                  style: TextStyle(
-                    fontFamily: 'Plus Jakarta Sans',
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: NeoBrutalism.dark.withValues(alpha: 0.75),
-                    height: 1.3,
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-        const SizedBox(width: 12),
-        _buildSelectorIndicator(),
-      ],
-    );
-  }
-
-  Widget _buildGridLayout() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildLeadingWidget(),
-            _buildSelectorIndicator(),
-          ],
-        ),
-        const SizedBox(height: 10),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              option.title,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontFamily: 'Plus Jakarta Sans',
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: NeoBrutalism.dark,
-                height: 1.25,
-              ),
-            ),
-            if (option.subtitle != null && option.subtitle!.isNotEmpty) ...[
-              const SizedBox(height: 3),
-              Text(
-                option.subtitle!,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontFamily: 'Plus Jakarta Sans',
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                  color: NeoBrutalism.dark.withValues(alpha: 0.75),
-                  height: 1.2,
-                ),
-              ),
-            ],
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCenteredGridLayout() {
+  Widget _buildGridCard() {
     return Column(
       children: [
-        // Upper section: Centered large icon
+        // Upper section: Pure white background with centered large icon
         Expanded(
           child: Center(
-            child: option.icon != null
-                ? Icon(
-                    option.icon,
-                    size: 38,
-                    color: NeoBrutalism.dark,
-                  )
-                : (option.emoji != null
-                    ? Text(
-                        option.emoji!,
-                        style: const TextStyle(fontSize: 36),
-                      )
-                    : const SizedBox.shrink()),
+            child: _buildIconWidget(size: 38),
           ),
         ),
-        // Lower section: Soft tinted/lime banner with centered title
+        // Lower section: Soft tinted or lime banner with centered title
         Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
@@ -204,14 +91,65 @@ class MatchExpertOptionCard extends StatelessWidget {
     );
   }
 
-  bool get _hasLeading =>
-      option.emoji != null || option.icon != null || option.flagCode != null;
+  Widget _buildListCard() {
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Left section: Pure white background with centered icon
+          Container(
+            width: 68,
+            alignment: Alignment.center,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              border: Border(
+                right: BorderSide(
+                  color: Color(0xFFE2E8F0),
+                  width: 1,
+                ),
+              ),
+            ),
+            child: _buildIconWidget(size: 28),
+          ),
+          // Right section: Soft tinted or lime banner with left-aligned title
+          Expanded(
+            child: Container(
+              color: isSelected
+                  ? NeoBrutalism.lime
+                  : const Color(0xFFEAF2F6),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              alignment: Alignment.centerLeft,
+              child: Text(
+                option.title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontFamily: 'Plus Jakarta Sans',
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w700,
+                  color: NeoBrutalism.dark,
+                  height: 1.3,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-  Widget _buildLeadingWidget() {
+  Widget _buildIconWidget({required double size}) {
+    if (option.icon != null) {
+      return Icon(
+        option.icon,
+        size: size,
+        color: NeoBrutalism.dark,
+      );
+    }
     if (option.emoji != null) {
       return Text(
         option.emoji!,
-        style: const TextStyle(fontSize: 26),
+        style: TextStyle(fontSize: size * 0.9),
       );
     }
     if (option.flagCode != null) {
@@ -234,43 +172,6 @@ class MatchExpertOptionCard extends StatelessWidget {
         ),
       );
     }
-    if (option.icon != null) {
-      return Container(
-        width: isGrid ? 38 : 42,
-        height: isGrid ? 38 : 42,
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.white : const Color(0xFFF1F5F9),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.black, width: 1.5),
-        ),
-        alignment: Alignment.center,
-        child: Icon(
-          option.icon,
-          size: isGrid ? 20 : 22,
-          color: NeoBrutalism.dark,
-        ),
-      );
-    }
     return const SizedBox.shrink();
-  }
-
-  Widget _buildSelectorIndicator() {
-    final isMulti = selectionType == SelectionType.multi;
-    const size = 22.0;
-
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: isSelected ? NeoBrutalism.dark : Colors.white,
-        shape: isMulti ? BoxShape.rectangle : BoxShape.circle,
-        borderRadius: isMulti ? BorderRadius.circular(6) : null,
-        border: Border.all(color: Colors.black, width: 1.8),
-      ),
-      alignment: Alignment.center,
-      child: isSelected
-          ? const Icon(Icons.check, size: 14, color: Colors.white)
-          : null,
-    );
   }
 }
