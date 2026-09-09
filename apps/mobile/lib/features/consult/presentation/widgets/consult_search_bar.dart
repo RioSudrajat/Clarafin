@@ -33,19 +33,19 @@ class _ConsultSearchBarState extends ConsumerState<ConsultSearchBar> {
     }
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
       child: Container(
         height: 48,
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(NeoBrutalism.radiusMd),
+          borderRadius: BorderRadius.circular(9999),
           border: NeoBrutalism.border(),
           boxShadow: NeoBrutalism.shadow(yOffset: 2),
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Row(
           children: [
-            const Icon(Icons.search_rounded, size: 20, color: NeoBrutalism.dark),
+            const Icon(Icons.search_rounded, size: 22, color: NeoBrutalism.dark),
             const SizedBox(width: 10),
             Expanded(
               child: TextField(
@@ -60,14 +60,18 @@ class _ConsultSearchBarState extends ConsumerState<ConsultSearchBar> {
                   color: NeoBrutalism.dark,
                 ),
                 decoration: const InputDecoration(
-                  hintText: 'Cari konsultan, spesialisasi, atau kota...',
+                  hintText: 'Search consultant...',
                   hintStyle: TextStyle(
                     fontFamily: 'Plus Jakarta Sans',
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
-                    color: NeoBrutalism.textMuted,
+                    color: Color(0xFF6B7280),
                   ),
                   border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  disabledBorder: InputBorder.none,
+                  errorBorder: InputBorder.none,
                   isDense: true,
                   contentPadding: EdgeInsets.zero,
                 ),

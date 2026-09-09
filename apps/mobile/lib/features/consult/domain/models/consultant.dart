@@ -138,4 +138,12 @@ class ConsultantRepository {
       ),
     ];
   }
+
+  static Consultant? getById(String id) {
+    try {
+      return initialConsultants.firstWhere((c) => c.id == id);
+    } catch (_) {
+      return null;
+    }
+  }
 }

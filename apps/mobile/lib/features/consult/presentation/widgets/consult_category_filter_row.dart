@@ -13,34 +13,31 @@ class ConsultCategoryFilterRow extends ConsumerWidget {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 14),
       child: Row(
         children: consultCategories.map((category) {
           final isSelected = selectedCategory == category;
           return Padding(
-            padding: const EdgeInsets.only(right: 10),
+            padding: const EdgeInsets.only(right: 8),
             child: GestureDetector(
               onTap: () {
                 ref.read(consultSelectedCategoryProvider.notifier).setCategory(category);
               },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 150),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
                 decoration: BoxDecoration(
-                  color: isSelected ? NeoBrutalism.lime : Colors.white,
-                  borderRadius: BorderRadius.circular(NeoBrutalism.radiusPill),
+                  color: isSelected ? Colors.black : Colors.white,
+                  borderRadius: BorderRadius.circular(9999),
                   border: NeoBrutalism.border(width: 2.0),
-                  boxShadow: isSelected
-                      ? NeoBrutalism.shadow(yOffset: 2.0)
-                      : null,
                 ),
                 child: Text(
                   category,
                   style: TextStyle(
                     fontFamily: 'Plus Jakarta Sans',
-                    fontSize: 12,
-                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                    color: NeoBrutalism.dark,
+                    fontSize: 13,
+                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w700,
+                    color: isSelected ? Colors.white : Colors.black,
                   ),
                 ),
               ),

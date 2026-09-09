@@ -1,14 +1,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/models/consultant.dart';
 
-/// Categories available for filtering
+/// Categories available for filtering matching user reference image
 const List<String> consultCategories = [
-  'Semua',
-  'Cashflow & Budgeting',
-  'Investasi & Saham',
-  'Pajak & Bisnis',
-  'Hutang & Pinjol',
-  'Keluarga & KPR',
+  'All',
+  'Tax',
+  'Investment',
+  'Insurance',
+  'Debt',
+  'Business',
 ];
 
 /// Search query notifier
@@ -27,7 +27,7 @@ final consultSearchQueryProvider =
 /// Selected category notifier
 class ConsultSelectedCategoryNotifier extends Notifier<String> {
   @override
-  String build() => 'Semua';
+  String build() => 'All';
 
   void setCategory(String category) => state = category;
 }
@@ -50,7 +50,7 @@ final filteredConsultantsProvider = Provider<List<Consultant>>((ref) {
 
   return all.where((c) {
     // Category match
-    if (category != 'Semua') {
+    if (category != 'All') {
       final matchesCategory = _matchesCategory(c, category);
       if (!matchesCategory) return false;
     }
@@ -80,35 +80,33 @@ final filteredConsultantsProvider = Provider<List<Consultant>>((ref) {
 bool _matchesCategory(Consultant c, String category) {
   final allText = '${c.title} ${c.specializations.join(" ")}'.toLowerCase();
   switch (category) {
-    case 'Cashflow & Budgeting':
-      return allText.contains('cashflow') ||
-          allText.contains('budgeting') ||
-          allText.contains('dana darurat') ||
-          allText.contains('arus kas');
-    case 'Investasi & Saham':
-      return allText.contains('investasi') ||
+    case 'Tax':
+      return allText.contains('tax') ||
+          allText.contains('pajak') ||
+          allText.contains('spt');
+    case 'Investment':
+      return allText.contains('investment') ||
+          allText.contains('investasi') ||
           allText.contains('saham') ||
           allText.contains('reksadana') ||
           allText.contains('crypto') ||
           allText.contains('portfolio') ||
-          allText.contains('fire');
-    case 'Pajak & Bisnis':
-      return allText.contains('pajak') ||
+          allText.contains('fire') ||
+          allText.contains('wealth');
+    case 'Insurance':
+      return allText.contains('insurance') ||
+          allText.contains('asuransi') ||
+          allText.contains('dana darurat');
+    case 'Debt':
+      return allText.contains('debt') ||
+          allText.contains('hutang') ||
+          allText.contains('pinjol') ||
+          allText.contains('restrukturisasi');
+    case 'Business':
+      return allText.contains('business') ||
           allText.contains('bisnis') ||
           allText.contains('umkm') ||
           allText.contains('korporat');
-    case 'Hutang & Pinjol':
-      return allText.contains('hutang') ||
-          allText.contains('pinjol') ||
-          allText.contains('restrukturisasi') ||
-          allText.contains('debt');
-    case 'Keluarga & KPR':
-      return allText.contains('keluarga') ||
-          allText.contains('kpr') ||
-          allText.contains('pendidikan') ||
-          allText.contains('pensiun') ||
-          allText.contains('pasangan') ||
-          allText.contains('warisan');
     default:
       return true;
   }
