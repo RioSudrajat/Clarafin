@@ -40,7 +40,7 @@ class MatchExpertGridCard extends StatelessWidget {
             // Upper section: Pure white background with centered large icon/emoji
             Expanded(
               child: Center(
-                child: _buildIconWidget(size: 46),
+                child: _buildIconWidget(size: 60),
               ),
             ),
             // Lower section: Soft tinted or lime banner with centered title

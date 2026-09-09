@@ -53,7 +53,7 @@ class MatchExpertOptionCard extends StatelessWidget {
         // Upper section: Pure white background with centered large icon
         Expanded(
           child: Center(
-            child: _buildIconWidget(size: 46),
+            child: _buildIconWidget(size: 60),
           ),
         ),
         // Lower section: Soft tinted or lime banner with centered title
@@ -99,7 +99,7 @@ class MatchExpertOptionCard extends StatelessWidget {
         children: [
           // Left section: Pure white background with centered icon
           Container(
-            width: 68,
+            width: 76,
             alignment: Alignment.center,
             decoration: const BoxDecoration(
               color: Colors.white,
@@ -110,7 +110,7 @@ class MatchExpertOptionCard extends StatelessWidget {
                 ),
               ),
             ),
-            child: _buildIconWidget(size: 34),
+            child: _buildIconWidget(size: 44),
           ),
           // Right section: Soft tinted or lime banner with left-aligned title
           Expanded(
