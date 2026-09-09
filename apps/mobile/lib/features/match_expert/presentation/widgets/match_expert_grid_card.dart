@@ -1,6 +1,7 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../../../../core/theme/neo_brutalism_decorations.dart';
 import '../../domain/models/match_expert_models.dart';
+import 'match_expert_doodle_icons.dart';
 
 class MatchExpertGridCard extends StatelessWidget {
   final MatchExpertOption option;
@@ -39,7 +40,7 @@ class MatchExpertGridCard extends StatelessWidget {
             // Upper section: Pure white background with centered large icon/emoji
             Expanded(
               child: Center(
-                child: _buildIconWidget(size: 38),
+                child: _buildIconWidget(size: 46),
               ),
             ),
             // Lower section: Soft tinted or lime banner with centered title
@@ -81,11 +82,19 @@ class MatchExpertGridCard extends StatelessWidget {
   }
 
   Widget _buildIconWidget({required double size}) {
+    final key = option.svgKey ?? option.id;
+    if (MatchExpertDoodleIcons.hasSvg(key)) {
+      return MatchExpertDoodleWidget(
+        svgKey: key,
+        isSelected: isSelected,
+        size: size,
+      );
+    }
     if (option.icon != null) {
       return Icon(
         option.icon,
         size: size,
-        color: NeoBrutalism.dark,
+        color: isSelected ? NeoBrutalism.lime : NeoBrutalism.dark,
       );
     }
     if (option.emoji != null) {
@@ -100,16 +109,19 @@ class MatchExpertGridCard extends StatelessWidget {
         height: 24,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(4),
-          border: Border.all(color: Colors.black, width: 1.2),
+          border: Border.all(
+            color: isSelected ? NeoBrutalism.lime : Colors.black,
+            width: 1.5,
+          ),
         ),
         alignment: Alignment.center,
         child: Text(
           option.flagCode!,
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: 'Plus Jakarta Sans',
             fontSize: 11,
             fontWeight: FontWeight.w800,
-            color: NeoBrutalism.dark,
+            color: isSelected ? NeoBrutalism.lime : NeoBrutalism.dark,
           ),
         ),
       );

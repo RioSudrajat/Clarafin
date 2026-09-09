@@ -9,6 +9,7 @@ class MatchExpertOption {
   final IconData? icon;
   final String? flagCode; // e.g. 'ID', 'GB', 'CN', 'SA'
   final String? emoji;
+  final String? svgKey;
 
   const MatchExpertOption({
     required this.id,
@@ -17,6 +18,7 @@ class MatchExpertOption {
     this.icon,
     this.flagCode,
     this.emoji,
+    this.svgKey,
   });
 }
 
