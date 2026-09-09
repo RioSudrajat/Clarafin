@@ -190,9 +190,10 @@ class MatchExpertScreen extends ConsumerWidget {
 
                 const SizedBox(height: 16),
 
-                // Consistent Footer "Powered by clarafin" on Result Page
+                // Consistent Footer "Powered by [logo] clarafin" on Result Page
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     const Text(
                       'Powered by ',
@@ -203,6 +204,12 @@ class MatchExpertScreen extends ConsumerWidget {
                         color: Color(0xFF94A3B8),
                       ),
                     ),
+                    Image.asset(
+                      'assets/images/logo_clarafin_symbol.png',
+                      height: 13,
+                      fit: BoxFit.contain,
+                    ),
+                    const SizedBox(width: 4),
                     Text(
                       'clarafin',
                       style: GoogleFonts.quicksand(

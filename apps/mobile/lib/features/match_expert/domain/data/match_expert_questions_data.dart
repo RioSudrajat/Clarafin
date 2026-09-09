@@ -3,31 +3,28 @@ import '../models/match_expert_models.dart';
 
 class MatchExpertQuestionsData {
   static const List<MatchExpertQuestion> questions = [
-    // Step 1 (Ref 2.jpg): Metode Konseling - Vertical List
+    // Step 1 (Ref 2.jpg): Metode Konseling - 2-Column Grid
     MatchExpertQuestion(
       id: 'method',
       stepIndex: 1,
-      title: 'Pilih metode konsultasi yang paling nyaman untukmu',
+      title: 'Setiap orang punya cara yang berbeda untuk merasa nyaman. Metode konsultasi seperti apa yang paling ingin kamu jalani?',
       subtitle: 'Pilih salah satu',
       selectionType: SelectionType.single,
-      isGrid: false,
+      isGrid: true,
       options: [
         MatchExpertOption(
           id: 'online',
           title: 'Online',
-          subtitle: 'Video call / chat langsung dari aplikasi',
-          icon: Icons.videocam_outlined,
+          icon: Icons.perm_phone_msg_outlined,
         ),
         MatchExpertOption(
           id: 'offline',
           title: 'Tatap Muka',
-          subtitle: 'Bertemu langsung di kantor / lokasi yang disepakati',
-          icon: Icons.storefront_outlined,
+          icon: Icons.groups_outlined,
         ),
         MatchExpertOption(
           id: 'both',
           title: 'Nyaman dengan keduanya',
-          subtitle: 'Fleksibel sesuai ketersediaan jadwal',
           icon: Icons.handshake_outlined,
         ),
       ],

@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/theme/neo_brutalism_decorations.dart';
 import '../../domain/models/match_expert_models.dart';
@@ -41,39 +41,53 @@ class MatchExpertQuestionScaffold extends StatelessWidget {
         // Scrollable question area
         Expanded(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 6),
+                const SizedBox(height: 24),
+
+                // Eyebrow matching reference
+                const Text(
+                  'Match Expert',
+                  style: TextStyle(
+                    fontFamily: 'Plus Jakarta Sans',
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFFF59E0B),
+                    letterSpacing: 0.2,
+                  ),
+                ),
+
+                const SizedBox(height: 12),
 
                 // Question Title
                 Text(
                   question.title,
                   style: const TextStyle(
                     fontFamily: 'Plus Jakarta Sans',
-                    fontSize: 22,
+                    fontSize: 18.5,
                     fontWeight: FontWeight.w800,
                     color: Colors.white,
-                    height: 1.3,
+                    height: 1.35,
                   ),
                 ),
 
-                const SizedBox(height: 6),
+                const SizedBox(height: 8),
 
                 // Helper Subtitle
                 Text(
                   question.subtitle,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'Plus Jakarta Sans',
-                    fontSize: 13,
+                    fontSize: 13.5,
                     fontWeight: FontWeight.w400,
-                    color: Color(0xFFE2E8F0),
+                    color: Colors.white.withValues(alpha: 0.75),
                     height: 1.4,
                   ),
                 ),
 
-                const SizedBox(height: 20),
+                const SizedBox(height: 24),
 
                 // Options Content: Special chips for Step 12, Grid for Step 2/4, List for others
                 if (question.id == 'specific_tags')
@@ -92,7 +106,7 @@ class MatchExpertQuestionScaffold extends StatelessWidget {
         // Sticky Bottom Next Button + Footer
         Container(
           color: Colors.transparent,
-          padding: EdgeInsets.fromLTRB(20, 6, 20, bottomPadding + 10),
+          padding: EdgeInsets.fromLTRB(24, 6, 24, bottomPadding + 10),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -139,9 +153,10 @@ class MatchExpertQuestionScaffold extends StatelessWidget {
 
               const SizedBox(height: 10),
 
-              // Consistent Footer "Powered by clarafin" on every question page
+              // Consistent Footer "Powered by [logo] clarafin" on every question page
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   const Text(
                     'Powered by ',
@@ -152,6 +167,12 @@ class MatchExpertQuestionScaffold extends StatelessWidget {
                       color: Color(0xFF94A3B8),
                     ),
                   ),
+                  Image.asset(
+                    'assets/images/logo_clarafin_symbol.png',
+                    height: 13,
+                    fit: BoxFit.contain,
+                  ),
+                  const SizedBox(width: 4),
                   Text(
                     'clarafin',
                     style: GoogleFonts.quicksand(
@@ -217,15 +238,17 @@ class MatchExpertQuestionScaffold extends StatelessWidget {
   }
 
   Widget _buildGridView(bool isMulti, String? singleAnswer, Set<String> multiAnswer) {
+    final hasSubtitles = question.options.any((o) => o.subtitle != null && o.subtitle!.isNotEmpty);
+
     return GridView.builder(
       padding: EdgeInsets.zero,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 1.22,
+        crossAxisSpacing: 14,
+        mainAxisSpacing: 14,
+        childAspectRatio: hasSubtitles ? 1.15 : 0.98,
       ),
       itemCount: question.options.length,
       itemBuilder: (context, index) {

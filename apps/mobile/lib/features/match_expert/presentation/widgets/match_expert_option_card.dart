@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../../../../core/theme/neo_brutalism_decorations.dart';
 import '../../domain/models/match_expert_models.dart';
 
@@ -20,25 +20,37 @@ class MatchExpertOptionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isCenteredGrid = isGrid && (option.subtitle == null || option.subtitle!.isEmpty);
+
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
         curve: Curves.easeInOut,
-        padding: EdgeInsets.symmetric(
-          horizontal: isGrid ? 14 : 16,
-          vertical: isGrid ? 14 : 14,
-        ),
+        clipBehavior: Clip.antiAlias,
+        padding: isCenteredGrid
+            ? EdgeInsets.zero
+            : EdgeInsets.symmetric(
+                horizontal: isGrid ? 14 : 16,
+                vertical: isGrid ? 14 : 14,
+              ),
         decoration: BoxDecoration(
-          color: isSelected ? NeoBrutalism.lime : Colors.white,
+          color: isSelected
+              ? (isCenteredGrid ? const Color(0xFFF4FDE8) : NeoBrutalism.lime)
+              : Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.black, width: 2),
+          border: Border.all(
+            color: Colors.black,
+            width: isSelected ? 2.2 : 2.0,
+          ),
           boxShadow: isSelected
               ? NeoBrutalism.shadow(yOffset: 3, xOffset: 2)
               : NeoBrutalism.shadow(yOffset: 2, xOffset: 1),
         ),
-        child: isGrid ? _buildGridLayout() : _buildListLayout(),
+        child: isCenteredGrid
+            ? _buildCenteredGridLayout()
+            : (isGrid ? _buildGridLayout() : _buildListLayout()),
       ),
     );
   }
@@ -131,6 +143,62 @@ class MatchExpertOptionCard extends StatelessWidget {
               ),
             ],
           ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCenteredGridLayout() {
+    return Column(
+      children: [
+        // Upper section: Centered large icon
+        Expanded(
+          child: Center(
+            child: option.icon != null
+                ? Icon(
+                    option.icon,
+                    size: 38,
+                    color: NeoBrutalism.dark,
+                  )
+                : (option.emoji != null
+                    ? Text(
+                        option.emoji!,
+                        style: const TextStyle(fontSize: 36),
+                      )
+                    : const SizedBox.shrink()),
+          ),
+        ),
+        // Lower section: Soft tinted/lime banner with centered title
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? NeoBrutalism.lime
+                : const Color(0xFFEAF2F6),
+            border: Border(
+              top: BorderSide(
+                color: isSelected
+                    ? Colors.black.withValues(alpha: 0.15)
+                    : const Color(0xFFE2E8F0),
+                width: 1,
+              ),
+            ),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            option.title,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontFamily: 'Plus Jakarta Sans',
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: NeoBrutalism.dark,
+              height: 1.25,
+            ),
+          ),
         ),
       ],
     );
