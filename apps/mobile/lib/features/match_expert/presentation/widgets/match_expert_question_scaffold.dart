@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/theme/neo_brutalism_decorations.dart';
 import '../../domain/models/match_expert_models.dart';
+import 'match_expert_grid_options.dart';
 import 'match_expert_option_card.dart';
 import 'match_expert_orb_header.dart';
 
@@ -89,11 +90,18 @@ class MatchExpertQuestionScaffold extends StatelessWidget {
 
                 const SizedBox(height: 24),
 
-                // Options Content: Special chips for Step 12, Grid for Step 2/4, List for others
+                // Options Content: Special chips for Step 12, Grid for Step 2/4/etc., List for others
                 if (question.id == 'specific_tags')
                   _buildTagsWrap(multiAnswer)
                 else if (question.isGrid)
-                  _buildGridView(isMulti, singleAnswer, multiAnswer)
+                  MatchExpertGridOptions(
+                    options: question.options,
+                    isMulti: isMulti,
+                    singleAnswer: singleAnswer,
+                    multiAnswer: multiAnswer,
+                    onSelectSingle: onSelectSingle,
+                    onToggleMulti: onToggleMulti,
+                  )
                 else
                   _buildListView(isMulti, singleAnswer, multiAnswer),
 
@@ -234,43 +242,6 @@ class MatchExpertQuestionScaffold extends StatelessWidget {
           ),
         );
       }).toList(),
-    );
-  }
-
-  Widget _buildGridView(bool isMulti, String? singleAnswer, Set<String> multiAnswer) {
-    final hasSubtitles = question.options.any((o) => o.subtitle != null && o.subtitle!.isNotEmpty);
-
-    return GridView.builder(
-      padding: EdgeInsets.zero,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 14,
-        mainAxisSpacing: 14,
-        childAspectRatio: hasSubtitles ? 1.15 : 0.98,
-      ),
-      itemCount: question.options.length,
-      itemBuilder: (context, index) {
-        final option = question.options[index];
-        final isSelected = isMulti
-            ? multiAnswer.contains(option.id)
-            : singleAnswer == option.id;
-
-        return MatchExpertOptionCard(
-          option: option,
-          isSelected: isSelected,
-          selectionType: question.selectionType,
-          isGrid: true,
-          onTap: () {
-            if (isMulti) {
-              onToggleMulti(option.id);
-            } else {
-              onSelectSingle(option.id);
-            }
-          },
-        );
-      },
     );
   }
 

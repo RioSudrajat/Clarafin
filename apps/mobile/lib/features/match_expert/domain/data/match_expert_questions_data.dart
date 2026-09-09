@@ -66,14 +66,14 @@ class MatchExpertQuestionsData {
       ],
     ),
 
-    // Step 3 (Ref 4.jpg): Bahasa - Vertical List
+    // Step 3 (Ref 4.jpg): Bahasa - 2-Column Grid
     MatchExpertQuestion(
       id: 'languages',
       stepIndex: 3,
       title: 'Bahasa apa yang kamu inginkan selama sesi konsultasi?',
       subtitle: 'Dapat memilih lebih dari 1',
       selectionType: SelectionType.multi,
-      isGrid: false,
+      isGrid: true,
       options: [
         MatchExpertOption(
           id: 'id',
@@ -101,7 +101,7 @@ class MatchExpertQuestionsData {
         ),
         MatchExpertOption(
           id: 'flexible',
-          title: 'Bahasa Lainnya / Fleksibel',
+          title: 'Fleksibel',
           subtitle: 'Terbuka untuk opsi bahasa lain',
           emoji: '🌐',
         ),
@@ -342,14 +342,14 @@ class MatchExpertQuestionsData {
       ],
     ),
 
-    // Step 10 (Ref 11.jpg): Preferensi Usia - Vertical List
+    // Step 10 (Ref 11.jpg): Preferensi Usia - 2-Column Grid
     MatchExpertQuestion(
       id: 'age_preference',
       stepIndex: 10,
       title: 'Berapa rentang usia konsultan yang membuatmu merasa paling nyaman?',
       subtitle: 'Pilih salah satu',
       selectionType: SelectionType.single,
-      isGrid: false,
+      isGrid: true,
       options: [
         MatchExpertOption(
           id: 'young',
