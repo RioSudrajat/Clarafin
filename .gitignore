@@ -1,4 +1,4 @@
-﻿# Temporary screenshots & XML dumps in root and mobile root
+# Temporary screenshots & XML dumps in root and mobile root
 /*.png
 /*.xml
 apps/mobile/*.png
@@ -15,3 +15,6 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Android builds
+*.apk
