@@ -48,8 +48,7 @@ class InteractiveDonutChart extends StatefulWidget {
 class _InteractiveDonutChartState extends State<InteractiveDonutChart> {
   int _touchedIndex = -1;
   double _rotationAngle = -math.pi / 2; // Start from -90 degrees equivalent
-  double _startAngle = 0.0;
-  double _baseAngle = 0.0;
+  double _lastAngle = 0.0;
 
   @override
   Widget build(BuildContext context) {
@@ -57,20 +56,24 @@ class _InteractiveDonutChartState extends State<InteractiveDonutChart> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final center = Offset(constraints.maxWidth / 2, constraints.maxHeight / 2);
+        final chartHeight = constraints.maxHeight.isFinite ? constraints.maxHeight : 270.0;
+        final center = Offset(constraints.maxWidth / 2, chartHeight / 2);
 
         return GestureDetector(
           onPanStart: (details) {
             final touchPoint = details.localPosition;
-            _startAngle = math.atan2(touchPoint.dy - center.dy, touchPoint.dx - center.dx);
-            _baseAngle = _rotationAngle;
+            _lastAngle = math.atan2(touchPoint.dy - center.dy, touchPoint.dx - center.dx);
           },
           onPanUpdate: (details) {
             final touchPoint = details.localPosition;
             final currentAngle = math.atan2(touchPoint.dy - center.dy, touchPoint.dx - center.dx);
-            final angleDiff = currentAngle - _startAngle;
+            var diff = currentAngle - _lastAngle;
+            // Handle boundary wrap-around across -pi / pi
+            if (diff > math.pi) diff -= 2 * math.pi;
+            if (diff < -math.pi) diff += 2 * math.pi;
             setState(() {
-              _rotationAngle = _baseAngle + angleDiff;
+              _rotationAngle += diff;
+              _lastAngle = currentAngle;
             });
           },
           child: Stack(
@@ -79,16 +82,16 @@ class _InteractiveDonutChartState extends State<InteractiveDonutChart> {
             children: [
               // Shadow for 3D effect
               Container(
-                width: 140,
-                height: 140,
+                width: 150,
+                height: 150,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.15),
+                      color: Colors.black.withValues(alpha: 0.12),
                       blurRadius: 20,
-                      spreadRadius: 5,
-                      offset: const Offset(0, 10),
+                      spreadRadius: 4,
+                      offset: const Offset(0, 8),
                     ),
                   ],
                 ),
@@ -96,8 +99,8 @@ class _InteractiveDonutChartState extends State<InteractiveDonutChart> {
               Transform.rotate(
                 angle: _rotationAngle,
                 child: SizedBox(
-                  height: 250,
-                  width: 250,
+                  height: 270,
+                  width: 270,
                   child: PieChart(
                     PieChartData(
                       pieTouchData: PieTouchData(
@@ -122,15 +125,15 @@ class _InteractiveDonutChartState extends State<InteractiveDonutChart> {
                         },
                       ),
                       startDegreeOffset: 0,
-                      sectionsSpace: 2,
-                      centerSpaceRadius: 50,
+                      sectionsSpace: 2.5,
+                      centerSpaceRadius: 58,
                       sections: () {
                         final total = widget.data.fold<double>(0.0, (sum, item) => sum + item.value);
                         return widget.data.asMap().entries.map((entry) {
                           final i = entry.key;
                           final data = entry.value;
                           final isTouched = i == _touchedIndex;
-                          final radius = isTouched ? 45.0 : 35.0; // Pop-out effect
+                          final radius = isTouched ? 48.0 : 38.0; // Pop-out effect
 
                           final percentage = total > 0 ? (data.value / total) * 100 : 0.0;
                           final hasNoData = widget.data.length == 1 && widget.data.first.label == 'Tidak ada data';
@@ -147,7 +150,7 @@ class _InteractiveDonutChartState extends State<InteractiveDonutChart> {
                               angle: -_rotationAngle, // counter-rotate badges to stay upright
                               child: _buildBadge(data.label, percentageText, isTouched),
                             ),
-                            badgePositionPercentageOffset: 1.4, // Push outside
+                            badgePositionPercentageOffset: 1.35, // Push outside
                           );
                         }).toList();
                       }(),
@@ -157,15 +160,16 @@ class _InteractiveDonutChartState extends State<InteractiveDonutChart> {
               ),
               // Center Text Plate
               Container(
-                width: 100,
-                height: 100,
+                width: 104,
+                height: 104,
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.95),
+                  color: Colors.white,
                   shape: BoxShape.circle,
+                  border: Border.all(color: Colors.black.withValues(alpha: 0.15), width: 1.5),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.08),
-                      blurRadius: 8,
+                      blurRadius: 10,
                       offset: const Offset(0, 4),
                     )
                   ],
@@ -173,9 +177,29 @@ class _InteractiveDonutChartState extends State<InteractiveDonutChart> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(widget.centerTitle, style: textTheme.labelSmall?.copyWith(color: AppColors.textSecondary, fontWeight: FontWeight.bold, fontSize: 10)),
-                    const SizedBox(height: 2),
-                    Text(widget.centerAmount, style: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900, fontSize: 13)),
+                    Text(
+                      widget.centerTitle,
+                      style: textTheme.labelSmall?.copyWith(
+                        fontFamily: 'Plus Jakarta Sans',
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 10,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                      child: Text(
+                        widget.centerAmount,
+                        textAlign: TextAlign.center,
+                        style: textTheme.titleSmall?.copyWith(
+                          fontFamily: 'Plus Jakarta Sans',
+                          fontWeight: FontWeight.w900,
+                          fontSize: 12.5,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -194,14 +218,13 @@ class _InteractiveDonutChartState extends State<InteractiveDonutChart> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade300, width: isTouched ? 1.5 : 0.5),
-        boxShadow: [
-          if (isTouched)
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            )
+        border: Border.all(color: Colors.black, width: isTouched ? 2.0 : 1.2),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black,
+            offset: Offset(0, 1.5),
+            blurRadius: 0,
+          ),
         ],
       ),
       child: Row(

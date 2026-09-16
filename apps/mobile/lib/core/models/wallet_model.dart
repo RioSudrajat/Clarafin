@@ -8,6 +8,7 @@ class WalletModel {
   final DateTime? dividendDropDate;
   final bool isVolatile;
   final bool hasClaimedDividend;
+  final String? institutionId;
 
   WalletModel({
     required this.id,
@@ -19,6 +20,7 @@ class WalletModel {
     this.dividendDropDate,
     this.isVolatile = false,
     this.hasClaimedDividend = false,
+    this.institutionId,
   });
 
   WalletModel copyWith({
@@ -31,6 +33,7 @@ class WalletModel {
     DateTime? dividendDropDate,
     bool? isVolatile,
     bool? hasClaimedDividend,
+    String? institutionId,
   }) {
     return WalletModel(
       id: id ?? this.id,
@@ -42,6 +45,7 @@ class WalletModel {
       dividendDropDate: dividendDropDate ?? this.dividendDropDate,
       isVolatile: isVolatile ?? this.isVolatile,
       hasClaimedDividend: hasClaimedDividend ?? this.hasClaimedDividend,
+      institutionId: institutionId ?? this.institutionId,
     );
   }
 }

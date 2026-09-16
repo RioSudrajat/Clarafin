@@ -1,16 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/theme/app_colors.dart';
+import 'package:google_fonts/google_fonts.dart';
+
 import '../../../../core/models/wallet_model.dart';
 import '../../../../core/providers/mock_providers.dart';
+import '../../../../core/theme/neo_brutalism_decorations.dart';
+import '../widgets/manual_wallet_header_card.dart';
+import '../widgets/manual_wallet_inputs.dart';
+import '../widgets/manual_wallet_investment_fields.dart';
+import '../widgets/manual_wallet_submit_button.dart';
+import '../widgets/manual_wallet_type_selector.dart';
 
 class ManualWalletEntryScreen extends ConsumerStatefulWidget {
+  final String? institutionId;
   final String institutionName;
   final String institutionType;
 
   const ManualWalletEntryScreen({
     super.key,
+    this.institutionId,
     required this.institutionName,
     required this.institutionType,
   });
@@ -22,192 +31,153 @@ class ManualWalletEntryScreen extends ConsumerStatefulWidget {
 class _ManualWalletEntryScreenState extends ConsumerState<ManualWalletEntryScreen> {
   final _nameController = TextEditingController();
   final _balanceController = TextEditingController();
-  final _returnPercentageController = TextEditingController();
-  DateTime? _dividendDropDate;
+  final _returnController = TextEditingController();
+  late String _selectedType;
+  DateTime? _dividendDate;
 
-  bool get isInvestment => 
-    widget.institutionType == 'Mutual Fund' || 
-    widget.institutionType == 'Stock' || 
-    widget.institutionType == 'Bond' || 
-    widget.institutionType == 'Deposit' || 
-    widget.institutionType == 'Crypto';
-
-  bool get isVolatile => widget.institutionType == 'Crypto' || widget.institutionType == 'Stock';
-  bool get hasDividend => widget.institutionType == 'Stock' || widget.institutionType == 'Mutual Fund' || widget.institutionType == 'Bond';
+  bool get isInvestment =>
+      ['Mutual Fund', 'Stock', 'Crypto', 'Bond', 'Deposit'].contains(_selectedType);
+  bool get isVolatile => _selectedType == 'Crypto' || _selectedType == 'Stock';
 
   @override
   void initState() {
     super.initState();
+    _selectedType = widget.institutionType.isNotEmpty ? widget.institutionType : 'Bank';
     _nameController.text = widget.institutionName;
   }
 
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _balanceController.dispose();
+    _returnController.dispose();
+    super.dispose();
+  }
+
+  void _pickDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _dividendDate ?? now.add(const Duration(days: 30)),
+      firstDate: now,
+      lastDate: now.add(const Duration(days: 3650)),
+    );
+    if (picked != null) setState(() => _dividendDate = picked);
+  }
+
   void _saveWallet() {
-    if (_nameController.text.isEmpty || _balanceController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Name and balance are required')));
+    final name = _nameController.text.trim();
+    final balanceRaw = _balanceController.text.replaceAll(RegExp(r'[^0-9]'), '');
+
+    if (name.isEmpty || balanceRaw.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Nama dompet dan saldo wajib diisi'),
+          backgroundColor: Colors.black,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
       return;
     }
 
-    final balance = double.tryParse(_balanceController.text.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0;
+    final balance = double.tryParse(balanceRaw) ?? 0.0;
     double? returnPct;
-    if (isInvestment && _returnPercentageController.text.isNotEmpty) {
-      returnPct = double.tryParse(_returnPercentageController.text.replaceAll(RegExp(r'[^0-9.]'), ''));
+    if (isInvestment && _returnController.text.isNotEmpty) {
+      returnPct = double.tryParse(_returnController.text.replaceAll(',', '.'));
     }
 
     final newWallet = WalletModel(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      name: _nameController.text,
-      type: widget.institutionType,
+      id: 'w_${DateTime.now().millisecondsSinceEpoch}',
+      name: name,
+      type: _selectedType,
       balance: balance,
       isAutoSync: false,
       returnPercentage: returnPct,
-      dividendDropDate: _dividendDropDate,
+      dividendDropDate: _dividendDate,
       isVolatile: isVolatile,
+      institutionId: widget.institutionId,
     );
 
     ref.read(walletsProvider.notifier).addWallet(newWallet);
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Wallet berhasil ditambahkan')));
-    
-    // Pop back to home or previous screens
-    context.pop();
-    context.pop();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Dompet "$name" berhasil disimpan!',
+          style: GoogleFonts.plusJakartaSans(
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
+        ),
+        backgroundColor: NeoBrutalism.dark,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: const BorderSide(color: Colors.black, width: 1.5),
+        ),
+      ),
+    );
+
+    Navigator.pop(context);
+    if (context.canPop()) context.pop();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        leading: IconButton(icon: const Icon(Icons.chevron_left), onPressed: () => context.pop()),
-        title: const Text('Input Manual', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         backgroundColor: Colors.white,
         elevation: 0,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Nama Wallet', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-            const SizedBox(height: 8),
-            _buildTextField(controller: _nameController, hint: 'Misal: Tabungan Utama'),
-            
-            const SizedBox(height: 20),
-            const Text('Saldo Saat Ini', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-            const SizedBox(height: 8),
-            _buildTextField(controller: _balanceController, hint: 'Rp 0', keyboardType: TextInputType.number),
-            
-            if (isInvestment) ...[
-              const SizedBox(height: 20),
-              const Text('Return / Bunga (%)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-              const SizedBox(height: 8),
-              _buildTextField(controller: _returnPercentageController, hint: 'Misal: 5.0', keyboardType: const TextInputType.numberWithOptions(decimal: true)),
-              
-              if (hasDividend) ...[
-                const SizedBox(height: 20),
-                const Text('Tanggal Dividen (Opsional)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                const SizedBox(height: 8),
-                GestureDetector(
-                  onTap: () async {
-                    final date = await showDatePicker(
-                      context: context,
-                      initialDate: DateTime.now(),
-                      firstDate: DateTime.now(),
-                      lastDate: DateTime.now().add(const Duration(days: 3650)),
-                    );
-                    if (date != null) {
-                      setState(() => _dividendDropDate = date);
-                    }
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.grey.shade200),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.calendar_today, color: Colors.grey.shade600, size: 20),
-                        const SizedBox(width: 12),
-                        Text(
-                          _dividendDropDate == null 
-                            ? 'Pilih Tanggal Drop Dividen' 
-                            : '${_dividendDropDate!.day}/${_dividendDropDate!.month}/${_dividendDropDate!.year}',
-                          style: TextStyle(
-                            color: _dividendDropDate == null ? Colors.grey.shade500 : Colors.black,
-                            fontSize: 14
-                          )
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-              
-              if (isVolatile) ...[
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.orange.shade200),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.info_outline, color: Colors.orange.shade800, size: 16),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Aset ini volatile. Nilainya akan disimulasikan berfluktuasi secara real-time.',
-                          style: TextStyle(color: Colors.orange.shade800, fontSize: 12),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ],
-
-            const SizedBox(height: 40),
-            SizedBox(
-              width: double.infinity,
-              height: 56,
-              child: ElevatedButton(
-                onPressed: _saveWallet,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.black,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                ),
-                child: const Text('Simpan Wallet', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
-              ),
+        centerTitle: true,
+        title: Text(
+          'Input Dompet Manual',
+          style: GoogleFonts.plusJakartaSans(
+            fontWeight: FontWeight.w900,
+            fontSize: 18,
+            color: NeoBrutalism.dark,
+          ),
+        ),
+        leading: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Container(
+            decoration: NeoBrutalism.circleDecoration(),
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back_rounded, color: NeoBrutalism.dark, size: 20),
+              onPressed: () => context.pop(),
             ),
-          ],
+          ),
         ),
       ),
-    );
-  }
-
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String hint,
-    TextInputType keyboardType = TextInputType.text,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: TextField(
-        controller: controller,
-        keyboardType: keyboardType,
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: TextStyle(color: Colors.grey.shade400),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        ),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
+        children: [
+          ManualWalletHeaderCard(
+            institutionId: widget.institutionId,
+            institutionName: widget.institutionName,
+            selectedType: _selectedType,
+          ),
+          const SizedBox(height: 16),
+          const WalletFieldLabel('Kategori Aset / Dompet'),
+          ManualWalletTypeSelector(
+            selectedType: _selectedType,
+            onTypeSelected: (type) => setState(() => _selectedType = type),
+          ),
+          const SizedBox(height: 16),
+          ManualWalletInputs(
+            nameController: _nameController,
+            balanceController: _balanceController,
+          ),
+          if (isInvestment)
+            ManualWalletInvestmentFields(
+              returnController: _returnController,
+              dividendDate: _dividendDate,
+              isVolatile: isVolatile,
+              onPickDate: _pickDate,
+            ),
+          const SizedBox(height: 32),
+          ManualWalletSubmitButton(onTap: _saveWallet),
+        ],
       ),
     );
   }

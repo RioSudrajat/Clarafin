@@ -10,6 +10,7 @@ class BookingState {
   final List<String> selectedTimes; // List of times for multiple sessions
   final String topic;
   final String description;
+  final String expectations;
   final String? fileName;
   final double totalPrice;
 
@@ -23,6 +24,7 @@ class BookingState {
     required this.selectedTimes,
     required this.topic,
     required this.description,
+    this.expectations = '',
     this.fileName,
     required this.totalPrice,
   });
@@ -37,6 +39,7 @@ class BookingState {
     List<String>? selectedTimes,
     String? topic,
     String? description,
+    String? expectations,
     String? fileName,
     double? totalPrice,
   }) {
@@ -50,6 +53,7 @@ class BookingState {
       selectedTimes: selectedTimes ?? this.selectedTimes,
       topic: topic ?? this.topic,
       description: description ?? this.description,
+      expectations: expectations ?? this.expectations,
       fileName: fileName ?? this.fileName,
       totalPrice: totalPrice ?? this.totalPrice,
     );
@@ -99,8 +103,18 @@ class BookingNotifier extends Notifier<BookingState> {
     );
   }
 
-  void updatePreConsult({required String topic, required String description, String? fileName}) {
-    state = state.copyWith(topic: topic, description: description, fileName: fileName);
+  void updatePreConsult({
+    required String topic,
+    required String description,
+    String? expectations,
+    String? fileName,
+  }) {
+    state = state.copyWith(
+      topic: topic,
+      description: description,
+      expectations: expectations,
+      fileName: fileName,
+    );
   }
   
   void reset() {

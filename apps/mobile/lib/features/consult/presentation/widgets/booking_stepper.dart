@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/app_colors.dart';
 
 class BookingStepper extends StatefulWidget {
   final int activeStep; // 1, 2, or 3
@@ -40,14 +39,14 @@ class _BookingStepperState extends State<BookingStepper> {
     if (!_scrollController.hasClients) return;
     double offset = 0.0;
     if (widget.activeStep == 2) {
-      offset = 70.0;
+      offset = 60.0;
     } else if (widget.activeStep == 3) {
-      offset = 180.0;
+      offset = 140.0;
     }
     _scrollController.animateTo(
       offset,
-      duration: const Duration(milliseconds: 350),
-      curve: Curves.easeInOut,
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.easeInOutCubic,
     );
   }
 
@@ -55,26 +54,22 @@ class _BookingStepperState extends State<BookingStepper> {
   Widget build(BuildContext context) {
     return Container(
       color: Colors.white,
-      height: 48,
+      height: 52,
       width: double.infinity,
       child: SingleChildScrollView(
         controller: _scrollController,
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 20),
         child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Dummy leading spacing for connectors on scroll
-            if (widget.activeStep > 1) const SizedBox(width: 40),
-            
             _buildStep(1, 'Layanan'),
             _buildConnector(1),
             _buildStep(2, 'Waktu'),
             _buildConnector(2),
             _buildStep(3, 'Pre-Assessment'),
-            
-            // Dummy trailing spacing for connector extension
-            const SizedBox(width: 40),
           ],
         ),
       ),
@@ -87,39 +82,50 @@ class _BookingStepperState extends State<BookingStepper> {
 
     Widget circleChild;
     Color circleBgColor;
-    Border? circleBorder;
 
     if (isCompleted) {
-      circleBgColor = AppColors.textPrimary;
-      circleChild = const Icon(Icons.check, color: Colors.white, size: 14);
-      circleBorder = Border.all(color: AppColors.textPrimary);
+      circleBgColor = const Color(0xFF0F758A);
+      circleChild = const Icon(Icons.check_rounded, color: Colors.white, size: 14);
     } else if (isActive) {
-      circleBgColor = AppColors.textPrimary;
-      circleChild = const Icon(Icons.edit, color: Colors.white, size: 14);
-      circleBorder = Border.all(color: AppColors.textPrimary);
+      circleBgColor = const Color(0xFF0F758A);
+      circleChild = const Icon(Icons.edit_rounded, color: Colors.white, size: 14);
     } else {
       circleBgColor = Colors.white;
       circleChild = Text(
         '$stepNumber',
         style: const TextStyle(
-          color: AppColors.textSecondary,
-          fontWeight: FontWeight.bold,
+          fontFamily: 'Plus Jakarta Sans',
+          color: Color(0xFF9CA3AF),
+          fontWeight: FontWeight.w700,
           fontSize: 12,
         ),
       );
-      circleBorder = Border.all(color: AppColors.border, width: 1.5);
     }
 
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeInOutCubic,
           width: 28,
           height: 28,
           decoration: BoxDecoration(
             color: circleBgColor,
             shape: BoxShape.circle,
-            border: circleBorder,
+            border: Border.all(
+              color: isActive || isCompleted ? Colors.black : const Color(0xFFD1D5DB),
+              width: 2.0,
+            ),
+            boxShadow: isActive
+                ? const [
+                    BoxShadow(
+                      color: Colors.black,
+                      offset: Offset(0, 2),
+                      blurRadius: 0,
+                    ),
+                  ]
+                : null,
           ),
           alignment: Alignment.center,
           child: circleChild,
@@ -128,11 +134,10 @@ class _BookingStepperState extends State<BookingStepper> {
         Text(
           title,
           style: TextStyle(
-            color: (isActive || isCompleted)
-                ? AppColors.textPrimary
-                : AppColors.textSecondary,
-            fontWeight: (isActive || isCompleted) ? FontWeight.bold : FontWeight.w500,
-            fontSize: 13,
+            fontFamily: 'Plus Jakarta Sans',
+            color: (isActive || isCompleted) ? Colors.black : const Color(0xFF9CA3AF),
+            fontWeight: (isActive || isCompleted) ? FontWeight.w900 : FontWeight.w600,
+            fontSize: 12.5,
           ),
         ),
       ],
@@ -141,11 +146,13 @@ class _BookingStepperState extends State<BookingStepper> {
 
   Widget _buildConnector(int stepAfter) {
     final isPassed = widget.activeStep > stepAfter;
-    return Container(
-      width: 60,
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeInOutCubic,
+      width: 40,
       height: 2,
       margin: const EdgeInsets.symmetric(horizontal: 10),
-      color: isPassed ? AppColors.textPrimary : AppColors.divider,
+      color: isPassed ? const Color(0xFF0F758A) : const Color(0xFFE5E7EB),
     );
   }
 }

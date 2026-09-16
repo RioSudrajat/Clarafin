@@ -1,6 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/theme/app_colors.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+import '../../../../core/institutions/institution_model.dart';
+import '../../../../core/institutions/institution_registry.dart';
+import '../../../../core/theme/neo_brutalism_decorations.dart';
+import '../widgets/add_wallet_search_header.dart';
+import '../widgets/wallet_institution_item.dart';
+import '../widgets/wallet_sync_choice_sheet.dart';
 import 'manual_wallet_entry_screen.dart';
 
 class AddWalletInstitutionScreen extends StatefulWidget {
@@ -12,292 +19,154 @@ class AddWalletInstitutionScreen extends StatefulWidget {
 
 class _AddWalletInstitutionScreenState extends State<AddWalletInstitutionScreen> {
   String _searchQuery = '';
+  String _selectedCategory = 'Semua';
+  final TextEditingController _searchController = TextEditingController();
 
-  final _banks = [
-    _Institution('BCA', 'Bank', Icons.account_balance, true),
-    _Institution('Mandiri', 'Bank', Icons.account_balance, true),
-    _Institution('BRI', 'Bank', Icons.account_balance, true),
-    _Institution('Bank Syariah Indonesia', 'Bank', Icons.account_balance, false),
-    _Institution('BNI', 'Bank', Icons.account_balance, true),
-  ];
-
-  final _ewallets = [
-    _Institution('GoPay', 'E-Wallet', Icons.account_balance_wallet, true),
-    _Institution('OVO', 'E-Wallet', Icons.account_balance_wallet, true),
-    _Institution('DANA', 'E-Wallet', Icons.account_balance_wallet, true),
-    _Institution('ShopeePay', 'E-Wallet', Icons.account_balance_wallet, false),
-  ];
-
-  final _investments = [
-    _Institution('Stockbit', 'Stock', Icons.show_chart, false),
-    _Institution('Pintu Crypto', 'Crypto', Icons.currency_bitcoin, false),
-    _Institution('Emas Fisik/Digital', 'Bond', Icons.diamond, false),
-    _Institution('Cash / Dompet Tunai', 'Cash', Icons.wallet, false),
-    _Institution('Bibit Reksadana', 'Mutual Fund', Icons.pie_chart, false),
-  ];
+  final List<InstitutionModel> _banks = InstitutionRegistry.popularBanks;
+  final List<InstitutionModel> _ewallets = InstitutionRegistry.ewallets;
+  final List<InstitutionModel> _investments = InstitutionRegistry.investments;
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        leading: IconButton(icon: const Icon(Icons.chevron_left), onPressed: () => context.pop()),
-        title: const Text('Tambah Wallet Baru', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-        backgroundColor: Colors.white,
-        elevation: 0,
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Search
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: TextField(
-                  onChanged: (val) => setState(() => _searchQuery = val.toLowerCase()),
-                  decoration: InputDecoration(
-                    hintText: 'Cari bank, e-wallet, atau aset...',
-                    hintStyle: TextStyle(fontSize: 14, color: Colors.grey.shade400),
-                    prefixIcon: Icon(Icons.search, color: Colors.grey.shade400),
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                ),
-              ),
-            ),
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
-            // Sections
-            _buildSection('Bank Populer', _banks),
-            _buildSection('E-Wallet', _ewallets),
-            _buildSection('Investasi & Aset Lainnya', _investments),
-            const SizedBox(height: 100),
-          ],
+  void _onInstitutionTap(InstitutionModel inst) {
+    if (inst.supportsAutoSync) {
+      WalletSyncChoiceSheet.show(context: context, institution: inst);
+    } else {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ManualWalletEntryScreen(
+            institutionId: inst.id,
+            institutionName: inst.name,
+            institutionType: inst.type,
+          ),
+        ),
+      );
+    }
+  }
+
+  void _openManualEntry() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const ManualWalletEntryScreen(
+          institutionName: '',
+          institutionType: 'Bank',
         ),
       ),
     );
   }
 
-  Widget _buildSection(String title, List<_Institution> items) {
-    final filtered = _searchQuery.isEmpty
-        ? items
-        : items.where((i) => i.name.toLowerCase().contains(_searchQuery)).toList();
-    if (filtered.isEmpty) return const SizedBox.shrink();
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.grey.shade500, letterSpacing: 0.5)),
-          const SizedBox(height: 8),
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.grey.shade100),
-            ),
-            child: Column(
-              children: List.generate(filtered.length, (i) {
-                final inst = filtered[i];
-                return Column(
-                  children: [
-                    if (i > 0) Divider(height: 1, color: Colors.grey.shade100, indent: 60),
-                    ListTile(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                      leading: Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade100,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(inst.icon, size: 20, color: Colors.grey.shade700),
-                      ),
-                      title: Text(inst.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (inst.supportsAutoSync)
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                              margin: const EdgeInsets.only(right: 8),
-                              decoration: BoxDecoration(
-                                color: AppColors.primary.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: const Text('⚡ Auto', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.primaryDark)),
-                            ),
-                          Icon(Icons.chevron_right, color: Colors.grey.shade400, size: 20),
-                        ],
-                      ),
-                      onTap: () {
-                        if (inst.supportsAutoSync) {
-                          _showSyncChoiceBottomSheet(context, inst);
-                        } else {
-                          // Navigate directly to manual input
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => ManualWalletEntryScreen(
-                                institutionName: inst.name,
-                                institutionType: inst.type,
-                              ),
-                            ),
-                          );
-                        }
-                      },
-                    ),
-                  ],
-                );
-              }),
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: true,
+        title: Text(
+          'Tambah Dompet Baru',
+          style: GoogleFonts.plusJakartaSans(
+            fontWeight: FontWeight.w900,
+            fontSize: 18,
+            color: NeoBrutalism.dark,
+          ),
+        ),
+        leading: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Container(
+            decoration: NeoBrutalism.circleDecoration(),
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back_rounded, color: NeoBrutalism.dark, size: 20),
+              onPressed: () => context.pop(),
             ),
           ),
+        ),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
+        children: [
+          AddWalletSearchHeader(
+            searchController: _searchController,
+            searchQuery: _searchQuery,
+            selectedCategory: _selectedCategory,
+            onSearchChanged: (val) => setState(() => _searchQuery = val.trim().toLowerCase()),
+            onCategorySelected: (cat) => setState(() => _selectedCategory = cat),
+            onManualEntryTap: _openManualEntry,
+            onClearSearch: () {
+              _searchController.clear();
+              setState(() => _searchQuery = '');
+            },
+          ),
           const SizedBox(height: 20),
+          ..._buildInstitutionSections(),
         ],
       ),
     );
   }
 
-  void _showSyncChoiceBottomSheet(BuildContext context, _Institution institution) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        padding: const EdgeInsets.all(24),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+  List<Widget> _buildInstitutionSections() {
+    final showBank = _selectedCategory == 'Semua' || _selectedCategory == 'Bank';
+    final showEWallet = _selectedCategory == 'Semua' || _selectedCategory == 'E-Wallet';
+    final showInvest = _selectedCategory == 'Semua' || _selectedCategory == 'Investasi';
+
+    final widgets = <Widget>[];
+    if (showBank) widgets.addAll(_filterAndBuildGroup('Bank Populer', _banks));
+    if (showEWallet) widgets.addAll(_filterAndBuildGroup('E-Wallet', _ewallets));
+    if (showInvest) widgets.addAll(_filterAndBuildGroup('Investasi & Aset', _investments));
+
+    if (widgets.isEmpty) {
+      widgets.add(
+        Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Text(
+              'Tidak ada institusi yang cocok dengan pencarian.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.plusJakartaSans(
+                fontWeight: FontWeight.w700,
+                color: NeoBrutalism.textMuted,
+              ),
+            ),
+          ),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Handle
-            Center(
-              child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
-            ),
-            const SizedBox(height: 20),
-            const Text('Pilih Metode Sinkronisasi', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-            const SizedBox(height: 8),
-            Text('Kamu mau input data ${institution.name} kamu secara otomatis atau manual?', style: TextStyle(fontSize: 13, color: Colors.grey.shade600)),
-            const SizedBox(height: 20),
+      );
+    }
+    return widgets;
+  }
 
-            // Auto option
-            GestureDetector(
-              onTap: () {
-                Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Menghubungkan ${institution.name} otomatis...')));
-                context.pop();
-              },
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 40, height: 40,
-                      decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(12)),
-                      child: const Icon(Icons.flash_on, color: Colors.black, size: 20),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Hubungkan Otomatis', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                          const SizedBox(height: 2),
-                          Text('Transaksi akan ditarik otomatis dari bank. Aman & terenkripsi.', style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(8)),
-                      child: const Text('Rekomendasi', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.black)),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
+  List<Widget> _filterAndBuildGroup(String title, List<InstitutionModel> items) {
+    final filtered = items.where((i) {
+      if (_searchQuery.isEmpty) return true;
+      return i.name.toLowerCase().contains(_searchQuery) ||
+          i.shortName.toLowerCase().contains(_searchQuery);
+    }).toList();
 
-            // Manual option
-            GestureDetector(
-              onTap: () {
-                Navigator.pop(ctx);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ManualWalletEntryScreen(
-                      institutionName: institution.name,
-                      institutionType: institution.type,
-                    ),
-                  ),
-                );
-              },
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade50,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.grey.shade200),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 40, height: 40,
-                      decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(12)),
-                      child: Icon(Icons.edit_note, color: Colors.grey.shade600, size: 20),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Input Manual', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                          const SizedBox(height: 2),
-                          Text('Kamu yang masukin saldo dan transaksi satu per satu.', style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
+    if (filtered.isEmpty) return [];
 
-            // Cancel
-            SizedBox(
-              width: double.infinity,
-              child: TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: Text('Batal', style: TextStyle(color: Colors.grey.shade500, fontWeight: FontWeight.w600)),
-              ),
-            ),
-            const SizedBox(height: 8),
-          ],
+    return [
+      Padding(
+        padding: const EdgeInsets.only(left: 4, bottom: 8, top: 4),
+        child: Text(
+          title.toUpperCase(),
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 11,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 0.8,
+            color: NeoBrutalism.textMuted,
+          ),
         ),
       ),
-    );
+      ...filtered.map((inst) => WalletInstitutionItem(
+            institution: inst,
+            onTap: () => _onInstitutionTap(inst),
+          )),
+      const SizedBox(height: 12),
+    ];
   }
-}
-
-class _Institution {
-  final String name;
-  final String type;
-  final IconData icon;
-  final bool supportsAutoSync;
-  const _Institution(this.name, this.type, this.icon, this.supportsAutoSync);
 }

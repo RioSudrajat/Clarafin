@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_spacing.dart';
+import '../../core/theme/neo_brutalism_decorations.dart';
 import 'custom_date_range_picker.dart';
 
 enum PeriodType { day, week, month, year, custom }
@@ -126,21 +125,31 @@ class _PeriodSelectorWidgetState extends State<PeriodSelectorWidget> {
         _triggerCallback();
       },
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary : Colors.grey.shade100,
-          borderRadius: BorderRadius.circular(AppSpacing.chipRadius),
+          color: isSelected ? NeoBrutalism.lime : Colors.white,
+          borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: isSelected ? AppColors.primaryDark : Colors.grey.shade200,
-            width: 1,
+            color: Colors.black,
+            width: isSelected ? 2.0 : 1.5,
           ),
+          boxShadow: isSelected
+              ? const [
+                  BoxShadow(
+                    color: Colors.black,
+                    offset: Offset(0, 2),
+                    blurRadius: 0,
+                  ),
+                ]
+              : null,
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? AppColors.textPrimary : AppColors.textSecondary,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+            fontFamily: 'Plus Jakarta Sans',
+            color: isSelected ? NeoBrutalism.dark : const Color(0xFF4B5563),
+            fontWeight: isSelected ? FontWeight.w900 : FontWeight.w700,
             fontSize: 13,
           ),
         ),
@@ -171,30 +180,40 @@ class _PeriodSelectorWidgetState extends State<PeriodSelectorWidget> {
         await _selectCustomRange();
       },
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary : Colors.grey.shade100,
-          borderRadius: BorderRadius.circular(AppSpacing.chipRadius),
+          color: isSelected ? NeoBrutalism.lime : Colors.white,
+          borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: isSelected ? AppColors.primaryDark : Colors.grey.shade200,
-            width: 1,
+            color: Colors.black,
+            width: isSelected ? 2.0 : 1.5,
           ),
+          boxShadow: isSelected
+              ? const [
+                  BoxShadow(
+                    color: Colors.black,
+                    offset: Offset(0, 2),
+                    blurRadius: 0,
+                  ),
+                ]
+              : null,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              Icons.calendar_today,
+              Icons.calendar_today_rounded,
               size: 14,
-              color: isSelected ? AppColors.textPrimary : AppColors.textSecondary,
+              color: isSelected ? NeoBrutalism.dark : const Color(0xFF4B5563),
             ),
             const SizedBox(width: 6),
             Text(
               label,
               style: TextStyle(
-                color: isSelected ? AppColors.textPrimary : AppColors.textSecondary,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                fontFamily: 'Plus Jakarta Sans',
+                color: isSelected ? NeoBrutalism.dark : const Color(0xFF4B5563),
+                fontWeight: isSelected ? FontWeight.w900 : FontWeight.w700,
                 fontSize: 13,
               ),
             ),

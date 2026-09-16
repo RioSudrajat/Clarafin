@@ -1,0 +1,17 @@
+﻿# Temporary screenshots & XML dumps in root and mobile root
+/*.png
+/*.xml
+apps/mobile/*.png
+apps/mobile/*.xml
+
+# IDE & Editor files
+.idea/
+*.iml
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

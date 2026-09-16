@@ -17,20 +17,20 @@ void main() async {
   
   runApp(
     const ProviderScope(
-      child: HaloFinApp(),
+      child: ClarafinApp(),
     ),
   );
 }
 
-class HaloFinApp extends ConsumerWidget {
-  const HaloFinApp({super.key});
+class ClarafinApp extends ConsumerWidget {
+  const ClarafinApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final goRouter = ref.watch(goRouterProvider);
 
     return MaterialApp.router(
-      title: 'HaloFin',
+      title: 'Clarafin',
       theme: AppTheme.lightTheme,
       routerConfig: goRouter,
       debugShowCheckedModeBanner: false,

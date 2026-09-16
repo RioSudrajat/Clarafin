@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_spacing.dart';
 import '../../core/models/transaction_model.dart';
 import 'period_selector_widget.dart';
 
@@ -332,13 +331,28 @@ class _HeatmapCalendarWidgetState extends State<HeatmapCalendarWidget> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        border: Border.all(color: Colors.grey.shade100),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.black, width: 2.0),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black,
+            offset: Offset(0, 3),
+            blurRadius: 0,
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Aktivitas Keuangan Mingguan', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+          const Text(
+            'Aktivitas Keuangan Mingguan',
+            style: TextStyle(
+              fontFamily: 'Plus Jakarta Sans',
+              fontWeight: FontWeight.w800,
+              fontSize: 14,
+              color: Colors.black,
+            ),
+          ),
           const SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -352,7 +366,6 @@ class _HeatmapCalendarWidgetState extends State<HeatmapCalendarWidget> {
   }
 
   Widget _buildMonthView() {
-    final textTheme = Theme.of(context).textTheme;
     final monthFormat = DateFormat('MMMM yyyy', 'id_ID');
     String monthStr;
     try {
@@ -377,10 +390,11 @@ class _HeatmapCalendarWidgetState extends State<HeatmapCalendarWidget> {
         Center(
           child: Text(
             label,
-            style: TextStyle(
+            style: const TextStyle(
+              fontFamily: 'Plus Jakarta Sans',
               fontSize: 11,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey.shade400,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF6B7280),
             ),
           ),
         ),
@@ -414,16 +428,17 @@ class _HeatmapCalendarWidgetState extends State<HeatmapCalendarWidget> {
                 color: isFuture ? Colors.grey.shade50 : _getCellColor(dateKey, dayData),
                 borderRadius: BorderRadius.circular(6),
                 border: Border.all(
-                  color: isToday ? AppColors.primaryDark : Colors.transparent,
-                  width: isToday ? 1.5 : 0,
+                  color: isToday ? Colors.black : Colors.transparent,
+                  width: isToday ? 2.0 : 0,
                 ),
               ),
               child: Center(
                 child: Text(
                   '$day',
                   style: TextStyle(
+                    fontFamily: 'Plus Jakarta Sans',
                     fontSize: 11,
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w800,
                     color: isFuture ? Colors.grey.shade400 : _getTextColor(dateKey, dayData),
                   ),
                 ),
@@ -438,8 +453,15 @@ class _HeatmapCalendarWidgetState extends State<HeatmapCalendarWidget> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        border: Border.all(color: Colors.grey.shade100),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.black, width: 2.0),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black,
+            offset: Offset(0, 3),
+            blurRadius: 0,
+          ),
+        ],
       ),
       child: Column(
         children: [
@@ -447,21 +469,50 @@ class _HeatmapCalendarWidgetState extends State<HeatmapCalendarWidget> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              IconButton(
-                icon: const Icon(Icons.chevron_left, size: 20),
-                onPressed: () => _changeMonth(-1),
+              InkWell(
+                onTap: () => _changeMonth(-1),
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.black, width: 1.5),
+                    boxShadow: const [
+                      BoxShadow(color: Colors.black, offset: Offset(0, 1.5), blurRadius: 0),
+                    ],
+                  ),
+                  child: const Icon(Icons.chevron_left, size: 18, color: Colors.black),
+                ),
               ),
               Text(
                 monthStr,
-                style: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold, fontSize: 14),
+                style: const TextStyle(
+                  fontFamily: 'Plus Jakarta Sans',
+                  fontWeight: FontWeight.w800,
+                  fontSize: 14,
+                  color: Colors.black,
+                ),
               ),
-              IconButton(
-                icon: const Icon(Icons.chevron_right, size: 20),
-                onPressed: () => _changeMonth(1),
+              InkWell(
+                onTap: () => _changeMonth(1),
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.black, width: 1.5),
+                    boxShadow: const [
+                      BoxShadow(color: Colors.black, offset: Offset(0, 1.5), blurRadius: 0),
+                    ],
+                  ),
+                  child: const Icon(Icons.chevron_right, size: 18, color: Colors.black),
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           // Grid
           GridView.custom(
             shrinkWrap: true,
@@ -496,17 +547,23 @@ class _HeatmapCalendarWidgetState extends State<HeatmapCalendarWidget> {
     return Row(
       children: [
         Container(
-          width: 10,
-          height: 10,
+          width: 12,
+          height: 12,
           decoration: BoxDecoration(
             color: color,
-            borderRadius: BorderRadius.circular(2),
+            borderRadius: BorderRadius.circular(3),
+            border: Border.all(color: Colors.black, width: 1.2),
           ),
         ),
-        const SizedBox(width: 4),
+        const SizedBox(width: 5),
         Text(
           label,
-          style: const TextStyle(fontSize: 10, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
+          style: const TextStyle(
+            fontFamily: 'Plus Jakarta Sans',
+            fontSize: 10,
+            color: Color(0xFF4B5563),
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ],
     );

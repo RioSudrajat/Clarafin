@@ -79,7 +79,7 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
-          borderSide: const BorderSide(color: AppColors.primary, width: 2),
+          borderSide: const BorderSide(color: Colors.black, width: 2),
         ),
         hintStyle: AppTypography.textTheme.bodyMedium?.copyWith(
           color: AppColors.textSecondary,

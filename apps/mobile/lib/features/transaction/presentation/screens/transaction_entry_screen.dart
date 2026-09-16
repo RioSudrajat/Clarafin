@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/institutions/institution_logo_widget.dart';
 import '../../../../core/models/transaction_model.dart';
 import '../../../../core/models/wallet_model.dart';
 import '../../../../core/providers/mock_providers.dart';
@@ -337,13 +338,26 @@ class _TransactionEntryScreenState extends ConsumerState<TransactionEntryScreen>
               children: [
                 GestureDetector(
                   onTap: () => context.pop(),
-                  child: const Icon(Icons.close, color: Colors.black, size: 28),
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.black, width: 2.0),
+                      boxShadow: const [
+                        BoxShadow(color: Colors.black, offset: Offset(0, 2), blurRadius: 0),
+                      ],
+                    ),
+                    child: const Icon(Icons.close, color: Colors.black, size: 22),
+                  ),
                 ),
                 const Text(
                   'Catat Transaksi',
                   style: TextStyle(
+                    fontFamily: 'Plus Jakarta Sans',
                     fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w900,
                     color: Colors.black,
                   ),
                 ),
@@ -355,20 +369,25 @@ class _TransactionEntryScreenState extends ConsumerState<TransactionEntryScreen>
                       vertical: 8,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.8),
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.black, width: 2.0),
+                      boxShadow: const [
+                        BoxShadow(color: Colors.black, offset: Offset(0, 2), blurRadius: 0),
+                      ],
                     ),
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.add, size: 16, color: Colors.white),
+                        Icon(Icons.add, size: 16, color: Colors.black),
                         SizedBox(width: 4),
                         Text(
                           'Upload',
                           style: TextStyle(
+                            fontFamily: 'Plus Jakarta Sans',
                             fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.black,
                           ),
                         ),
                       ],
@@ -398,6 +417,7 @@ class _TransactionEntryScreenState extends ConsumerState<TransactionEntryScreen>
                   }),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
+                    side: const BorderSide(color: Colors.black, width: 2.0),
                   ),
                   offset: const Offset(0, 48),
                   itemBuilder: (_) => [
@@ -423,8 +443,12 @@ class _TransactionEntryScreenState extends ConsumerState<TransactionEntryScreen>
                       vertical: 12,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.8),
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.black, width: 2.0),
+                      boxShadow: const [
+                        BoxShadow(color: Colors.black, offset: Offset(0, 2.5), blurRadius: 0),
+                      ],
                     ),
                     child: Row(
                       children: [
@@ -438,6 +462,7 @@ class _TransactionEntryScreenState extends ConsumerState<TransactionEntryScreen>
                                       ? Colors.blue.shade400
                                       : Colors.green.shade400),
                             shape: BoxShape.circle,
+                            border: Border.all(color: Colors.black, width: 1.5),
                           ),
                           child: Icon(
                             _type == 'Pengeluaran'
@@ -453,15 +478,16 @@ class _TransactionEntryScreenState extends ConsumerState<TransactionEntryScreen>
                         Text(
                           _type,
                           style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
+                            fontFamily: 'Plus Jakarta Sans',
+                            color: Colors.black,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13.5,
                           ),
                         ),
                         const SizedBox(width: 4),
                         const Icon(
                           Icons.expand_more,
-                          color: Colors.white,
+                          color: Colors.black,
                           size: 18,
                         ),
                       ],
@@ -478,14 +504,18 @@ class _TransactionEntryScreenState extends ConsumerState<TransactionEntryScreen>
                         vertical: 12,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.8),
+                        color: Colors.white,
                         borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.black, width: 2.0),
+                        boxShadow: const [
+                          BoxShadow(color: Colors.black, offset: Offset(0, 2.5), blurRadius: 0),
+                        ],
                       ),
                       child: Row(
                         children: [
                           const Icon(
                             Icons.calendar_today,
-                            color: Colors.white,
+                            color: Colors.black,
                             size: 16,
                           ),
                           const SizedBox(width: 8),
@@ -493,15 +523,16 @@ class _TransactionEntryScreenState extends ConsumerState<TransactionEntryScreen>
                             child: Text(
                               _dateString,
                               style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 14,
+                                fontFamily: 'Plus Jakarta Sans',
+                                color: Colors.black,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 13.5,
                               ),
                             ),
                           ),
                           const Icon(
                             Icons.expand_more,
-                            color: Colors.white,
+                            color: Colors.black,
                             size: 18,
                           ),
                         ],
@@ -516,10 +547,14 @@ class _TransactionEntryScreenState extends ConsumerState<TransactionEntryScreen>
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.6),
+                color: Colors.white,
                 borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.black, width: 2.0),
+                boxShadow: const [
+                  BoxShadow(color: Colors.black, offset: Offset(0, 2), blurRadius: 0),
+                ],
               ),
               child: Row(
                 children: [
@@ -530,9 +565,10 @@ class _TransactionEntryScreenState extends ConsumerState<TransactionEntryScreen>
                           child: Text(
                             'Coba catat pakai AI, lebih praktis!',
                             style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
+                              fontFamily: 'Plus Jakarta Sans',
+                              color: Colors.black,
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w700,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -541,7 +577,7 @@ class _TransactionEntryScreenState extends ConsumerState<TransactionEntryScreen>
                         const SizedBox(width: 6),
                         Icon(
                           Icons.flash_on,
-                          color: Colors.yellow.shade600,
+                          color: Colors.amber.shade700,
                           size: 16,
                         ),
                       ],
@@ -549,18 +585,21 @@ class _TransactionEntryScreenState extends ConsumerState<TransactionEntryScreen>
                   ),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 6,
+                      horizontal: 12,
+                      vertical: 5,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(10),
+                      color: const Color(0xFFCCFF00),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.black, width: 1.5),
                     ),
                     child: const Text(
                       'Coba',
                       style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
+                        fontFamily: 'Plus Jakarta Sans',
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.black,
                       ),
                     ),
                   ),
@@ -578,9 +617,10 @@ class _TransactionEntryScreenState extends ConsumerState<TransactionEntryScreen>
                     Text(
                       'Rp',
                       style: TextStyle(
+                        fontFamily: 'Plus Jakarta Sans',
                         fontSize: 20,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.black.withValues(alpha: 0.4),
+                        fontWeight: FontWeight.w800,
+                        color: Colors.black.withValues(alpha: 0.6),
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -611,6 +651,7 @@ class _TransactionEntryScreenState extends ConsumerState<TransactionEntryScreen>
                                   Text(
                                     _displayAmount,
                                     style: const TextStyle(
+                                      fontFamily: 'Plus Jakarta Sans',
                                       fontSize: 56,
                                       fontWeight: FontWeight.w900,
                                       color: Colors.black,
@@ -642,32 +683,37 @@ class _TransactionEntryScreenState extends ConsumerState<TransactionEntryScreen>
             ),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 40),
+            padding: const EdgeInsets.symmetric(horizontal: 36),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.6),
+                color: Colors.white,
                 borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.black, width: 2.0),
+                boxShadow: const [
+                  BoxShadow(color: Colors.black, offset: Offset(0, 2), blurRadius: 0),
+                ],
               ),
               child: const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.copy, size: 16, color: Colors.white),
+                  Icon(Icons.copy, size: 15, color: Colors.black),
                   SizedBox(width: 8),
                   Flexible(
                     child: Text(
                       'Duplikat data transaksi yang lalu',
                       style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.white,
-                        fontWeight: FontWeight.w500,
+                        fontFamily: 'Plus Jakarta Sans',
+                        fontSize: 12,
+                        color: Colors.black,
+                        fontWeight: FontWeight.w700,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   SizedBox(width: 4),
-                  Icon(Icons.chevron_right, size: 16, color: Colors.white),
+                  Icon(Icons.chevron_right, size: 16, color: Colors.black),
                 ],
               ),
             ),
@@ -710,9 +756,11 @@ class _TransactionEntryScreenState extends ConsumerState<TransactionEntryScreen>
             },
       child: Material(
         color: Colors.white,
-        elevation: 16,
-        shadowColor: Colors.black.withValues(alpha: 0.18),
-        borderRadius: radius,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          side: const BorderSide(color: Colors.black, width: 2.5),
+          borderRadius: radius,
+        ),
         clipBehavior: Clip.antiAlias,
         child: _showInlineSuccess
             ? _buildInlineSuccess()
@@ -743,7 +791,7 @@ class _TransactionEntryScreenState extends ConsumerState<TransactionEntryScreen>
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.grey.shade300,
+                color: Colors.black,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -809,10 +857,16 @@ class _TransactionEntryScreenState extends ConsumerState<TransactionEntryScreen>
                                 : Colors.indigo.shade50,
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: selected
-                                  ? Colors.indigo
-                                  : Colors.indigo.shade100,
+                              color: Colors.black,
+                              width: 1.8,
                             ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black,
+                                offset: selected ? const Offset(0, 2) : const Offset(0, 1),
+                                blurRadius: 0,
+                              ),
+                            ],
                           ),
                           child: Row(
                             children: [
@@ -827,8 +881,9 @@ class _TransactionEntryScreenState extends ConsumerState<TransactionEntryScreen>
                               Text(
                                 goal.name,
                                 style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
+                                  fontFamily: 'Plus Jakarta Sans',
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w800,
                                   color: selected
                                       ? Colors.white
                                       : Colors.indigo.shade400,
@@ -854,8 +909,12 @@ class _TransactionEntryScreenState extends ConsumerState<TransactionEntryScreen>
                   vertical: 14,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade50,
+                  color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.black, width: 2.0),
+                  boxShadow: const [
+                    BoxShadow(color: Colors.black, offset: Offset(0, 2.5), blurRadius: 0),
+                  ],
                 ),
                 child: Row(
                   children: [
@@ -863,13 +922,14 @@ class _TransactionEntryScreenState extends ConsumerState<TransactionEntryScreen>
                       width: 36,
                       height: 36,
                       decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.2),
+                        color: const Color(0xFFCCFF00),
                         borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.black, width: 1.5),
                       ),
                       child: const Icon(
                         Icons.restaurant,
                         size: 18,
-                        color: AppColors.primaryDark,
+                        color: Colors.black,
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -877,12 +937,14 @@ class _TransactionEntryScreenState extends ConsumerState<TransactionEntryScreen>
                       child: Text(
                         _category,
                         style: const TextStyle(
+                          fontFamily: 'Plus Jakarta Sans',
                           fontSize: 14,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.black,
                         ),
                       ),
                     ),
-                    Icon(Icons.expand_more, color: Colors.grey.shade400),
+                    const Icon(Icons.expand_more, color: Colors.black),
                   ],
                 ),
               ),
@@ -896,25 +958,23 @@ class _TransactionEntryScreenState extends ConsumerState<TransactionEntryScreen>
             minLines: 3,
             maxLines: 5,
             textInputAction: TextInputAction.newline,
-            cursorColor: AppColors.primaryDark,
+            cursorColor: Colors.black,
             cursorWidth: 2.5,
             cursorRadius: const Radius.circular(2),
             onTap: _scrollSheetToNotes,
             decoration: InputDecoration(
-              label: Row(
+              label: const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.notes, size: 15, color: Colors.grey.shade500),
-                  const SizedBox(width: 6),
-                  const Text('Catatan'),
+                  Icon(Icons.notes, size: 15, color: Colors.black),
+                  SizedBox(width: 6),
+                  Text('Catatan', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
                 ],
               ),
               hintText: 'Tambahkan catatan di sini...',
-              hintStyle: TextStyle(fontSize: 13, color: Colors.grey.shade400),
+              hintStyle: TextStyle(fontSize: 13, color: Colors.grey.shade500),
               filled: true,
-              fillColor: _notesFocusNode.hasFocus
-                  ? AppColors.primaryDark.withValues(alpha: 0.04)
-                  : Colors.grey.shade50,
+              fillColor: const Color(0xFFF9FAFB),
               alignLabelWithHint: true,
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
@@ -922,17 +982,23 @@ class _TransactionEntryScreenState extends ConsumerState<TransactionEntryScreen>
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide(color: Colors.grey.shade100),
+                borderSide: const BorderSide(color: Colors.black, width: 1.8),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
                 borderSide: const BorderSide(
-                  color: AppColors.primaryDark,
-                  width: 1.4,
+                  color: Colors.black,
+                  width: 2.2,
                 ),
               ),
             ),
-            style: const TextStyle(fontSize: 14, height: 1.35),
+            style: const TextStyle(
+              fontFamily: 'Plus Jakarta Sans',
+              fontSize: 14,
+              height: 1.35,
+              color: Colors.black,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           const SizedBox(height: 20),
           Column(
@@ -1066,10 +1132,11 @@ class _TransactionEntryScreenState extends ConsumerState<TransactionEntryScreen>
       padding: const EdgeInsets.only(bottom: 6),
       child: Text(
         label,
-        style: TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.w800,
-          color: Colors.grey.shade500,
+        style: const TextStyle(
+          fontFamily: 'Plus Jakarta Sans',
+          fontSize: 10.5,
+          fontWeight: FontWeight.w900,
+          color: Colors.black,
           letterSpacing: 0.5,
         ),
       ),
@@ -1085,25 +1152,37 @@ class _TransactionEntryScreenState extends ConsumerState<TransactionEntryScreen>
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? Colors.black : Colors.grey.shade100,
+          color: selected ? Colors.black : Colors.white,
           borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.black, width: 1.8),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black,
+              offset: selected ? const Offset(0, 2) : const Offset(0, 1),
+              blurRadius: 0,
+            ),
+          ],
         ),
         child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              _getWalletIcon(wallet),
-              size: 16,
-              color: selected ? Colors.white : Colors.grey.shade600,
+            InstitutionLogoWidget(
+              institutionId: wallet.institutionId,
+              walletName: wallet.name,
+              walletType: wallet.type,
+              size: 20,
+              showBorder: false,
             ),
             const SizedBox(width: 6),
             Text(
               wallet.name,
               style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: selected ? Colors.white : Colors.grey.shade600,
+                fontFamily: 'Plus Jakarta Sans',
+                fontSize: 12.5,
+                fontWeight: FontWeight.w800,
+                color: selected ? Colors.white : Colors.black,
               ),
             ),
           ],
@@ -1135,17 +1214,6 @@ class _TransactionEntryScreenState extends ConsumerState<TransactionEntryScreen>
         ],
       ),
     );
-  }
-
-  IconData _getWalletIcon(WalletModel wallet) {
-    final wType = wallet.type.toLowerCase();
-    if (wType == 'bank') return Icons.account_balance;
-    if (wType == 'e-wallet') return Icons.account_balance_wallet;
-    if (wType == 'cash') return Icons.attach_money;
-    if (wType == 'stock' || wType == 'crypto' || wType == 'mutual fund') {
-      return Icons.show_chart;
-    }
-    return Icons.account_balance_wallet;
   }
 
   void _showDatePicker() async {

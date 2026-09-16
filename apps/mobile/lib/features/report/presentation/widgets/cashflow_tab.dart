@@ -3,9 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/providers/mock_providers.dart';
 import '../../../../core/models/transaction_model.dart';
+import '../../../../core/theme/neo_brutalism_decorations.dart';
 import '../../../../shared/widgets/period_selector_widget.dart';
 import '../../../../shared/widgets/heatmap_calendar.dart';
 
@@ -51,7 +51,6 @@ class _CashflowTabState extends ConsumerState<CashflowTab> {
   @override
   Widget build(BuildContext context) {
     final transactions = ref.watch(transactionsProvider);
-    final textTheme = Theme.of(context).textTheme;
 
     // Filter transactions in range
     final filteredTxs = transactions.where((tx) {
@@ -116,59 +115,113 @@ class _CashflowTabState extends ConsumerState<CashflowTab> {
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-              border: Border.all(color: Colors.grey.shade100),
-              boxShadow: [
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.black, width: 2.0),
+              boxShadow: const [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.02),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                )
+                  color: Colors.black,
+                  offset: Offset(0, 3),
+                  blurRadius: 0,
+                ),
               ],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Ikhtisar Arus Kas',
-                  style: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 16),
-                _buildSummaryItem('Total Pemasukan', currencyFormat.format(periodIncome), AppColors.success),
-                const SizedBox(height: 12),
-                _buildSummaryItem('Total Pengeluaran', currencyFormat.format(periodExpense), AppColors.error),
-                const Divider(height: 24),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'Arus Kas Bersih (Net)',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey.shade600),
-                    ),
-                    Text(
-                      '${isSurplus ? '+' : ''}${currencyFormat.format(netCashflow)}',
+                    const Text(
+                      'Ikhtisar Arus Kas',
                       style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: isSurplus ? AppColors.success : AppColors.error,
+                        fontFamily: 'Plus Jakarta Sans',
+                        fontWeight: FontWeight.w800,
+                        fontSize: 15,
+                        color: Colors.black,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: isSurplus ? NeoBrutalism.lime : const Color(0xFFFFEBEE),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.black, width: 1.5),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Colors.black,
+                            offset: Offset(0, 1.5),
+                            blurRadius: 0,
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        isSurplus ? 'Surplus' : 'Defisit',
+                        style: const TextStyle(
+                          fontFamily: 'Plus Jakarta Sans',
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.black,
+                        ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 16),
+                _buildSummaryItem('Total Pemasukan', currencyFormat.format(periodIncome), NeoBrutalism.teal),
+                const SizedBox(height: 12),
+                _buildSummaryItem('Total Pengeluaran', currencyFormat.format(periodExpense), AppColors.error),
+                const Divider(height: 24, thickness: 1.5, color: Colors.black12),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'Saving Rate',
-                      style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                    const Text(
+                      'Arus Kas Bersih (Net)',
+                      style: TextStyle(
+                        fontFamily: 'Plus Jakarta Sans',
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF4B5563),
+                      ),
                     ),
                     Text(
-                      '${savingRate.toStringAsFixed(1)}%',
+                      '${isSurplus ? '+' : ''}${currencyFormat.format(netCashflow)}',
                       style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                        color: savingRate >= 20 ? AppColors.success : (savingRate > 0 ? AppColors.warning : AppColors.error),
+                        fontFamily: 'Plus Jakarta Sans',
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
+                        color: isSurplus ? NeoBrutalism.teal : AppColors.error,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Saving Rate',
+                      style: TextStyle(
+                        fontFamily: 'Plus Jakarta Sans',
+                        fontSize: 12,
+                        color: Color(0xFF6B7280),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: savingRate >= 20 ? NeoBrutalism.lime : Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: Colors.black, width: 1.2),
+                      ),
+                      child: Text(
+                        '${savingRate.toStringAsFixed(1)}%',
+                        style: const TextStyle(
+                          fontFamily: 'Plus Jakarta Sans',
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.black,
+                        ),
                       ),
                     ),
                   ],
@@ -183,7 +236,15 @@ class _CashflowTabState extends ConsumerState<CashflowTab> {
           const SizedBox(height: 20),
 
           // Top Spender Section
-          Text('Top Pengeluaran Kategori', style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+          const Text(
+            'Top Pengeluaran Kategori',
+            style: TextStyle(
+              fontFamily: 'Plus Jakarta Sans',
+              fontWeight: FontWeight.w800,
+              fontSize: 16,
+              color: Colors.black,
+            ),
+          ),
           const SizedBox(height: 12),
           _buildTopSpenders(topCategories, periodExpense),
           const SizedBox(height: 20),
@@ -194,24 +255,36 @@ class _CashflowTabState extends ConsumerState<CashflowTab> {
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-              border: Border.all(color: Colors.grey.shade100),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.black, width: 2.0),
+              boxShadow: const [
+                BoxShadow(
+                  color: Colors.black,
+                  offset: Offset(0, 3),
+                  blurRadius: 0,
+                ),
+              ],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   _periodType == PeriodType.day ? 'Rata-rata per Jam' : 'Rata-rata Harian',
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontFamily: 'Plus Jakarta Sans',
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.black,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 _buildSummaryRow(
                   _periodType == PeriodType.day ? 'Pemasukan / Jam' : 'Pemasukan / Hari',
                   currencyFormat.format(_periodType == PeriodType.day ? avgIncome / 24 : avgIncome),
                   icon: Icons.arrow_downward,
-                  iconColor: AppColors.success,
+                  iconColor: NeoBrutalism.teal,
                 ),
-                Divider(height: 24, color: Colors.grey.shade100),
+                const Divider(height: 24, thickness: 1.5, color: Colors.black12),
                 _buildSummaryRow(
                   _periodType == PeriodType.day ? 'Pengeluaran / Jam' : 'Pengeluaran / Hari',
                   currencyFormat.format(_periodType == PeriodType.day ? avgExpense / 24 : avgExpense),
@@ -231,8 +304,24 @@ class _CashflowTabState extends ConsumerState<CashflowTab> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-        Text(value, style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: color)),
+        Text(
+          label,
+          style: const TextStyle(
+            fontFamily: 'Plus Jakarta Sans',
+            fontSize: 12,
+            color: Color(0xFF6B7280),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            fontFamily: 'Plus Jakarta Sans',
+            fontSize: 14,
+            fontWeight: FontWeight.w800,
+            color: color,
+          ),
+        ),
       ],
     );
   }
@@ -243,12 +332,36 @@ class _CashflowTabState extends ConsumerState<CashflowTab> {
       children: [
         Row(
           children: [
-            Icon(icon, size: 16, color: iconColor),
-            const SizedBox(width: 8),
-            Text(label, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: iconColor.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: Colors.black, width: 1.2),
+              ),
+              child: Icon(icon, size: 14, color: Colors.black),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              label,
+              style: const TextStyle(
+                fontFamily: 'Plus Jakarta Sans',
+                fontSize: 12,
+                color: Color(0xFF6B7280),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ],
         ),
-        Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+        Text(
+          value,
+          style: const TextStyle(
+            fontFamily: 'Plus Jakarta Sans',
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
+            color: Colors.black,
+          ),
+        ),
       ],
     );
   }
@@ -296,7 +409,7 @@ class _CashflowTabState extends ConsumerState<CashflowTab> {
           barRods: [
             BarChartRodData(
               toY: net,
-              color: isPositive ? const Color(0xFF386B11) : const Color(0xFF8CE824),
+              color: isPositive ? NeoBrutalism.teal : NeoBrutalism.lime,
               width: barWidth,
               borderRadius: isPositive
                   ? const BorderRadius.only(
@@ -318,22 +431,27 @@ class _CashflowTabState extends ConsumerState<CashflowTab> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        border: Border.all(color: Colors.grey.shade100),
-        boxShadow: [
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.black, width: 2.0),
+        boxShadow: const [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          )
+            color: Colors.black,
+            offset: Offset(0, 3),
+            blurRadius: 0,
+          ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Grafik Cashflow Harian',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+            'Grafik Arus Kas Harian',
+            style: TextStyle(
+              fontFamily: 'Plus Jakarta Sans',
+              fontWeight: FontWeight.w800,
+              fontSize: 14,
+              color: Colors.black,
+            ),
           ),
           const SizedBox(height: 16),
           Expanded(
@@ -346,7 +464,7 @@ class _CashflowTabState extends ConsumerState<CashflowTab> {
                   drawVerticalLine: false,
                   getDrawingHorizontalLine: (value) {
                     if (value == 0) {
-                      return FlLine(color: Colors.grey.shade300, strokeWidth: 1.5);
+                      return FlLine(color: Colors.grey.shade400, strokeWidth: 1.5);
                     }
                     return FlLine(color: Colors.grey.shade100, strokeWidth: 1);
                   },
@@ -362,7 +480,12 @@ class _CashflowTabState extends ConsumerState<CashflowTab> {
                         if (value.abs() < 0.1) return const SizedBox.shrink();
                         return Text(
                           '${value >= 0 ? '+' : ''}${value.toStringAsFixed(1)}jt',
-                          style: TextStyle(fontSize: 8, color: Colors.grey.shade400, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            fontFamily: 'Plus Jakarta Sans',
+                            fontSize: 9,
+                            color: Colors.grey.shade600,
+                            fontWeight: FontWeight.w700,
+                          ),
                         );
                       },
                     ),
@@ -401,7 +524,12 @@ class _CashflowTabState extends ConsumerState<CashflowTab> {
                           padding: const EdgeInsets.only(top: 8.0),
                           child: Text(
                             label,
-                            style: TextStyle(fontSize: 9, color: Colors.grey.shade400, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              fontFamily: 'Plus Jakarta Sans',
+                              fontSize: 9,
+                              color: Colors.grey.shade600,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         );
                       },
@@ -426,13 +554,25 @@ class _CashflowTabState extends ConsumerState<CashflowTab> {
         padding: const EdgeInsets.symmetric(vertical: 24),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-          border: Border.all(color: Colors.grey.shade100),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.black, width: 2.0),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black,
+              offset: Offset(0, 3),
+              blurRadius: 0,
+            ),
+          ],
         ),
         child: const Center(
           child: Text(
             'Tidak ada pengeluaran di periode ini',
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+            style: TextStyle(
+              fontFamily: 'Plus Jakarta Sans',
+              color: Color(0xFF6B7280),
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+            ),
           ),
         ),
       );
@@ -442,14 +582,21 @@ class _CashflowTabState extends ConsumerState<CashflowTab> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        border: Border.all(color: Colors.grey.shade100),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.black, width: 2.0),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black,
+            offset: Offset(0, 3),
+            blurRadius: 0,
+          ),
+        ],
       ),
       child: ListView.separated(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
         itemCount: topCategories.length,
-        separatorBuilder: (context, index) => Divider(height: 1, color: Colors.grey.shade100),
+        separatorBuilder: (context, index) => const Divider(height: 1, color: Colors.black12, thickness: 1),
         itemBuilder: (context, index) {
           final cat = topCategories[index];
           final amount = cat.value;
@@ -458,37 +605,73 @@ class _CashflowTabState extends ConsumerState<CashflowTab> {
           final catIcon = _getCategoryIcon(cat.key);
 
           return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8.0),
+            padding: const EdgeInsets.symmetric(vertical: 10.0),
             child: Column(
               children: [
                 Row(
                   children: [
-                    CircleAvatar(
-                      radius: 16,
-                      backgroundColor: catColor.withValues(alpha: 0.1),
-                      child: Icon(catIcon, color: catColor, size: 14),
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: catColor.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.black, width: 1.5),
+                      ),
+                      child: Icon(catIcon, color: Colors.black, size: 16),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: Text(cat.key, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                      child: Text(
+                        cat.key,
+                        style: const TextStyle(
+                          fontFamily: 'Plus Jakarta Sans',
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.black,
+                        ),
+                      ),
                     ),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Text(currencyFormat.format(amount), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-                        Text('${(pct * 100).toStringAsFixed(0)}%', style: const TextStyle(fontSize: 10, color: AppColors.textSecondary)),
+                        Text(
+                          currencyFormat.format(amount),
+                          style: const TextStyle(
+                            fontFamily: 'Plus Jakarta Sans',
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.black,
+                          ),
+                        ),
+                        Text(
+                          '${(pct * 100).toStringAsFixed(0)}%',
+                          style: const TextStyle(
+                            fontFamily: 'Plus Jakarta Sans',
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF6B7280),
+                          ),
+                        ),
                       ],
                     ),
                   ],
                 ),
                 const SizedBox(height: 8),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    value: pct,
-                    backgroundColor: Colors.grey.shade100,
-                    valueColor: AlwaysStoppedAnimation<Color>(catColor),
-                    minHeight: 4,
+                Container(
+                  height: 6,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: Colors.black, width: 1.0),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(3),
+                    child: LinearProgressIndicator(
+                      value: pct,
+                      backgroundColor: Colors.grey.shade100,
+                      valueColor: AlwaysStoppedAnimation<Color>(catColor),
+                      minHeight: 6,
+                    ),
                   ),
                 ),
               ],

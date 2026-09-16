@@ -28,11 +28,15 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/
+    - assets/images/avatars/
     - assets/images/google_logo.png
     - assets/icons/
+    - assets/icons/institutions/
 
 flutter_launcher_icons:
   android: "ic_launcher"
   ios: true
   image_path: "assets/images/ic_launcher.png"
   min_sdk_android: 21
+  adaptive_icon_background: "#9adc09"
+  adaptive_icon_foreground: "assets/images/ic_launcher_foreground.png"

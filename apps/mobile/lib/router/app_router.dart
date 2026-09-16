@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../shared/widgets/placeholder_screen.dart';
 import '../shared/widgets/app_bottom_nav.dart';
 import '../features/auth/presentation/screens/auth_login_screen.dart';
 import '../features/auth/presentation/screens/auth_register_screen.dart';
@@ -13,26 +12,35 @@ import '../features/home/presentation/screens/home_screen.dart';
 import '../features/wallet/presentation/screens/wallet_screen.dart';
 import '../features/wallet/presentation/screens/wallet_detail_screen.dart';
 import '../features/wallet/presentation/screens/add_wallet_institution_screen.dart';
+import '../features/wallet/presentation/screens/manual_wallet_entry_screen.dart';
 import '../features/budget/presentation/screens/budget_screen.dart';
 import '../features/consult/presentation/screens/consult_list_screen.dart';
 import '../features/consult/presentation/screens/consult_detail_screen.dart';
-import '../features/consult/presentation/screens/booking_service_screen.dart';
-import '../features/consult/presentation/screens/booking_time_screen.dart';
+import '../features/consult/presentation/screens/booking_flow_screen.dart';
 import '../features/goals/presentation/screens/add_edit_goal_screen.dart';
 import '../features/goals/presentation/screens/goal_detail_screen.dart';
 import '../features/budget/presentation/screens/add_edit_budget_screen.dart';
 import '../features/bills/presentation/screens/add_edit_bill_screen.dart';
-import '../features/consult/presentation/screens/booking_pre_consultation_screen.dart';
 import '../features/consult/presentation/screens/booking_payment_screen.dart';
 import '../features/transaction/presentation/screens/transaction_entry_screen.dart';
 import '../features/transaction/presentation/screens/transaction_history_screen.dart';
 import '../features/transaction/presentation/screens/ai_draft_review_screen.dart';
 import '../features/profile/presentation/screens/profile_screen.dart';
+import '../features/profile/presentation/screens/edit_profile_screen.dart';
+import '../features/profile/presentation/screens/security_settings_screen.dart';
+import '../features/profile/presentation/screens/notification_settings_screen.dart';
+import '../features/profile/presentation/screens/help_support_screen.dart';
 import '../features/report/presentation/screens/report_dashboard_screen.dart';
 import '../features/session/presentation/screens/branch_session_screen.dart';
 import '../features/session/presentation/screens/ai_chat_screen.dart';
 import '../features/consult/presentation/screens/consult_chat_screen.dart';
 import '../features/transaction/presentation/screens/transaction_success_screen.dart';
+import '../features/match_expert/presentation/screens/match_expert_screen.dart';
+import '../features/notification/presentation/screens/notification_screen.dart';
+import '../features/services/presentation/screens/financial_health_screen.dart';
+import '../features/services/presentation/screens/voucher_screen.dart';
+import '../features/export/presentation/screens/export_data_screen.dart';
+import '../core/models/transaction_model.dart';
 
 // Keys for each navigator branch
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -46,6 +54,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
     navigatorKey: _rootNavigatorKey,
     initialLocation: '/login',
     routes: [
+      GoRoute(
+        path: '/',
+        redirect: (context, state) => '/home',
+      ),
       // --- Auth & Onboarding (outside shell) ---
       GoRoute(
         path: '/login',
@@ -97,7 +109,9 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/consult',
-                builder: (context, state) => const ConsultListScreen(),
+                builder: (context, state) => ConsultListScreen(
+                  initialCategory: state.uri.queryParameters['category'],
+                ),
               ),
             ],
           ),
@@ -176,6 +190,18 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const AddWalletInstitutionScreen(),
       ),
       GoRoute(
+        path: '/wallet/manual',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          return ManualWalletEntryScreen(
+            institutionId: extra?['institutionId'] as String?,
+            institutionName: extra?['institutionName'] as String? ?? '',
+            institutionType: extra?['institutionType'] as String? ?? 'Bank',
+          );
+        },
+      ),
+      GoRoute(
         path: '/wallet/:id',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => WalletDetailScreen(walletId: state.pathParameters['id']!),
@@ -183,17 +209,26 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/booking/:consultantId/service',
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => BookingServiceScreen(consultantId: state.pathParameters['consultantId']!),
+        builder: (context, state) => BookingFlowScreen(
+          consultantId: state.pathParameters['consultantId']!,
+          initialStep: 0,
+        ),
       ),
       GoRoute(
         path: '/booking/:consultantId/time',
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => BookingTimeScreen(consultantId: state.pathParameters['consultantId']!),
+        builder: (context, state) => BookingFlowScreen(
+          consultantId: state.pathParameters['consultantId']!,
+          initialStep: 1,
+        ),
       ),
       GoRoute(
         path: '/booking/:consultantId/pre-consult',
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => BookingPreConsultationScreen(consultantId: state.pathParameters['consultantId']!),
+        builder: (context, state) => BookingFlowScreen(
+          consultantId: state.pathParameters['consultantId']!,
+          initialStep: 2,
+        ),
       ),
       GoRoute(
         path: '/booking/:consultantId/payment',
@@ -218,7 +253,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) {
           final extra = state.extra as Map<String, dynamic>?;
-          return TransactionSuccessScreen(returnTo: extra?['returnTo'] as String?);
+          return TransactionSuccessScreen(
+            returnTo: extra?['returnTo'] as String?,
+            transaction: extra?['transaction'] as TransactionModel?,
+          );
         },
       ),
       GoRoute(
@@ -239,7 +277,17 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/export',
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => const PlaceholderScreen(title: 'Data Export'),
+        builder: (context, state) => const ExportDataScreen(),
+      ),
+      GoRoute(
+        path: '/score',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const FinancialHealthScreen(),
+      ),
+      GoRoute(
+        path: '/vouchers',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const VoucherScreen(),
       ),
       GoRoute(
         path: '/session',
@@ -250,12 +298,44 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: '/profile',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const ProfileScreen(),
+        routes: [
+          GoRoute(
+            path: 'edit',
+            parentNavigatorKey: _rootNavigatorKey,
+            builder: (context, state) => const EditProfileScreen(),
+          ),
+          GoRoute(
+            path: 'security',
+            parentNavigatorKey: _rootNavigatorKey,
+            builder: (context, state) => const SecuritySettingsScreen(),
+          ),
+          GoRoute(
+            path: 'notifications',
+            parentNavigatorKey: _rootNavigatorKey,
+            builder: (context, state) => const NotificationSettingsScreen(),
+          ),
+          GoRoute(
+            path: 'support',
+            parentNavigatorKey: _rootNavigatorKey,
+            builder: (context, state) => const HelpSupportScreen(),
+          ),
+        ],
       ),
 
       GoRoute(
         path: '/ai-chat',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const AiChatScreen(),
+      ),
+      GoRoute(
+        path: '/match-expert',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const MatchExpertScreen(),
+      ),
+      GoRoute(
+        path: '/notifications',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const NotificationScreen(),
       ),
     ],
   );

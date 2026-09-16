@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/neo_brutalism_decorations.dart';
 
 class StickyBookingBottomBar extends StatelessWidget {
   final double price;
@@ -16,77 +16,87 @@ class StickyBookingBottomBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currencyFormat = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
-    
+    final currencyFormat = NumberFormat.currency(
+      locale: 'id_ID',
+      symbol: 'Rp ',
+      decimalDigits: 0,
+    );
+    final isEnabled = onTap != null;
+
     return Container(
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, -4),
-          ),
-        ],
-        border: const Border(
-          top: BorderSide(color: AppColors.divider, width: 1),
+        border: Border(
+          top: BorderSide(color: Colors.black, width: 2.0),
         ),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: SafeArea(
+        top: false,
         child: Row(
           children: [
-            // Price info
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Total Harga',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textSecondary,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    currencyFormat.format(price),
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            
-            // Action Button
-            SizedBox(
-              width: 170,
-              height: 48,
-              child: ElevatedButton(
-                onPressed: onTap,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: onTap == null ? Colors.grey.shade300 : AppColors.primary,
-                  foregroundColor: onTap == null ? Colors.grey.shade500 : AppColors.textPrimary,
-                  elevation: 0,
-                  shadowColor: Colors.transparent,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(
-                      color: onTap == null ? Colors.grey.shade300 : AppColors.primaryDark,
-                      width: 0.5,
-                    ),
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Total Harga',
+                  style: TextStyle(
+                    fontFamily: 'Plus Jakarta Sans',
+                    fontSize: 11,
+                    color: NeoBrutalism.textMuted,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-                child: Text(
-                  buttonText,
+                const SizedBox(height: 2),
+                Text(
+                  price <= 0 ? '-' : currencyFormat.format(price),
                   style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
+                    fontFamily: 'Plus Jakarta Sans',
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.black,
+                  ),
+                ),
+              ],
+            ),
+            const Spacer(),
+            InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(10),
+              child: Container(
+                height: 44,
+                constraints: const BoxConstraints(minWidth: 130, maxWidth: 170),
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+                decoration: BoxDecoration(
+                  color: isEnabled ? NeoBrutalism.lime : const Color(0xFFE5E7EB),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: isEnabled ? Colors.black : const Color(0xFFE5E7EB),
+                    width: isEnabled ? 2.0 : 1.5,
+                  ),
+                  boxShadow: isEnabled
+                      ? const [
+                          BoxShadow(
+                            color: Colors.black,
+                            offset: Offset(0, 2.5),
+                            blurRadius: 0,
+                          ),
+                        ]
+                      : null,
+                ),
+                alignment: Alignment.center,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    buttonText,
+                    maxLines: 1,
+                    style: TextStyle(
+                      fontFamily: 'Plus Jakarta Sans',
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w900,
+                      color: isEnabled ? NeoBrutalism.dark : const Color(0xFF9CA3AF),
+                    ),
                   ),
                 ),
               ),
