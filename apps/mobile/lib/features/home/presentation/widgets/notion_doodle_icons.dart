@@ -329,6 +329,58 @@ class NotionDoodleIcons {
 </svg>
 ''';
 
+  // ── 24. Voice AI ──
+  static const String voiceAi = '''
+<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="18" y="10" width="12" height="19" rx="6" stroke="black" stroke-width="2.2" fill="white"/>
+  <line x1="21" y1="15" x2="27" y2="15" stroke="black" stroke-width="1.8" stroke-linecap="round"/>
+  <line x1="21" y1="19" x2="27" y2="19" stroke="black" stroke-width="1.8" stroke-linecap="round"/>
+  <line x1="21" y1="23" x2="27" y2="23" stroke="black" stroke-width="1.8" stroke-linecap="round"/>
+  <path d="M12 21C12 28.5 17 32.5 24 32.5C31 32.5 36 28.5 36 21" stroke="black" stroke-width="2.2" stroke-linecap="round"/>
+  <path d="M24 32.5V39" stroke="black" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M16 39H32" stroke="black" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M9 18C7.5 19.5 7.5 22.5 9 24" stroke="black" stroke-width="1.8" stroke-linecap="round"/>
+  <path d="M39 18C40.5 19.5 40.5 22.5 39 24" stroke="black" stroke-width="1.8" stroke-linecap="round"/>
+  <circle cx="36" cy="11" r="2.5" fill="#CCFF00" stroke="black" stroke-width="1.2"/>
+</svg>
+''';
+
+  // ── 25. OCR Scan ──
+  static const String ocrScan = '''
+<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M9 16V10H15" stroke="black" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M33 10H39V16" stroke="black" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M9 32V38H15" stroke="black" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M33 38H39V32" stroke="black" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M16 13H32V35L29 33.5L26 35L23 33.5L20 35L16 33V13Z" stroke="black" stroke-width="2" fill="white" stroke-linejoin="round"/>
+  <line x1="20" y1="18" x2="28" y2="18" stroke="black" stroke-width="1.8" stroke-linecap="round"/>
+  <line x1="20" y1="22" x2="26" y2="22" stroke="black" stroke-width="1.8" stroke-linecap="round"/>
+  <line x1="20" y1="26" x2="28" y2="26" stroke="black" stroke-width="1.8" stroke-linecap="round"/>
+  <line x1="12" y1="24" x2="36" y2="24" stroke="#CCFF00" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="12" y1="24" x2="36" y2="24" stroke="black" stroke-width="1.5" stroke-dasharray="2 3" stroke-linecap="round"/>
+</svg>
+''';
+
+  // ── 26. Manual Add ──
+  static const String manualAdd = '''
+<svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="10" y="9" width="22" height="30" rx="3" stroke="black" stroke-width="2.2" fill="white"/>
+  <line x1="15" y1="16" x2="25" y2="16" stroke="black" stroke-width="1.8" stroke-linecap="round"/>
+  <line x1="15" y1="21" x2="23" y2="21" stroke="black" stroke-width="1.8" stroke-linecap="round"/>
+  <line x1="15" y1="26" x2="26" y2="26" stroke="black" stroke-width="1.8" stroke-linecap="round"/>
+  <circle cx="16" cy="31" r="1.5" fill="#CCFF00" stroke="black" stroke-width="1"/>
+  <g transform="rotate(32 30 26)">
+    <rect x="25" y="12" width="7" height="20" rx="1.5" stroke="black" stroke-width="1.8" fill="white"/>
+    <path d="M25 32L28.5 37L32 32H25Z" stroke="black" stroke-width="1.8" fill="black" stroke-linejoin="round"/>
+    <line x1="28.5" y1="12" x2="28.5" y2="32" stroke="black" stroke-width="1.2"/>
+    <rect x="25" y="12" width="7" height="4" fill="#CCFF00" stroke="black" stroke-width="1.5"/>
+  </g>
+</svg>
+''';
+
+  // Alias for quick action
+  static const String aiChat = aiClarafin;
+
   static String getSvg(String key) {
     switch (key) {
       case 'individu':
@@ -338,7 +390,14 @@ class NotionDoodleIcons {
       case 'keluarga':
         return keluarga;
       case 'ai_clarafin':
+      case 'ai_chat':
         return aiClarafin;
+      case 'voice_ai':
+        return voiceAi;
+      case 'ocr_scan':
+        return ocrScan;
+      case 'manual_add':
+        return manualAdd;
       case 'umkm':
         return umkm;
       case 'score':

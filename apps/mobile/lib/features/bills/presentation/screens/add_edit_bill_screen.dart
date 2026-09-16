@@ -2,10 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_spacing.dart';
 import '../../../budget/presentation/providers/finance_providers.dart';
+import '../widgets/bill_form_header.dart';
+import '../widgets/bill_form_inputs.dart';
+import '../widgets/bill_icon_selector.dart';
+import '../widgets/bill_submit_button.dart';
+import '../widgets/bill_switches_card.dart';
 
+/// Screen for creating or editing recurring bills.
+/// Fully adheres to Clarafin Neo-Brutalism design system.
 class AddEditBillScreen extends ConsumerStatefulWidget {
   final String? billId;
 
@@ -17,18 +22,13 @@ class AddEditBillScreen extends ConsumerStatefulWidget {
 
 class _AddEditBillScreenState extends ConsumerState<AddEditBillScreen> {
   final _formKey = GlobalKey<FormState>();
-  late TextEditingController _nameController;
-  late TextEditingController _amountController;
-  
+  late final TextEditingController _nameController;
+  late final TextEditingController _amountController;
+
   DateTime _dueDate = DateTime.now().add(const Duration(days: 7));
   bool _isAutoPay = false;
   bool _isPaid = false;
-  IconData _selectedIcon = Icons.receipt;
-  
-  final List<IconData> _availableIcons = [
-    Icons.receipt, Icons.movie, Icons.graphic_eq, Icons.router, 
-    Icons.water_drop, Icons.bolt, Icons.credit_card, Icons.phone
-  ];
+  IconData _selectedIcon = Icons.receipt_long_rounded;
 
   @override
   void initState() {
@@ -39,11 +39,14 @@ class _AddEditBillScreenState extends ConsumerState<AddEditBillScreen> {
     if (widget.billId != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         final bills = ref.read(billsProvider);
-        final bill = bills.firstWhere((b) => b.id == widget.billId, orElse: () => bills.first);
-        
+        final bill = bills.firstWhere(
+          (b) => b.id == widget.billId,
+          orElse: () => bills.first,
+        );
+
         setState(() {
           _nameController.text = bill.name;
-          _amountController.text = bill.amount.toInt().toString();
+          _amountController.text = _formatAmount(bill.amount);
           if (bill.dueDate != null) _dueDate = bill.dueDate!;
           _isAutoPay = bill.isAutoPay;
           _isPaid = bill.isPaid;
@@ -51,6 +54,17 @@ class _AddEditBillScreenState extends ConsumerState<AddEditBillScreen> {
         });
       });
     }
+  }
+
+  String _formatAmount(double val) {
+    final str = val.toInt().toString();
+    final buffer = StringBuffer();
+    final len = str.length;
+    for (int i = 0; i < len; i++) {
+      if (i > 0 && (len - i) % 3 == 0) buffer.write('.');
+      buffer.write(str[i]);
+    }
+    return buffer.toString();
   }
 
   @override
@@ -61,218 +75,105 @@ class _AddEditBillScreenState extends ConsumerState<AddEditBillScreen> {
   }
 
   void _saveBill() {
-    if (_formKey.currentState!.validate()) {
-      final amount = double.tryParse(_amountController.text) ?? 0;
-      
-      final newBill = BillModel(
-        id: widget.billId ?? DateTime.now().millisecondsSinceEpoch.toString(),
-        name: _nameController.text,
-        amount: amount,
-        dueDate: _dueDate,
-        isAutoPay: _isAutoPay,
-        isPaid: _isPaid,
-        icon: _selectedIcon,
-        iconColor: Colors.white,
-        iconBgColor: Colors.blue.shade600, // Using default color for simplicity
-      );
+    if (!_formKey.currentState!.validate()) return;
 
-      if (widget.billId == null) {
-        ref.read(billsProvider.notifier).addBill(newBill);
-      } else {
-        ref.read(billsProvider.notifier).updateBill(newBill);
-      }
-      
+    final cleanAmount = _amountController.text.replaceAll('.', '');
+    final amount = double.tryParse(cleanAmount) ?? 0;
+
+    final newBill = BillModel(
+      id: widget.billId ?? DateTime.now().millisecondsSinceEpoch.toString(),
+      name: _nameController.text.trim(),
+      amount: amount,
+      dueDate: _dueDate,
+      isAutoPay: _isAutoPay,
+      isPaid: _isPaid,
+      icon: _selectedIcon,
+      iconColor: Colors.white,
+      iconBgColor: Colors.black,
+    );
+
+    if (widget.billId == null) {
+      ref.read(billsProvider.notifier).addBill(newBill);
+    } else {
+      ref.read(billsProvider.notifier).updateBill(newBill);
+    }
+
+    context.pop();
+  }
+
+  void _deleteBill() {
+    if (widget.billId != null) {
+      ref.read(billsProvider.notifier).removeBill(widget.billId!);
       context.pop();
     }
   }
 
-  Future<void> _selectDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
+  Future<void> _selectDueDate() async {
+    final picked = await showDatePicker(
       context: context,
       initialDate: _dueDate,
       firstDate: DateTime(2020),
-      lastDate: DateTime(2030),
+      lastDate: DateTime(2035),
     );
     if (picked != null && picked != _dueDate) {
-      setState(() {
-        _dueDate = picked;
-      });
+      setState(() => _dueDate = picked);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
     final isEditing = widget.billId != null;
+    final topPadding = MediaQuery.of(context).padding.top;
 
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: Text(
-          isEditing ? 'Edit Bill' : 'Add New Bill',
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-        ),
-        centerTitle: true,
-        backgroundColor: Colors.white,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black87),
-        actions: [
-          if (isEditing)
-            IconButton(
-              icon: const Icon(Icons.delete, color: Colors.red),
-              onPressed: () {
-                ref.read(billsProvider.notifier).removeBill(widget.billId!);
-                context.pop();
-              },
+      body: SafeArea(
+        top: false,
+        child: Column(
+          children: [
+            SizedBox(height: topPadding),
+            BillFormHeader(
+              isEditing: isEditing,
+              onDelete: _deleteBill,
             ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.edgeMargin),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Icon Selection
-                Center(
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+                child: Form(
+                  key: _formKey,
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Container(
-                        height: 80,
-                        width: 80,
-                        decoration: BoxDecoration(
-                          color: Colors.blue.shade600,
-                          borderRadius: BorderRadius.circular(24),
-                        ),
-                        child: Icon(_selectedIcon, size: 40, color: Colors.white),
+                      BillIconSelector(
+                        selectedIcon: _selectedIcon,
+                        onIconSelected: (i) => setState(() => _selectedIcon = i),
                       ),
-                      const SizedBox(height: AppSpacing.sm),
-                      SizedBox(
-                        height: 50,
-                        child: ListView.builder(
-                          scrollDirection: Axis.horizontal,
-                          shrinkWrap: true,
-                          itemCount: _availableIcons.length,
-                          itemBuilder: (context, index) {
-                            final icon = _availableIcons[index];
-                            final isSelected = _selectedIcon == icon;
-                            return GestureDetector(
-                              onTap: () => setState(() => _selectedIcon = icon),
-                              child: Container(
-                                margin: const EdgeInsets.symmetric(horizontal: 4),
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: isSelected ? Colors.blue.shade600 : Colors.grey.shade100,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Icon(icon, color: isSelected ? Colors.white : Colors.grey.shade600),
-                              ),
-                            );
-                          },
-                        ),
+                      const SizedBox(height: 20),
+                      BillFormInputs(
+                        nameController: _nameController,
+                        amountController: _amountController,
+                        dueDate: _dueDate,
+                        onSelectDueDate: _selectDueDate,
                       ),
+                      const SizedBox(height: 20),
+                      BillSwitchesCard(
+                        isAutoPay: _isAutoPay,
+                        isPaid: _isPaid,
+                        onAutoPayChanged: (v) => setState(() => _isAutoPay = v),
+                        onPaidChanged: (v) => setState(() => _isPaid = v),
+                      ),
+                      const SizedBox(height: 32),
+                      BillSubmitButton(
+                        isEditing: isEditing,
+                        onPressed: _saveBill,
+                      ),
+                      const SizedBox(height: 24),
                     ],
                   ),
                 ),
-                const SizedBox(height: AppSpacing.xl),
-
-                // Form Fields
-                Text('Bill Name', style: textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold, color: Colors.grey.shade700)),
-                const SizedBox(height: 8),
-                TextFormField(
-                  controller: _nameController,
-                  decoration: InputDecoration(
-                    hintText: 'e.g. Netflix Premium',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
-                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primaryDark)),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  ),
-                  validator: (value) => value == null || value.isEmpty ? 'Please enter a bill name' : null,
-                ),
-                const SizedBox(height: AppSpacing.md),
-
-                Text('Amount (Rp)', style: textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold, color: Colors.grey.shade700)),
-                const SizedBox(height: 8),
-                TextFormField(
-                  controller: _amountController,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    hintText: '186000',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
-                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primaryDark)),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  ),
-                  validator: (value) => value == null || value.isEmpty ? 'Please enter bill amount' : null,
-                ),
-                const SizedBox(height: AppSpacing.md),
-
-                Text('Due Date', style: textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold, color: Colors.grey.shade700)),
-                const SizedBox(height: 8),
-                InkWell(
-                  onTap: () => _selectDate(context),
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey.shade300),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('${_dueDate.day}/${_dueDate.month}/${_dueDate.year}'),
-                        const Icon(Icons.calendar_today, size: 20, color: Colors.grey),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                
-                // Switches
-                SwitchListTile(
-                  title: Text('Auto-pay', style: textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold)),
-                  subtitle: Text('Automatically pay when due', style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
-                  value: _isAutoPay,
-                  activeThumbColor: AppColors.primaryDark,
-                  onChanged: (val) => setState(() => _isAutoPay = val),
-                  contentPadding: EdgeInsets.zero,
-                ),
-                SwitchListTile(
-                  title: Text('Mark as Paid', style: textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold)),
-                  subtitle: Text('This bill has already been paid', style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
-                  value: _isPaid,
-                  activeThumbColor: AppColors.primaryDark,
-                  onChanged: (val) => setState(() => _isPaid = val),
-                  contentPadding: EdgeInsets.zero,
-                ),
-
-                const SizedBox(height: AppSpacing.xxl * 2),
-                
-                SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: ElevatedButton(
-                    onPressed: _saveBill,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      elevation: 0,
-                    ),
-                    child: Text(
-                      isEditing ? 'Save Changes' : 'Create Bill',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.xxl),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );

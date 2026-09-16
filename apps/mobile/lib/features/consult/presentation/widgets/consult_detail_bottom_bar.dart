@@ -21,18 +21,11 @@ class ConsultDetailBottomBar extends StatelessWidget {
     );
 
     return Container(
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: Colors.white,
-        border: const Border(
+        border: Border(
           top: BorderSide(color: Colors.black, width: 2.0),
         ),
-        boxShadow: const [
-          BoxShadow(
-            color: Colors.black12,
-            offset: Offset(0, -2),
-            blurRadius: 6,
-          ),
-        ],
       ),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       child: SafeArea(

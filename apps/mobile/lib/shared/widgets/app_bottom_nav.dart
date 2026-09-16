@@ -17,7 +17,36 @@ class ScaffoldWithNavBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       extendBody: true,
-      body: navigationShell,
+      body: Stack(
+        children: [
+          navigationShell,
+          Positioned(
+            right: 20,
+            bottom: MediaQuery.of(context).padding.bottom + 92,
+            child: GestureDetector(
+              onTap: () => context.push('/session'),
+              behavior: HitTestBehavior.opaque,
+              child: Container(
+                height: 52,
+                width: 52,
+                decoration: BoxDecoration(
+                  color: NeoBrutalism.lime,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: Colors.black, width: 2),
+                  boxShadow: NeoBrutalism.shadow(yOffset: 3),
+                ),
+                child: const Center(
+                  child: Icon(
+                    Icons.calendar_month_rounded,
+                    color: Colors.black,
+                    size: 26,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
       bottomNavigationBar: AppBottomNav(navigationShell: navigationShell),
     );
   }

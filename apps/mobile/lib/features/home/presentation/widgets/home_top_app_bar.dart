@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/theme/neo_brutalism_decorations.dart';
+import '../../../../core/widgets/user_avatar.dart';
+import '../../../profile/presentation/providers/user_profile_provider.dart';
 
-class HomeTopAppBar extends StatelessWidget {
+class HomeTopAppBar extends ConsumerWidget {
   const HomeTopAppBar({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final profile = ref.watch(userProfileProvider);
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -46,7 +50,7 @@ class HomeTopAppBar extends StatelessWidget {
           children: [
             // Notification Bell
             GestureDetector(
-              onTap: () {},
+              onTap: () => context.push('/notifications'),
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [
@@ -93,17 +97,10 @@ class HomeTopAppBar extends StatelessWidget {
                   shape: BoxShape.circle,
                   border: Border.all(color: Colors.black, width: 2),
                 ),
-                child: Container(
-                  width: 34,
-                  height: 34,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.black, width: 1.5),
-                    image: const DecorationImage(
-                      image: NetworkImage('https://i.pravatar.cc/150?img=11'),
-                      fit: BoxFit.cover,
-                    ),
-                  ),
+                child: UserAvatar(
+                  avatarUrl: profile.avatarUrl,
+                  size: 34,
+                  borderWidth: 1.5,
                 ),
               ),
             ),

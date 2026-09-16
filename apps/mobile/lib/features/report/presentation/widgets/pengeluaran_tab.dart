@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/providers/mock_providers.dart';
 import '../../../../core/models/transaction_model.dart';
+import '../../../../core/theme/neo_brutalism_decorations.dart';
 import '../../../../features/budget/presentation/providers/finance_providers.dart';
 import '../../../../shared/widgets/period_selector_widget.dart';
 import '../../../../shared/widgets/interactive_donut_chart.dart';
@@ -62,7 +62,6 @@ class _PengeluaranTabState extends ConsumerState<PengeluaranTab> {
   Widget build(BuildContext context) {
     final transactions = ref.watch(transactionsProvider);
     final budgets = ref.watch(budgetsProvider);
-    final textTheme = Theme.of(context).textTheme;
 
     // Filter transactions in range
     final filteredTxs = transactions.where((tx) {
@@ -159,34 +158,94 @@ class _PengeluaranTabState extends ConsumerState<PengeluaranTab> {
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-              border: Border.all(color: Colors.grey.shade100),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.black, width: 2.0),
+              boxShadow: const [
+                BoxShadow(
+                  color: Colors.black,
+                  offset: Offset(0, 3),
+                  blurRadius: 0,
+                ),
+              ],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Total Pengeluaran',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondary),
-                ),
-                const SizedBox(height: 8),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
+                    const Text(
+                      'Total Pengeluaran',
+                      style: TextStyle(
+                        fontFamily: 'Plus Jakarta Sans',
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF6B7280),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFEBEE),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.black, width: 1.5),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Colors.black,
+                            offset: Offset(0, 1.5),
+                            blurRadius: 0,
+                          ),
+                        ],
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.arrow_upward, size: 14, color: AppColors.error),
+                          SizedBox(width: 4),
+                          Text(
+                            'Pengeluaran',
+                            style: TextStyle(
+                              fontFamily: 'Plus Jakarta Sans',
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.black,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
                     Text(
                       currencyFormat.format(periodExpense),
-                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.error),
+                      style: const TextStyle(
+                        fontFamily: 'Plus Jakarta Sans',
+                        fontSize: 24,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.error,
+                      ),
                     ),
                     if (isExpenseIncreased && previousExpense > 0)
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: AppColors.error.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(6),
+                          color: const Color(0xFFFFF3CD),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.black, width: 1.2),
                         ),
                         child: Text(
                           'Naik ${pctIncrease.toStringAsFixed(0)}% ⚠️',
-                          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.error),
+                          style: const TextStyle(
+                            fontFamily: 'Plus Jakarta Sans',
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.black,
+                          ),
                         ),
                       ),
                   ],
@@ -196,35 +255,79 @@ class _PengeluaranTabState extends ConsumerState<PengeluaranTab> {
           ),
           const SizedBox(height: 20),
 
-          // Interactive Donut Chart (REUSE)
-          Center(
-            child: SizedBox(
-              height: 250,
-              width: double.infinity,
-              child: InteractiveDonutChart(
-                data: chartData,
-                centerTitle: 'Pengeluaran',
-                centerAmount: currencyFormat.format(periodExpense),
-              ),
+          // Interactive Donut Chart in Neo-Brutalism Container
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.black, width: 2.0),
+              boxShadow: const [
+                BoxShadow(
+                  color: Colors.black,
+                  offset: Offset(0, 3),
+                  blurRadius: 0,
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Distribusi Pengeluaran',
+                  style: TextStyle(
+                    fontFamily: 'Plus Jakarta Sans',
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                    color: Colors.black,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 240,
+                  width: double.infinity,
+                  child: InteractiveDonutChart(
+                    data: chartData,
+                    centerTitle: 'Pengeluaran',
+                    centerAmount: currencyFormat.format(periodExpense),
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 24),
 
           // Category Breakdown List with Budget progress indicator integration
           if (periodExpense > 0) ...[
-            Text('Proporsi Kategori & Anggaran', style: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+            const Text(
+              'Proporsi Kategori & Anggaran',
+              style: TextStyle(
+                fontFamily: 'Plus Jakarta Sans',
+                fontWeight: FontWeight.w800,
+                fontSize: 16,
+                color: Colors.black,
+              ),
+            ),
             const SizedBox(height: 12),
             Container(
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-                border: Border.all(color: Colors.grey.shade100),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.black, width: 2.0),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Colors.black,
+                    offset: Offset(0, 3),
+                    blurRadius: 0,
+                  ),
+                ],
               ),
               child: ListView.separated(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: sortedCategories.length,
-                separatorBuilder: (context, index) => Divider(height: 1, color: Colors.grey.shade100),
+                separatorBuilder: (context, index) => const Divider(height: 1, color: Colors.black12, thickness: 1),
                 itemBuilder: (context, index) {
                   final entry = sortedCategories[index];
                   final pct = (entry.value / periodExpense) * 100;
@@ -244,27 +347,45 @@ class _PengeluaranTabState extends ConsumerState<PengeluaranTab> {
                   }
 
                   return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+                    padding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 16.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
                           children: [
-                            CircleAvatar(
-                              radius: 16,
-                              backgroundColor: catColor.withValues(alpha: 0.1),
-                              child: Icon(catIcon, color: catColor, size: 14),
+                            Container(
+                              width: 36,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                color: catColor.withValues(alpha: 0.2),
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.black, width: 1.5),
+                              ),
+                              child: Icon(catIcon, color: Colors.black, size: 16),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(entry.key, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                                  Text(
+                                    entry.key,
+                                    style: const TextStyle(
+                                      fontFamily: 'Plus Jakarta Sans',
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.black,
+                                    ),
+                                  ),
                                   if (matchingBudget != null)
                                     Text(
                                       'Anggaran: ${currencyFormat.format(matchingBudget.totalAmount)}',
-                                      style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
+                                      style: const TextStyle(
+                                        fontFamily: 'Plus Jakarta Sans',
+                                        fontSize: 10,
+                                        color: Color(0xFF6B7280),
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
                                 ],
                               ),
@@ -272,23 +393,46 @@ class _PengeluaranTabState extends ConsumerState<PengeluaranTab> {
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
-                                Text(currencyFormat.format(entry.value), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-                                Text('${pct.toStringAsFixed(0)}%', style: const TextStyle(fontSize: 10, color: AppColors.textSecondary)),
+                                Text(
+                                  currencyFormat.format(entry.value),
+                                  style: const TextStyle(
+                                    fontFamily: 'Plus Jakarta Sans',
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.black,
+                                  ),
+                                ),
+                                Text(
+                                  '${pct.toStringAsFixed(0)}%',
+                                  style: const TextStyle(
+                                    fontFamily: 'Plus Jakarta Sans',
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF6B7280),
+                                  ),
+                                ),
                               ],
                             ),
                           ],
                         ),
                         if (matchingBudget != null) ...[
                           const SizedBox(height: 8),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(4),
-                            child: LinearProgressIndicator(
-                              value: (entry.value / matchingBudget.totalAmount).clamp(0.0, 1.0),
-                              backgroundColor: Colors.grey.shade100,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                (entry.value > matchingBudget.totalAmount) ? AppColors.error : AppColors.warning,
+                          Container(
+                            height: 6,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: Colors.black, width: 1.0),
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(3),
+                              child: LinearProgressIndicator(
+                                value: (entry.value / matchingBudget.totalAmount).clamp(0.0, 1.0),
+                                backgroundColor: Colors.grey.shade100,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  (entry.value > matchingBudget.totalAmount) ? AppColors.error : NeoBrutalism.teal,
+                                ),
+                                minHeight: 6,
                               ),
-                              minHeight: 4,
                             ),
                           ),
                         ],
@@ -302,7 +446,15 @@ class _PengeluaranTabState extends ConsumerState<PengeluaranTab> {
           ],
 
           // Transaction List — Expense
-          Text('Riwayat Pengeluaran', style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+          const Text(
+            'Riwayat Pengeluaran',
+            style: TextStyle(
+              fontFamily: 'Plus Jakarta Sans',
+              fontWeight: FontWeight.w800,
+              fontSize: 16,
+              color: Colors.black,
+            ),
+          ),
           const SizedBox(height: 12),
 
           // Category filter chips
@@ -323,18 +475,28 @@ class _PengeluaranTabState extends ConsumerState<PengeluaranTab> {
                       margin: const EdgeInsets.only(right: 8),
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                       decoration: BoxDecoration(
-                        color: isSelected ? AppColors.primary : Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(AppSpacing.chipRadius),
+                        color: isSelected ? NeoBrutalism.lime : Colors.white,
+                        borderRadius: BorderRadius.circular(10),
                         border: Border.all(
-                          color: isSelected ? AppColors.primaryDark : Colors.grey.shade200,
-                          width: 1,
+                          color: Colors.black,
+                          width: isSelected ? 2.0 : 1.5,
                         ),
+                        boxShadow: isSelected
+                            ? const [
+                                BoxShadow(
+                                  color: Colors.black,
+                                  offset: Offset(0, 2),
+                                  blurRadius: 0,
+                                ),
+                              ]
+                            : null,
                       ),
                       child: Text(
                         cat,
                         style: TextStyle(
-                          color: isSelected ? AppColors.textPrimary : AppColors.textSecondary,
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                          fontFamily: 'Plus Jakarta Sans',
+                          color: Colors.black,
+                          fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
                           fontSize: 12,
                         ),
                       ),
@@ -353,11 +515,26 @@ class _PengeluaranTabState extends ConsumerState<PengeluaranTab> {
               padding: const EdgeInsets.symmetric(vertical: 32),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-                border: Border.all(color: Colors.grey.shade100),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.black, width: 2.0),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Colors.black,
+                    offset: Offset(0, 3),
+                    blurRadius: 0,
+                  ),
+                ],
               ),
               child: const Center(
-                child: Text('Tidak ada riwayat pengeluaran', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                child: Text(
+                  'Tidak ada riwayat pengeluaran',
+                  style: TextStyle(
+                    fontFamily: 'Plus Jakarta Sans',
+                    color: Color(0xFF6B7280),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
+                ),
               ),
             )
           else
@@ -377,38 +554,73 @@ class _PengeluaranTabState extends ConsumerState<PengeluaranTab> {
                       padding: const EdgeInsets.only(top: 8.0, bottom: 8.0),
                       child: Text(
                         dateLabel,
-                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey.shade500),
+                        style: const TextStyle(
+                          fontFamily: 'Plus Jakarta Sans',
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF4B5563),
+                        ),
                       ),
                     ),
                     Container(
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-                        border: Border.all(color: Colors.grey.shade100),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.black, width: 2.0),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Colors.black,
+                            offset: Offset(0, 3),
+                            blurRadius: 0,
+                          ),
+                        ],
                       ),
                       child: ListView.separated(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
                         itemCount: txs.length,
-                        separatorBuilder: (context, index) => Divider(height: 1, color: Colors.grey.shade100),
+                        separatorBuilder: (context, index) => const Divider(height: 1, color: Colors.black12, thickness: 1),
                         itemBuilder: (context, txIdx) {
                           final tx = txs[txIdx];
                           final catColor = _getCategoryColor(tx.category);
                           final catIcon = _getCategoryIcon(tx.category);
 
                           return ListTile(
-                            leading: CircleAvatar(
-                              radius: 18,
-                              backgroundColor: catColor.withValues(alpha: 0.1),
-                              child: Icon(catIcon, color: catColor, size: 16),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                            leading: Container(
+                              width: 36,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                color: catColor.withValues(alpha: 0.2),
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.black, width: 1.5),
+                              ),
+                              child: Icon(catIcon, color: Colors.black, size: 16),
                             ),
-                            title: Text(tx.title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-                            subtitle: Text(tx.category, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                            title: Text(
+                              tx.title,
+                              style: const TextStyle(
+                                fontFamily: 'Plus Jakarta Sans',
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.black,
+                              ),
+                            ),
+                            subtitle: Text(
+                              tx.category,
+                              style: const TextStyle(
+                                fontFamily: 'Plus Jakarta Sans',
+                                fontSize: 11,
+                                color: Color(0xFF6B7280),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                             trailing: Text(
                               '-${currencyFormat.format(tx.amount)}',
                               style: const TextStyle(
+                                fontFamily: 'Plus Jakarta Sans',
                                 fontSize: 13,
-                                fontWeight: FontWeight.bold,
+                                fontWeight: FontWeight.w800,
                                 color: AppColors.error,
                               ),
                             ),
@@ -416,7 +628,7 @@ class _PengeluaranTabState extends ConsumerState<PengeluaranTab> {
                         },
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
                   ],
                 );
               },

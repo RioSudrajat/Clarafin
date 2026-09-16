@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  // Primary Brand Color (Clarafin Lime)
-  static const Color primary = Color(0xFF9ADC09);
+  // Primary Brand Color (Clarafin Lime - Global Button Color)
+  static const Color primary = Color(0xFFCCFF00);
   static const Color primaryNeon = Color(0xFFCCFF00);
-  static const Color primaryDark = Color(0xFF7CB807);
-  static const Color primaryLight = Color(0xFFB5E84A);
+  static const Color primaryDark = Color(0xFF9ADC09);
+  static const Color primaryLight = Color(0xFFEFFCC7);
 
   // Brand Palette
   static const Color darkTeal = Color(0xFF0E6976);

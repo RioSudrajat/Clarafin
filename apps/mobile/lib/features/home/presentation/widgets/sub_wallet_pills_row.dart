@@ -45,9 +45,9 @@ class SubWalletPillsRow extends ConsumerWidget {
                           institutionId: w.institutionId,
                           walletName: w.name,
                           walletType: w.type,
-                          size: 26,
+                          size: 28,
                           showBorder: true,
-                          borderWidth: 1,
+                          borderWidth: 1.5,
                         ),
                         const SizedBox(width: 8),
                         Column(

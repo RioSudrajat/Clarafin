@@ -1,9 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/providers/mock_providers.dart';
 import '../../../../core/models/transaction_model.dart';
+import '../../../../core/providers/mock_providers.dart';
+import '../../../../core/theme/neo_brutalism_decorations.dart';
+import '../widgets/transaction_history_empty_state.dart';
+import '../widgets/transaction_history_filter_bar.dart';
+import '../widgets/transaction_history_filter_sheet.dart';
+import '../widgets/transaction_history_group_header.dart';
+import '../widgets/transaction_history_list_item.dart';
+import '../widgets/transaction_history_summary_card.dart';
 
 class TransactionHistoryScreen extends ConsumerStatefulWidget {
   const TransactionHistoryScreen({super.key});
@@ -13,42 +21,84 @@ class TransactionHistoryScreen extends ConsumerStatefulWidget {
 }
 
 class _TransactionHistoryScreenState extends ConsumerState<TransactionHistoryScreen> {
-  final formatCurrency = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  String _selectedType = 'all';
+  String _selectedTimeRange = 'all';
+  Set<String> _selectedCategories = {};
+  String? _selectedWalletId;
 
-  IconData _getCategoryIcon(String category) {
-    switch (category.toLowerCase()) {
-      case 'makan': case 'makanan & minuman': case 'food & bev': case 'food': return Icons.lunch_dining;
-      case 'transport': return Icons.local_taxi;
-      case 'belanja': case 'shopping': case 'groceries': return Icons.shopping_cart;
-      case 'hiburan': case 'entertainment': return Icons.movie;
-      case 'tagihan': case 'subscription': return Icons.subscriptions;
-      case 'pendidikan': return Icons.school;
-      case 'kesehatan': return Icons.health_and_safety;
-      case 'gaji': case 'income': return Icons.work;
-      case 'transfer': return Icons.swap_horiz;
-      default: return Icons.receipt_long;
-    }
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
-  Color _getCategoryColor(String category) {
-    switch (category.toLowerCase()) {
-      case 'makan': case 'makanan & minuman': case 'food & bev': case 'food': return Colors.orange;
-      case 'transport': return Colors.teal;
-      case 'belanja': case 'shopping': case 'groceries': return Colors.red;
-      case 'hiburan': case 'entertainment': return Colors.purple;
-      case 'tagihan': case 'subscription': return Colors.blue;
-      case 'gaji': case 'income': return Colors.indigo;
-      case 'transfer': return Colors.blue;
-      default: return Colors.grey;
+  List<TransactionModel> _filterTransactions(List<TransactionModel> raw) {
+    final now = DateTime.now();
+    return raw.where((tx) {
+      if (_selectedType != 'all' && tx.type != _selectedType) return false;
+      if (_selectedWalletId != null && tx.walletId != _selectedWalletId) return false;
+      if (_selectedCategories.isNotEmpty && !_selectedCategories.contains(tx.category)) return false;
+      if (_searchQuery.isNotEmpty) {
+        final q = _searchQuery.toLowerCase();
+        if (!tx.title.toLowerCase().contains(q) && !tx.category.toLowerCase().contains(q)) return false;
+      }
+      if (_selectedTimeRange == 'month' && (tx.date.year != now.year || tx.date.month != now.month)) return false;
+      if (_selectedTimeRange == '30days' && now.difference(tx.date).inDays > 30) return false;
+      if (_selectedTimeRange == '7days' && now.difference(tx.date).inDays > 7) return false;
+      return true;
+    }).toList();
+  }
+
+  Map<String, List<TransactionModel>> _groupByDate(List<TransactionModel> list) {
+    final Map<String, List<TransactionModel>> grouped = {};
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = DateTime(now.year, now.month, now.day - 1);
+
+    for (final tx in list) {
+      final txDay = DateTime(tx.date.year, tx.date.month, tx.date.day);
+      final key = txDay == today
+          ? 'Hari Ini, ${DateFormat('d MMM').format(tx.date)}'
+          : (txDay == yesterday
+              ? 'Kemarin, ${DateFormat('d MMM').format(tx.date)}'
+              : DateFormat('d MMMM yyyy', 'id_ID').format(tx.date));
+      grouped.putIfAbsent(key, () => []).add(tx);
     }
+    return grouped;
+  }
+
+  void _openFilterSheet(List<String> categories) {
+    final wallets = ref.read(walletsProvider);
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => TransactionHistoryFilterSheet(
+        wallets: wallets,
+        allCategories: categories,
+        selectedCategories: _selectedCategories,
+        selectedWalletId: _selectedWalletId,
+        onApply: (cats, wallet) => setState(() {
+          _selectedCategories = cats;
+          _selectedWalletId = wallet;
+        }),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final transactions = ref.watch(transactionsProvider);
+    final allTransactions = ref.watch(transactionsProvider);
+    final wallets = ref.watch(walletsProvider);
+    final walletMap = {for (final w in wallets) w.id: w.name};
+    final allCategories = allTransactions.map((t) => t.category).toSet().toList()..sort();
+    final filtered = _filterTransactions(allTransactions);
+    final grouped = _groupByDate(filtered);
 
     double totalIn = 0, totalOut = 0;
-    for (final tx in transactions) {
+    for (final tx in filtered) {
       if (tx.type == 'income') {
         totalIn += tx.amount;
       } else {
@@ -56,37 +106,21 @@ class _TransactionHistoryScreenState extends ConsumerState<TransactionHistoryScr
       }
     }
 
-    // Group by date
-    final Map<String, List<TransactionModel>> grouped = {};
-    final now = DateTime.now();
-    final yesterday = DateTime(now.year, now.month, now.day - 1);
-    for (final tx in transactions) {
-      final txDay = DateTime(tx.date.year, tx.date.month, tx.date.day);
-      final todayDay = DateTime(now.year, now.month, now.day);
-      String key;
-      if (txDay == todayDay) {
-        key = 'Hari Ini, ${DateFormat('d MMM').format(tx.date)}';
-      } else if (txDay == yesterday) {
-        key = 'Kemarin, ${DateFormat('d MMM').format(tx.date)}';
-      } else {
-        key = DateFormat('d MMM yyyy').format(tx.date);
-      }
-      grouped.putIfAbsent(key, () => []).add(tx);
-    }
+    final hasAdvFilter = _selectedCategories.isNotEmpty || _selectedWalletId != null;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Transaction History', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black)),
+        title: Text('Riwayat Transaksi', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w900, fontSize: 18, color: NeoBrutalism.dark)),
         centerTitle: true,
         backgroundColor: Colors.white,
         elevation: 0,
         leading: Padding(
           padding: const EdgeInsets.all(8.0),
           child: Container(
-            decoration: BoxDecoration(color: Colors.grey.shade50, shape: BoxShape.circle),
+            decoration: NeoBrutalism.circleDecoration(),
             child: IconButton(
-              icon: const Icon(Icons.chevron_left, color: Colors.black, size: 20),
+              icon: const Icon(Icons.arrow_back_rounded, color: NeoBrutalism.dark, size: 20),
               onPressed: () => Navigator.of(context).pop(),
             ),
           ),
@@ -95,142 +129,59 @@ class _TransactionHistoryScreenState extends ConsumerState<TransactionHistoryScr
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Container(
-              decoration: BoxDecoration(color: Colors.grey.shade50, shape: BoxShape.circle),
-              child: IconButton(icon: const Icon(Icons.tune, color: Colors.black, size: 20), onPressed: () {}),
+              decoration: NeoBrutalism.circleDecoration(backgroundColor: hasAdvFilter ? NeoBrutalism.lime : Colors.white),
+              child: IconButton(
+                icon: const Icon(Icons.tune_rounded, color: NeoBrutalism.dark, size: 20),
+                onPressed: () => _openFilterSheet(allCategories),
+              ),
             ),
-          )
+          ),
         ],
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // Header Container
-            Container(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.only(bottomLeft: Radius.circular(24), bottomRight: Radius.circular(24)),
-                boxShadow: [BoxShadow(color: Color(0x05000000), blurRadius: 10, offset: Offset(0, 4))],
+      body: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(child: TransactionHistorySummaryCard(totalIncome: totalIn, totalExpense: totalOut)),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 8, bottom: 12),
+              child: TransactionHistoryFilterBar(
+                searchController: _searchController,
+                searchQuery: _searchQuery,
+                onSearchChanged: (val) => setState(() => _searchQuery = val),
+                onClearSearch: () {
+                  _searchController.clear();
+                  setState(() => _searchQuery = '');
+                },
+                selectedType: _selectedType,
+                onTypeChanged: (type) => setState(() => _selectedType = type),
+                selectedTimeRange: _selectedTimeRange,
+                onTimeRangeChanged: (range) => setState(() => _selectedTimeRange = range),
               ),
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-              child: Column(
-                children: [
-                  // Summary
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            ),
+          ),
+          if (filtered.isEmpty)
+            const SliverFillRemaining(hasScrollBody: false, child: TransactionHistoryEmptyState())
+          else
+            SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  final entry = grouped.entries.elementAt(index);
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('TOTAL IN', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1)),
-                          const SizedBox(height: 2),
-                          Text('+${formatCurrency.format(totalIn)}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.green)),
-                        ],
-                      ),
-                      Container(width: 1, height: 32, color: Colors.grey.shade200),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          const Text('TOTAL OUT', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1)),
-                          const SizedBox(height: 2),
-                          Text('-${formatCurrency.format(totalOut)}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.red)),
-                        ],
-                      ),
+                      TransactionHistoryGroupHeader(dateTitle: entry.key),
+                      ...entry.value.map((tx) => TransactionHistoryListItem(
+                            transaction: tx,
+                            walletName: walletMap[tx.walletId] ?? 'Akun Utama',
+                            onTap: () => context.push('/transaction/success', extra: {'transaction': tx}),
+                          )),
                     ],
-                  ),
-                ],
+                  );
+                },
+                childCount: grouped.entries.length,
               ),
             ),
-
-            // Transaction list
-            if (transactions.isEmpty)
-              Padding(
-                padding: const EdgeInsets.all(60),
-                child: Column(
-                  children: [
-                    Icon(Icons.receipt_long, size: 64, color: Colors.grey.shade300),
-                    const SizedBox(height: 16),
-                    Text('Belum ada transaksi', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey.shade400)),
-                  ],
-                ),
-              )
-            else
-              Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: grouped.entries.map((entry) {
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.only(left: 4, bottom: 12),
-                          child: Text(entry.key.toUpperCase(), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1)),
-                        ),
-                        ...entry.value.map((tx) {
-                          final isExpense = tx.type == 'expense' || tx.type == 'transfer';
-                          final color = _getCategoryColor(tx.category);
-                          return _buildTransactionCard(
-                            icon: _getCategoryIcon(tx.category),
-                            iconBgColor: color.withValues(alpha: 0.1),
-                            iconColor: color,
-                            title: tx.title,
-                            time: DateFormat('HH:mm').format(tx.date),
-                            category: tx.category,
-                            amount: '${isExpense ? "-" : "+"}${formatCurrency.format(tx.amount)}',
-                            isExpense: isExpense,
-                          );
-                        }),
-                        const SizedBox(height: 20),
-                      ],
-                    );
-                  }).toList(),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTransactionCard({
-    required IconData icon, required Color iconBgColor, required Color iconColor,
-    required String title, required String time, required String category,
-    required String amount, required bool isExpense,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.grey.shade100),
-        boxShadow: const [BoxShadow(color: Color(0x05000000), blurRadius: 4, offset: Offset(0, 2))],
-      ),
-      child: Row(
-        children: [
-          Container(
-            height: 48, width: 48,
-            decoration: BoxDecoration(color: iconBgColor, shape: BoxShape.circle),
-            child: Icon(icon, color: iconColor, size: 24),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black)),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Text(time, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: Colors.grey.shade500)),
-                    Container(margin: const EdgeInsets.symmetric(horizontal: 6), width: 4, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, shape: BoxShape.circle)),
-                    Text(category, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: Colors.grey.shade500)),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          Text(amount, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: isExpense ? Colors.red.shade500 : Colors.green.shade600)),
+          const SliverToBoxAdapter(child: SizedBox(height: 32)),
         ],
       ),
     );

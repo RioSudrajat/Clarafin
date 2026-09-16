@@ -37,7 +37,7 @@ class InstitutionLogoWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final inst = _resolveInstitution();
-    final iconInnerSize = size * 0.62;
+    final iconInnerSize = size * 0.78;
 
     Widget imageContent;
     if (inst.isSvg) {
@@ -48,7 +48,7 @@ class InstitutionLogoWidget extends StatelessWidget {
         fit: BoxFit.contain,
         placeholderBuilder: (ctx) => Icon(
           inst.fallbackIcon,
-          size: iconInnerSize * 0.9,
+          size: iconInnerSize,
           color: inst.brandColor,
         ),
       );
@@ -60,7 +60,7 @@ class InstitutionLogoWidget extends StatelessWidget {
         fit: BoxFit.contain,
         errorBuilder: (ctx, err, stack) => Icon(
           inst.fallbackIcon,
-          size: iconInnerSize * 0.9,
+          size: iconInnerSize,
           color: inst.brandColor,
         ),
       );

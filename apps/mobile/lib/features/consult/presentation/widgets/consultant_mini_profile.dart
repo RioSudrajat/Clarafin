@@ -1,85 +1,108 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/neo_brutalism_decorations.dart';
+import '../../domain/models/consultant.dart';
 
 class ConsultantMiniProfile extends StatelessWidget {
-  const ConsultantMiniProfile({super.key});
+  final String? consultantId;
+
+  const ConsultantMiniProfile({super.key, this.consultantId});
 
   @override
   Widget build(BuildContext context) {
+    final consultant = (consultantId != null
+            ? ConsultantRepository.getById(consultantId!)
+            : null) ??
+        ConsultantRepository.initialConsultants.first;
+
     return Container(
       color: Colors.white,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              // Styled Profile Image with Fallback
+              // Avatar with Neo-Brutalism border & shadow
               Container(
-                width: 54,
-                height: 54,
+                width: 52,
+                height: 52,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.grey.shade200, width: 1.5),
-                  color: Colors.grey.shade100,
+                  border: Border.all(color: Colors.black, width: 2.0),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Colors.black,
+                      offset: Offset(0, 2),
+                      blurRadius: 0,
+                    ),
+                  ],
                 ),
                 child: ClipOval(
                   child: Image.network(
-                    'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=200&auto=format&fit=crop',
+                    consultant.avatarUrl,
                     fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return const Center(
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      color: NeoBrutalism.lime,
+                      child: Center(
                         child: Text(
-                          'MR',
-                          style: TextStyle(
+                          consultant.name.isNotEmpty ? consultant.name[0] : 'C',
+                          style: const TextStyle(
+                            fontFamily: 'Plus Jakarta Sans',
+                            fontWeight: FontWeight.w900,
                             fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textSecondary,
+                            color: Colors.black,
                           ),
                         ),
-                      );
-                    },
+                      ),
+                    ),
                   ),
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Specialization Chip
+                    // Specialization pill
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: AppColors.accentBlue.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(20),
+                        color: NeoBrutalism.mint,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: Colors.black, width: 1.5),
                       ),
-                      child: const Text(
-                        'Financial Planner',
-                        style: TextStyle(
+                      child: Text(
+                        consultant.specializations.isNotEmpty
+                            ? consultant.specializations.first
+                            : consultant.title,
+                        style: const TextStyle(
+                          fontFamily: 'Plus Jakarta Sans',
                           fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF0D9488), // Deep Teal
+                          fontWeight: FontWeight.w800,
+                          color: Colors.black,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 5),
                     // Consultant Name
-                    const Text(
-                      'Maria Rayna Kartika Winata, CFP®, ChFC®',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
+                    Text(
+                      consultant.name,
+                      style: const TextStyle(
+                        fontFamily: 'Plus Jakarta Sans',
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.black,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          const Divider(height: 1, color: AppColors.divider),
+          const SizedBox(height: 12),
+          const Divider(height: 1, color: Colors.black12),
         ],
       ),
     );

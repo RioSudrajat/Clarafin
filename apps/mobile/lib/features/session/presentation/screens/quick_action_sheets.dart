@@ -2,9 +2,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/theme/app_colors.dart';
 import '../../../../core/providers/mock_providers.dart';
 import '../../../../core/models/transaction_model.dart';
+import '../../../home/presentation/widgets/notion_doodle_icons.dart';
 
 // ─── Data Models ─────────────────────────────────────────────────────────────
 
@@ -45,9 +45,11 @@ class _QuickChatMessage {
 void showQuickActionMenuSheet(BuildContext context, WidgetRef ref) {
   showModalBottomSheet(
     context: context,
+    isScrollControlled: true,
     backgroundColor: Colors.white,
     shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      side: BorderSide(color: Colors.black, width: 2.0),
     ),
     builder: (ctx) => _QuickActionMenuSheet(parentRef: ref),
   );
@@ -64,19 +66,18 @@ class _QuickActionMenuSheet extends ConsumerWidget {
     final limits = ref.watch(quickActionLimitProvider);
 
     return SafeArea(
-      child: SingleChildScrollView(
-        physics: const ClampingScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Center(
               child: Container(
-                width: 38,
+                width: 44,
                 height: 5,
                 decoration: BoxDecoration(
-                  color: AppColors.divider,
+                  color: Colors.black,
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
@@ -87,15 +88,16 @@ class _QuickActionMenuSheet extends ConsumerWidget {
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w900,
-                color: AppColors.textPrimary,
+                color: Colors.black,
               ),
             ),
             const SizedBox(height: 6),
-            Text(
+            const Text(
               'Pilih metode paling efisien untuk catat keuanganmu.',
               style: TextStyle(
                 fontSize: 13,
-                color: AppColors.textSecondary.withValues(alpha: 0.8),
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF4B5563),
               ),
             ),
             const SizedBox(height: 20),
@@ -107,12 +109,12 @@ class _QuickActionMenuSheet extends ConsumerWidget {
               mainAxisSpacing: 12,
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              childAspectRatio: 1.15,
+              childAspectRatio: 1.02,
               children: [
                 _buildActionGridItem(
                   context,
                   ref,
-                  emoji: '💬',
+                  svgString: NotionDoodleIcons.aiChat,
                   title: 'AI Chat Action',
                   subtitle: 'Ketik lewat asisten AI',
                   limitText: 'Quota: ${limits.aiChatCount}/10',
@@ -129,7 +131,7 @@ class _QuickActionMenuSheet extends ConsumerWidget {
                 _buildActionGridItem(
                   context,
                   ref,
-                  emoji: '🎙️',
+                  svgString: NotionDoodleIcons.voiceAi,
                   title: 'Voice AI Action',
                   subtitle: 'Ucapkan ke asisten AI',
                   limitText: 'Quota: ${limits.voiceAiCount}/5',
@@ -146,7 +148,7 @@ class _QuickActionMenuSheet extends ConsumerWidget {
                 _buildActionGridItem(
                   context,
                   ref,
-                  emoji: '📸',
+                  svgString: NotionDoodleIcons.ocrScan,
                   title: 'Scan Action (OCR)',
                   subtitle: 'Foto struk belanja untuk scan',
                   limitText: 'Quota: ${limits.scanCount}/8',
@@ -163,7 +165,7 @@ class _QuickActionMenuSheet extends ConsumerWidget {
                 _buildActionGridItem(
                   context,
                   ref,
-                  emoji: '📝',
+                  svgString: NotionDoodleIcons.manualAdd,
                   title: 'Manual Add',
                   subtitle: 'Isi formulir manual lengkap',
                   limitText: 'Unlimited',
@@ -185,7 +187,7 @@ class _QuickActionMenuSheet extends ConsumerWidget {
   Widget _buildActionGridItem(
     BuildContext context,
     WidgetRef ref, {
-    required String emoji,
+    required String svgString,
     required String title,
     required String subtitle,
     required String limitText,
@@ -195,90 +197,89 @@ class _QuickActionMenuSheet extends ConsumerWidget {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: const Color(0xFFE5E7EB),
-          width: 1.0,
+          color: Colors.black,
+          width: 2.0,
         ),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
+            color: Colors.black,
+            blurRadius: 0,
+            offset: Offset(0, 3.5),
           ),
         ],
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(14),
           onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF3F4F6),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Center(
-                        child: Text(
-                          emoji,
-                          style: const TextStyle(
-                            fontSize: 22,
-                          ),
-                        ),
-                      ),
+          child: Stack(
+            children: [
+              // Quota Pill Badge at top-right
+              Positioned(
+                top: 10,
+                right: 10,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: isLimited ? const Color(0xFFFFDAD6) : const Color(0xFFCCFF00),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: Colors.black, width: 1.2),
+                  ),
+                  child: Text(
+                    limitText,
+                    style: const TextStyle(
+                      fontSize: 8.5,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.black,
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF3F4F6),
-                        borderRadius: BorderRadius.circular(6),
+                  ),
+                ),
+              ),
+              // Centered Icon (Unwrapped) + Titles
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(10, 24, 10, 10),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Notion Doodle icon in center - strictly NO border wrapper!
+                      NotionDoodleWidget(
+                        svgString: svgString,
+                        size: 46,
                       ),
-                      child: Text(
-                        limitText,
+                      const SizedBox(height: 8),
+                      Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
                         style: const TextStyle(
-                          fontSize: 8.5,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF4B5563),
+                          fontWeight: FontWeight.w900,
+                          fontSize: 13,
+                          color: Colors.black,
                         ),
                       ),
-                    ),
-                  ],
-                ),
-                const Spacer(),
-                Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                    color: AppColors.textPrimary,
+                      const SizedBox(height: 3),
+                      Text(
+                        subtitle,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF4B5563),
+                          height: 1.2,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: AppColors.textSecondary,
-                    height: 1.25,
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -293,43 +294,41 @@ void _showPremiumUpgradeSheet(BuildContext context, String featureName) {
     context: context,
     backgroundColor: Colors.white,
     shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      side: BorderSide(color: Colors.black, width: 2.0),
     ),
     builder: (ctx) {
       return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 38,
+              width: 44,
               height: 5,
               decoration: BoxDecoration(
-                color: AppColors.divider,
+                color: Colors.black,
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
             const SizedBox(height: 20),
-            // Premium icon with glow
+            // Premium icon with Neo-Brutalist circle
             Container(
               width: 64,
               height: 64,
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFFBBF24), Color(0xFFD97706)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+                color: const Color(0xFFCCFF00),
                 shape: BoxShape.circle,
-                boxShadow: [
+                border: Border.all(color: Colors.black, width: 2.0),
+                boxShadow: const [
                   BoxShadow(
-                    color: const Color(0xFFFBBF24).withValues(alpha: 0.4),
-                    blurRadius: 16,
-                    offset: const Offset(0, 4),
+                    color: Colors.black,
+                    offset: Offset(0, 3),
+                    blurRadius: 0,
                   ),
                 ],
               ),
-              child: const Icon(Icons.star_rounded, color: Colors.white, size: 36),
+              child: const Icon(Icons.star_rounded, color: Colors.black, size: 36),
             ),
             const SizedBox(height: 18),
             const Text(
@@ -337,26 +336,35 @@ void _showPremiumUpgradeSheet(BuildContext context, String featureName) {
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w900,
-                color: AppColors.textPrimary,
+                color: Colors.black,
               ),
             ),
             const SizedBox(height: 8),
             Text(
               'Lo sudah mencapai limit gratis untuk $featureName minggu ini.',
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF4B5563),
+              ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
             
-            // Gold card listing advantages
+            // Neo-Brutalist card listing advantages
             Container(
-              padding: const EdgeInsets.all(18),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [const Color(0xFFFFFBEB), const Color(0xFFFEF3C7).withValues(alpha: 0.5)],
-                ),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: const Color(0xFFFDE68A), width: 1.5),
+                color: const Color(0xFFF9FAFB),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.black, width: 2.0),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Colors.black,
+                    offset: Offset(0, 3),
+                    blurRadius: 0,
+                  ),
+                ],
               ),
               child: Column(
                 children: [
@@ -369,46 +377,52 @@ void _showPremiumUpgradeSheet(BuildContext context, String featureName) {
               ),
             ),
             
-            const SizedBox(height: 28),
+            const SizedBox(height: 24),
             
             // Upgrade button
-            SizedBox(
+            Container(
               width: double.infinity,
               height: 50,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1E293B), // Premium Dark
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Terima kasih! Kamu sekarang terdaftar di Clarafin Premium 🚀'),
-                      backgroundColor: Color(0xFFD97706),
-                      behavior: SnackBarBehavior.floating,
+              decoration: BoxDecoration(
+                color: const Color(0xFFCCFF00),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.black, width: 2.0),
+                boxShadow: const [
+                  BoxShadow(color: Colors.black, offset: Offset(0, 3), blurRadius: 0),
+                ],
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Terima kasih! Kamu sekarang terdaftar di Clarafin Premium 🚀', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                        backgroundColor: Color(0xFFCCFF00),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  },
+                  child: const Center(
+                    child: Text(
+                      'Upgrade ke Premium — Rp 49.000 / bln',
+                      style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13.5, color: Colors.black),
                     ),
-                  );
-                },
-                child: const Text(
-                  'Upgrade ke Premium — Rp 49.000 / bln',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
                 ),
               ),
             ),
             const SizedBox(height: 10),
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: Text(
+              child: const Text(
                 'Tunggu 1 Minggu (Reset Otomatis)',
                 style: TextStyle(
                   fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary.withValues(alpha: 0.8),
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF6B7280),
                 ),
               ),
             ),
@@ -422,15 +436,15 @@ void _showPremiumUpgradeSheet(BuildContext context, String featureName) {
 Widget _buildBenefitRow(IconData icon, String text) {
   return Row(
     children: [
-      Icon(icon, size: 18, color: const Color(0xFFD97706)),
+      Icon(icon, size: 18, color: Colors.black),
       const SizedBox(width: 12),
       Expanded(
         child: Text(
           text,
           style: const TextStyle(
-            fontSize: 12,
+            fontSize: 12.5,
             fontWeight: FontWeight.w700,
-            color: Color(0xFF78350F),
+            color: Colors.black,
           ),
         ),
       ),
@@ -675,30 +689,30 @@ class _AiQuickChatModalState extends State<_AiQuickChatModal> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // CARD 1: Chat History & Suggestions Panel (Persis SS)
+        // CARD 1: Chat History & Suggestions Panel (Neo-Brutalist)
         Expanded(
           child: Container(
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: Colors.grey.shade200, width: 1),
-              boxShadow: [
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.black, width: 2.0),
+              boxShadow: const [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
+                  color: Colors.black,
+                  offset: Offset(0, 4),
+                  blurRadius: 0,
                 ),
               ],
             ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(18),
               child: Column(
                 children: [
                   _buildHeader(context),
                   Expanded(
                     child: SingleChildScrollView(
                       controller: _scrollController,
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
@@ -715,41 +729,37 @@ class _AiQuickChatModalState extends State<_AiQuickChatModal> {
           ),
         ),
         
-        const SizedBox(height: 12), // GAP FISIK DI ANTARA KEDUA CARD (PERSIS SS!)
+        const SizedBox(height: 12),
         
-        // CARD 2: Input & Control Panel (Persis SS - Redesigned by Senior UI/UX Designer)
+        // CARD 2: Input & Control Panel (Neo-Brutalist)
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: Colors.grey.shade100, width: 1.2),
-            boxShadow: [
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.black, width: 2.0),
+            boxShadow: const [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.02),
-                blurRadius: 16,
-                offset: const Offset(0, -4),
-              ),
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
+                color: Colors.black,
+                offset: Offset(0, 4),
+                blurRadius: 0,
               ),
             ],
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Full-width Input container (Sleek minimalist style)
+              // Full-width Input container
               Container(
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF8F9FA),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.grey.shade200, width: 1.0),
+                  color: const Color(0xFFF9FAFB),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.black, width: 1.8),
                 ),
                 child: TextField(
                   controller: _controller,
-                  style: const TextStyle(fontSize: 14, color: AppColors.textPrimary, fontWeight: FontWeight.w500),
+                  cursorColor: Colors.black,
+                  style: const TextStyle(fontSize: 14, color: Colors.black, fontWeight: FontWeight.w600),
                   textCapitalization: TextCapitalization.sentences,
                   enabled: !_isProcessing,
                   decoration: InputDecoration(
@@ -762,46 +772,46 @@ class _AiQuickChatModalState extends State<_AiQuickChatModal> {
                       fontStyle: FontStyle.normal,
                     ),
                     border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   ),
                   onSubmitted: (t) => _processInput(t),
                 ),
               ),
               const SizedBox(height: 12),
               
-              // Row of shortcuts + App primary colored action button (Senior UI/UX layout)
+              // Row of shortcuts + Send button
               Row(
                 children: [
-                  // Scan Button Shortcut (Elegant Pill)
+                  // Scan Button Shortcut
                   GestureDetector(
                     onTap: () {
                       Navigator.pop(context);
                       _showOcrScanSheet(context, widget.parentRef);
                     },
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: Colors.grey.shade200),
-                        boxShadow: [
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.black, width: 1.5),
+                        boxShadow: const [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.01),
-                            blurRadius: 4,
-                            offset: const Offset(0, 1),
+                            color: Colors.black,
+                            offset: Offset(0, 2),
+                            blurRadius: 0,
                           ),
                         ],
                       ),
                       child: const Row(
                         children: [
-                          Icon(Icons.document_scanner_outlined, size: 16, color: Color(0xFF4B5563)),
+                          Icon(Icons.document_scanner_outlined, size: 16, color: Colors.black),
                           SizedBox(width: 6),
                           Text(
                             'Scan', 
                             style: TextStyle(
                               fontSize: 12, 
-                              fontWeight: FontWeight.w600, 
-                              color: Color(0xFF4B5563),
+                              fontWeight: FontWeight.w800, 
+                              color: Colors.black,
                             ),
                           ),
                         ],
@@ -810,36 +820,36 @@ class _AiQuickChatModalState extends State<_AiQuickChatModal> {
                   ),
                   const SizedBox(width: 8),
                   
-                  // Bicara Button Shortcut (Elegant Pill with accessible Contrast)
+                  // Bicara Button Shortcut
                   GestureDetector(
                     onTap: () {
                       Navigator.pop(context);
                       _showVoiceAiSheet(context, widget.parentRef);
                     },
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: Colors.grey.shade200),
-                        boxShadow: [
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.black, width: 1.5),
+                        boxShadow: const [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.01),
-                            blurRadius: 4,
-                            offset: const Offset(0, 1),
+                            color: Colors.black,
+                            offset: Offset(0, 2),
+                            blurRadius: 0,
                           ),
                         ],
                       ),
                       child: const Row(
                         children: [
-                          Icon(Icons.mic_none_rounded, size: 16, color: AppColors.primary),
+                          Icon(Icons.mic_none_rounded, size: 16, color: Colors.black),
                           SizedBox(width: 6),
                           Text(
                             'Bicara', 
                             style: TextStyle(
                               fontSize: 12, 
-                              fontWeight: FontWeight.w600, 
-                              color: Color(0xFF4B5563),
+                              fontWeight: FontWeight.w800, 
+                              color: Colors.black,
                             ),
                           ),
                         ],
@@ -849,32 +859,26 @@ class _AiQuickChatModalState extends State<_AiQuickChatModal> {
                   
                   const Spacer(),
                   
-                  // Primary Send button matching the brand's primary color with custom high-contrast square
+                  // Neo-Brutalist Send Button (Lime with black border & hard shadow)
                   GestureDetector(
                     onTap: () => _processInput(_controller.text),
                     child: Container(
                       width: 44,
-                      height: 44,
+                      height: 40,
                       decoration: BoxDecoration(
-                        color: AppColors.primary,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
+                        color: const Color(0xFFCCFF00),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.black, width: 2.0),
+                        boxShadow: const [
                           BoxShadow(
-                            color: AppColors.primary.withValues(alpha: 0.35),
-                            blurRadius: 10,
-                            offset: const Offset(0, 3),
+                            color: Colors.black,
+                            offset: Offset(0, 2),
+                            blurRadius: 0,
                           ),
                         ],
                       ),
-                      child: Center(
-                        child: Container(
-                          width: 16,
-                          height: 16,
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.black, width: 2.2),
-                            borderRadius: BorderRadius.circular(5),
-                          ),
-                        ),
+                      child: const Center(
+                        child: Icon(Icons.arrow_upward_rounded, size: 22, color: Colors.black),
                       ),
                     ),
                   ),
@@ -891,22 +895,23 @@ class _AiQuickChatModalState extends State<_AiQuickChatModal> {
 
   Widget _buildHeader(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      decoration: BoxDecoration(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+      decoration: const BoxDecoration(
         color: Colors.white,
-        border: Border(bottom: BorderSide(color: AppColors.divider, width: 1)),
+        border: Border(bottom: BorderSide(color: Colors.black, width: 2.0)),
       ),
       child: SafeArea(
         bottom: false,
         child: Row(
           children: [
-            // Robot Avatar Icon in rounded square matching photo using app's primary color
+            // Robot Avatar Icon in lime square with black border
             Container(
               width: 38,
               height: 38,
               decoration: BoxDecoration(
-                color: AppColors.primary,
+                color: const Color(0xFFCCFF00),
                 borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.black, width: 2.0),
               ),
               child: const Icon(Icons.smart_toy_outlined, size: 22, color: Colors.black),
             ),
@@ -921,26 +926,27 @@ class _AiQuickChatModalState extends State<_AiQuickChatModal> {
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w900,
-                      color: AppColors.textPrimary,
+                      color: Colors.black,
                     ),
                   ),
                   Row(
                     children: [
                       Container(
-                        width: 6,
-                        height: 6,
-                        decoration: const BoxDecoration(
-                          color: AppColors.primary,
+                        width: 7,
+                        height: 7,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFCCFF00),
                           shape: BoxShape.circle,
+                          border: Border.all(color: Colors.black, width: 1.0),
                         ),
                       ),
-                      const SizedBox(width: 4),
-                      Text(
+                      const SizedBox(width: 5),
+                      const Text(
                         'Online',
                         style: TextStyle(
                           fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.grey.shade500,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF4B5563),
                         ),
                       ),
                     ],
@@ -950,7 +956,7 @@ class _AiQuickChatModalState extends State<_AiQuickChatModal> {
             ),
             // Close X Button
             IconButton(
-              icon: const Icon(Icons.close, color: AppColors.textSecondary, size: 22),
+              icon: const Icon(Icons.close, color: Colors.black, size: 22),
               onPressed: () => Navigator.pop(context),
             ),
           ],
@@ -965,16 +971,16 @@ class _AiQuickChatModalState extends State<_AiQuickChatModal> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
+        const Row(
           children: [
-            const Icon(Icons.chat_bubble_outline_rounded, size: 14, color: AppColors.textSecondary),
-            const SizedBox(width: 6),
-            const Text(
+            Icon(Icons.chat_bubble_outline_rounded, size: 14, color: Colors.black),
+            SizedBox(width: 6),
+            Text(
               'TANYA DATA',
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w900,
-                color: AppColors.textSecondary,
+                color: Colors.black,
                 letterSpacing: 1.2,
               ),
             ),
@@ -987,33 +993,41 @@ class _AiQuickChatModalState extends State<_AiQuickChatModal> {
           children: _samplePrompts.map((p) {
             return InkWell(
               onTap: () => _processInput(p),
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(12),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.grey.shade300, width: 1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.black, width: 1.5),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Colors.black,
+                      offset: Offset(0, 2),
+                      blurRadius: 0,
+                    ),
+                  ],
                 ),
                 child: Text(
                   p,
                   style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.normal,
-                    color: AppColors.textPrimary,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.black,
                   ),
                 ),
               ),
             );
           }).toList(),
         ),
-        const SizedBox(height: 18),
-        Text(
-          'Tanya data: tanya pakai bahasa biasa (saldo, pengeluaran, pemasukan, dll). - Pakai tombol Scan untuk struk/nota, Bicara untuk input suara.',
+        const SizedBox(height: 16),
+        const Text(
+          'Tanya data: tanya pakai bahasa biasa (saldo, pengeluaran, pemasukan, dll). Pakai tombol Scan untuk struk/nota, Bicara untuk input suara.',
           style: TextStyle(
             fontSize: 12,
-            color: AppColors.textSecondary.withValues(alpha: 0.8),
-            height: 1.45,
+            fontWeight: FontWeight.w500,
+            color: Color(0xFF4B5563),
+            height: 1.4,
           ),
         ),
         const SizedBox(height: 20),
@@ -1034,16 +1048,24 @@ class _AiQuickChatModalState extends State<_AiQuickChatModal> {
             Flexible(
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: const BoxDecoration(
-                  color: Color(0xFF4C9A00), // Grass Green bubble matching photo perfectly
-                  borderRadius: BorderRadius.all(Radius.circular(16)),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFCCFF00), // Lime green Neo-Brutalist
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.black, width: 2.0),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Colors.black,
+                      offset: Offset(0, 2),
+                      blurRadius: 0,
+                    ),
+                  ],
                 ),
                 child: Text(
                   m.text,
                   style: const TextStyle(
-                    fontSize: 14,
-                    color: Colors.white,
-                    fontWeight: FontWeight.normal,
+                    fontSize: 13.5,
+                    color: Colors.black,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
@@ -1062,9 +1084,10 @@ class _AiQuickChatModalState extends State<_AiQuickChatModal> {
           Container(
             width: 26,
             height: 26,
-            decoration: const BoxDecoration(
-              color: AppColors.primary,
+            decoration: BoxDecoration(
+              color: const Color(0xFFCCFF00),
               shape: BoxShape.circle,
+              border: Border.all(color: Colors.black, width: 1.5),
             ),
             child: const Icon(Icons.smart_toy_rounded, size: 14, color: Colors.black),
           ),
@@ -1073,21 +1096,34 @@ class _AiQuickChatModalState extends State<_AiQuickChatModal> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Text bubble
+                // Text bubble (Neo-Brutalist white card with black border & hard shadow)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
+                    color: Colors.white,
                     borderRadius: const BorderRadius.only(
                       topLeft: Radius.circular(4),
-                      topRight: Radius.circular(20),
-                      bottomLeft: Radius.circular(20),
-                      bottomRight: Radius.circular(20),
+                      topRight: Radius.circular(16),
+                      bottomLeft: Radius.circular(16),
+                      bottomRight: Radius.circular(16),
                     ),
+                    border: Border.all(color: Colors.black, width: 2.0),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Colors.black,
+                        offset: Offset(0, 2),
+                        blurRadius: 0,
+                      ),
+                    ],
                   ),
                   child: Text(
                     m.text,
-                    style: const TextStyle(fontSize: 13, color: AppColors.textPrimary, height: 1.4),
+                    style: const TextStyle(
+                      fontSize: 13, 
+                      color: Colors.black, 
+                      fontWeight: FontWeight.w500,
+                      height: 1.4,
+                    ),
                   ),
                 ),
 
@@ -1110,17 +1146,20 @@ class _AiQuickChatModalState extends State<_AiQuickChatModal> {
       return Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.green.shade50,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: Colors.green.shade200, width: 1.2),
+          color: const Color(0xFFE5F9E0),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.black, width: 2.0),
+          boxShadow: const [
+            BoxShadow(color: Colors.black, offset: Offset(0, 2), blurRadius: 0),
+          ],
         ),
         child: const Row(
           children: [
-            Icon(Icons.check_circle_rounded, color: Colors.green, size: 20),
+            Icon(Icons.check_circle_rounded, color: Colors.black, size: 20),
             SizedBox(width: 8),
             Text(
               'Draf Disimpan Secara Riil',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.green),
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Colors.black),
             ),
           ],
         ),
@@ -1131,17 +1170,20 @@ class _AiQuickChatModalState extends State<_AiQuickChatModal> {
       return Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.red.shade50,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: Colors.red.shade200, width: 1.2),
+          color: const Color(0xFFFFDAD6),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.black, width: 2.0),
+          boxShadow: const [
+            BoxShadow(color: Colors.black, offset: Offset(0, 2), blurRadius: 0),
+          ],
         ),
         child: const Row(
           children: [
-            Icon(Icons.cancel_rounded, color: Colors.red, size: 20),
+            Icon(Icons.cancel_rounded, color: Colors.black, size: 20),
             SizedBox(width: 8),
             Text(
               'Draf Transaksi Dibatalkan',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.red),
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Colors.black),
             ),
           ],
         ),
@@ -1152,29 +1194,29 @@ class _AiQuickChatModalState extends State<_AiQuickChatModal> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.primary, width: 1.5),
-        boxShadow: [
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.black, width: 2.0),
+        boxShadow: const [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
+            color: Colors.black,
+            offset: Offset(0, 3.5),
+            blurRadius: 0,
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          const Row(
             children: [
-              const Icon(Icons.auto_awesome, color: Colors.amber, size: 18),
-              const SizedBox(width: 8),
+              Icon(Icons.auto_awesome, color: Colors.black, size: 18),
+              SizedBox(width: 8),
               Text(
                 'TINJAU DRAF TRANSAKSI',
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w900,
-                  color: Colors.grey.shade700,
+                  color: Colors.black,
                   letterSpacing: 1,
                 ),
               ),
@@ -1189,33 +1231,56 @@ class _AiQuickChatModalState extends State<_AiQuickChatModal> {
           _buildDraftDetailRow('Metode', draft.walletName),
           _buildDraftDetailRow('Tipe', draft.type == 'income' ? 'Pemasukan' : 'Pengeluaran'),
           
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           
           // Buttons
           Row(
             children: [
               Expanded(
-                child: OutlinedButton(
-                  onPressed: () => _cancelDraft(msg, draft),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.red.shade700,
-                    side: BorderSide(color: Colors.red.shade200),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: Container(
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.black, width: 2.0),
+                    boxShadow: const [
+                      BoxShadow(color: Colors.black, offset: Offset(0, 2), blurRadius: 0),
+                    ],
                   ),
-                  child: const Text('Batal', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(8),
+                      onTap: () => _cancelDraft(msg, draft),
+                      child: const Center(
+                        child: Text('Batal', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.red)),
+                      ),
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: ElevatedButton(
-                  onPressed: () => _confirmDraft(msg, draft),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: AppColors.textPrimary,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: Container(
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFCCFF00),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.black, width: 2.0),
+                    boxShadow: const [
+                      BoxShadow(color: Colors.black, offset: Offset(0, 2), blurRadius: 0),
+                    ],
                   ),
-                  child: const Text('Konfirmasi', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(8),
+                      onTap: () => _confirmDraft(msg, draft),
+                      child: const Center(
+                        child: Text('Konfirmasi', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Colors.black)),
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -1231,8 +1296,8 @@ class _AiQuickChatModalState extends State<_AiQuickChatModal> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
-          Text(value, style: const TextStyle(fontSize: 12, color: AppColors.textPrimary, fontWeight: FontWeight.bold)),
+          Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280), fontWeight: FontWeight.w600)),
+          Text(value, style: const TextStyle(fontSize: 12, color: Colors.black, fontWeight: FontWeight.w800)),
         ],
       ),
     );
@@ -1247,28 +1312,37 @@ class _AiQuickChatModalState extends State<_AiQuickChatModal> {
           Container(
             width: 26,
             height: 26,
-            decoration: const BoxDecoration(
-              color: AppColors.primary,
+            decoration: BoxDecoration(
+              color: const Color(0xFFCCFF00),
               shape: BoxShape.circle,
+              border: Border.all(color: Colors.black, width: 1.5),
             ),
             child: const Icon(Icons.smart_toy_rounded, size: 14, color: Colors.black),
           ),
           const SizedBox(width: 10),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
-              color: Colors.grey.shade100,
+              color: Colors.white,
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(4),
-                topRight: Radius.circular(20),
-                bottomLeft: Radius.circular(20),
-                bottomRight: Radius.circular(20),
+                topRight: Radius.circular(16),
+                bottomLeft: Radius.circular(16),
+                bottomRight: Radius.circular(16),
               ),
+              border: Border.all(color: Colors.black, width: 2.0),
+              boxShadow: const [
+                BoxShadow(
+                  color: Colors.black,
+                  offset: Offset(0, 2),
+                  blurRadius: 0,
+                ),
+              ],
             ),
             child: const Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.more_horiz_rounded, size: 20, color: AppColors.textSecondary),
+                Icon(Icons.more_horiz_rounded, size: 20, color: Colors.black),
               ],
             ),
           ),
@@ -1285,11 +1359,17 @@ class _AiQuickChatModalState extends State<_AiQuickChatModal> {
 void _showVoiceAiSheet(BuildContext context, WidgetRef parentRef) {
   showModalBottomSheet(
     context: context,
+    isScrollControlled: true,
     backgroundColor: Colors.white,
     shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      side: BorderSide(color: Colors.black, width: 2.0),
     ),
-    builder: (ctx) => _VoiceAiModal(parentRef: parentRef),
+    builder: (ctx) => SafeArea(
+      child: SingleChildScrollView(
+        child: _VoiceAiModal(parentRef: parentRef),
+      ),
+    ),
   );
 }
 
@@ -1385,15 +1465,15 @@ class _VoiceAiModalState extends State<_VoiceAiModal> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 38,
+            width: 44,
             height: 5,
             decoration: BoxDecoration(
-              color: AppColors.divider,
+              color: Colors.black,
               borderRadius: BorderRadius.circular(10),
             ),
           ),
@@ -1401,9 +1481,9 @@ class _VoiceAiModalState extends State<_VoiceAiModal> {
           const Text(
             'Voice AI Action',
             style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+              color: Colors.black,
             ),
           ),
           const SizedBox(height: 20),
@@ -1421,36 +1501,49 @@ class _VoiceAiModalState extends State<_VoiceAiModal> {
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: _isListening ? AppColors.primaryDark : AppColors.textPrimary,
+                fontWeight: FontWeight.w800,
+                color: _isListening ? Colors.black : const Color(0xFF374151),
               ),
             ),
             const SizedBox(height: 8),
             
             if (_isProcessing) ...[
               const SizedBox(height: 10),
-              const CircularProgressIndicator(color: AppColors.primary),
+              const CircularProgressIndicator(color: Colors.black),
               const SizedBox(height: 10),
             ],
             const SizedBox(height: 20),
             
             // Record trigger button
-            SizedBox(
+            Container(
               width: double.infinity,
-              height: 48,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: AppColors.textPrimary,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+              height: 50,
+              decoration: BoxDecoration(
+                color: const Color(0xFFCCFF00),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.black, width: 2.0),
+                boxShadow: const [
+                  BoxShadow(color: Colors.black, offset: Offset(0, 3), blurRadius: 0),
+                ],
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: _isListening || _isProcessing ? null : _startListening,
+                  child: const Center(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.mic_rounded, color: Colors.black, size: 20),
+                        SizedBox(width: 8),
+                        Text(
+                          'Mulai Perekaman',
+                          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: Colors.black),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                onPressed: _isListening || _isProcessing ? null : _startListening,
-                child: const Text(
-                  'Mulai Perekaman',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                 ),
               ),
             ),
@@ -1466,17 +1559,20 @@ class _VoiceAiModalState extends State<_VoiceAiModal> {
         width: double.infinity,
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Colors.green.shade50,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.green.shade200, width: 1.5),
+          color: const Color(0xFFE5F9E0),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.black, width: 2.0),
+          boxShadow: const [
+            BoxShadow(color: Colors.black, offset: Offset(0, 3), blurRadius: 0),
+          ],
         ),
         child: const Column(
           children: [
-            Icon(Icons.check_circle_rounded, color: Colors.green, size: 40),
+            Icon(Icons.check_circle_rounded, color: Colors.black, size: 36),
             SizedBox(height: 10),
             Text(
               'Sukses Menyimpan Transaksi! 🎉',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.green),
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.black),
             ),
           ],
         ),
@@ -1488,17 +1584,20 @@ class _VoiceAiModalState extends State<_VoiceAiModal> {
         width: double.infinity,
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Colors.red.shade50,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.red.shade200, width: 1.5),
+          color: const Color(0xFFFFDAD6),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.black, width: 2.0),
+          boxShadow: const [
+            BoxShadow(color: Colors.black, offset: Offset(0, 3), blurRadius: 0),
+          ],
         ),
         child: const Column(
           children: [
-            Icon(Icons.cancel_rounded, color: Colors.red, size: 40),
+            Icon(Icons.cancel_rounded, color: Colors.black, size: 36),
             SizedBox(height: 10),
             Text(
               'Draf Transaksi Dibatalkan',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.red),
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.black),
             ),
           ],
         ),
@@ -1509,19 +1608,22 @@ class _VoiceAiModalState extends State<_VoiceAiModal> {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.primary, width: 1.5),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.black, width: 2.0),
+        boxShadow: const [
+          BoxShadow(color: Colors.black, offset: Offset(0, 4), blurRadius: 0),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          const Row(
             children: [
-              const Icon(Icons.auto_awesome, color: Colors.amber, size: 20),
-              const SizedBox(width: 8),
-              const Text(
+              Icon(Icons.auto_awesome, color: Colors.black, size: 20),
+              SizedBox(width: 8),
+              Text(
                 'REVIEW DRAF SUARA AI',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: AppColors.textPrimary),
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Colors.black),
               ),
             ],
           ),
@@ -1530,31 +1632,54 @@ class _VoiceAiModalState extends State<_VoiceAiModal> {
           _buildRow('Nominal', 'Rp ${_voiceDraft!.amount.toInt()}'),
           _buildRow('Kategori', _voiceDraft!.category),
           _buildRow('Metode', _voiceDraft!.walletName),
-          const SizedBox(height: 20),
+          const SizedBox(height: 18),
           Row(
             children: [
               Expanded(
-                child: OutlinedButton(
-                  onPressed: _cancelDraft,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.red,
-                    side: const BorderSide(color: Colors.red),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                child: Container(
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.black, width: 2.0),
+                    boxShadow: const [
+                      BoxShadow(color: Colors.black, offset: Offset(0, 2), blurRadius: 0),
+                    ],
                   ),
-                  child: const Text('Hapus', style: TextStyle(fontWeight: FontWeight.bold)),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(8),
+                      onTap: _cancelDraft,
+                      child: const Center(
+                        child: Text('Hapus', style: TextStyle(fontWeight: FontWeight.w800, color: Colors.red, fontSize: 13)),
+                      ),
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: ElevatedButton(
-                  onPressed: _confirmDraft,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: AppColors.textPrimary,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                child: Container(
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFCCFF00),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.black, width: 2.0),
+                    boxShadow: const [
+                      BoxShadow(color: Colors.black, offset: Offset(0, 2), blurRadius: 0),
+                    ],
                   ),
-                  child: const Text('Konfirmasi', style: TextStyle(fontWeight: FontWeight.bold)),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(8),
+                      onTap: _confirmDraft,
+                      child: const Center(
+                        child: Text('Konfirmasi', style: TextStyle(fontWeight: FontWeight.w900, color: Colors.black, fontSize: 13)),
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -1570,8 +1695,8 @@ class _VoiceAiModalState extends State<_VoiceAiModal> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-          Text(val, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+          Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280), fontWeight: FontWeight.w600)),
+          Text(val, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.black)),
         ],
       ),
     );
@@ -1589,7 +1714,7 @@ class _PulsingWaveform extends StatefulWidget {
 }
 
 class _PulsingWaveformState extends State<_PulsingWaveform>
-    with SingleTickerProviderStateMixin {
+  with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
 
   @override
@@ -1623,35 +1748,37 @@ class _PulsingWaveformState extends State<_PulsingWaveform>
     return AnimatedBuilder(
       animation: _ctrl,
       builder: (context, _) {
-        final scale = 1.0 + (widget.isListening ? 0.3 * _ctrl.value : 0.0);
-        final opacity = 0.4 - (widget.isListening ? 0.3 * _ctrl.value : 0.0);
+        final scale = 1.0 + (widget.isListening ? 0.25 * _ctrl.value : 0.0);
         return Stack(
           alignment: Alignment.center,
           children: [
+            if (widget.isListening)
+              Container(
+                width: 96,
+                height: 96,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFFCCFF00).withValues(alpha: 0.3),
+                  border: Border.all(color: Colors.black, width: 1.5),
+                ),
+                transform: Matrix4.diagonal3Values(scale, scale, 1.0),
+              ),
             Container(
-              width: 100,
-              height: 100,
+              width: 76,
+              height: 76,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppColors.primary.withValues(alpha: opacity.clamp(0.0, 1.0)),
-              ),
-              transform: Matrix4.diagonal3Values(scale, scale, 1.0),
-            ),
-            Container(
-              width: 72,
-              height: 72,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.primary,
-                boxShadow: [
+                color: const Color(0xFFCCFF00),
+                border: Border.all(color: Colors.black, width: 2.5),
+                boxShadow: const [
                   BoxShadow(
-                    color: AppColors.primary,
-                    blurRadius: 12,
-                    spreadRadius: 2,
+                    color: Colors.black,
+                    offset: Offset(0, 4),
+                    blurRadius: 0,
                   ),
                 ],
               ),
-              child: const Icon(Icons.mic_rounded, color: Colors.black, size: 36),
+              child: const Icon(Icons.mic_rounded, color: Colors.black, size: 38),
             ),
           ],
         );
@@ -1665,14 +1792,15 @@ class _PulsingWaveformState extends State<_PulsingWaveform>
 void _showOcrScanSheet(BuildContext context, WidgetRef parentRef) {
   showModalBottomSheet(
     context: context,
-    backgroundColor: Colors.black,
+    backgroundColor: Colors.white,
     isScrollControlled: true,
     useSafeArea: true,
     shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      side: BorderSide(color: Colors.black, width: 2.0),
     ),
     builder: (ctx) => FractionallySizedBox(
-      heightFactor: 1.0,
+      heightFactor: 0.94,
       child: _OcrScanModal(parentRef: parentRef),
     ),
   );
@@ -1702,7 +1830,7 @@ class _OcrScanModalState extends State<_OcrScanModal> {
       _isCancelled = false;
     });
 
-    // Simulate laser scanning for 2.5s
+    // Simulate laser scanning for 2s
     Timer(const Duration(seconds: 2), () {
       if (!mounted) return;
       setState(() {
@@ -1768,15 +1896,15 @@ class _OcrScanModalState extends State<_OcrScanModal> {
   Widget build(BuildContext context) {
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
         child: Column(
           children: [
             Center(
               child: Container(
-                width: 38,
+                width: 44,
                 height: 5,
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.3),
+                  color: Colors.black,
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
@@ -1785,9 +1913,9 @@ class _OcrScanModalState extends State<_OcrScanModal> {
             const Text(
               'Scan Struk / Nota (OCR)',
               style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                color: Colors.black,
               ),
             ),
             const SizedBox(height: 20),
@@ -1804,22 +1932,88 @@ class _OcrScanModalState extends State<_OcrScanModal> {
                 child: Container(
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade900,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 2),
+                    color: const Color(0xFFF9FAFB),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.black, width: 2.0),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Colors.black,
+                        offset: Offset(0, 4),
+                        blurRadius: 0,
+                      ),
+                    ],
                   ),
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
+                      // Viewfinder corner bracket accents
+                      Positioned(
+                        top: 16,
+                        left: 16,
+                        child: Container(
+                          width: 24,
+                          height: 24,
+                          decoration: const BoxDecoration(
+                            border: Border(
+                              top: BorderSide(color: Colors.black, width: 3.5),
+                              left: BorderSide(color: Colors.black, width: 3.5),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        top: 16,
+                        right: 16,
+                        child: Container(
+                          width: 24,
+                          height: 24,
+                          decoration: const BoxDecoration(
+                            border: Border(
+                              top: BorderSide(color: Colors.black, width: 3.5),
+                              right: BorderSide(color: Colors.black, width: 3.5),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        bottom: 16,
+                        left: 16,
+                        child: Container(
+                          width: 24,
+                          height: 24,
+                          decoration: const BoxDecoration(
+                            border: Border(
+                              bottom: BorderSide(color: Colors.black, width: 3.5),
+                              left: BorderSide(color: Colors.black, width: 3.5),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        bottom: 16,
+                        right: 16,
+                        child: Container(
+                          width: 24,
+                          height: 24,
+                          decoration: const BoxDecoration(
+                            border: Border(
+                              bottom: BorderSide(color: Colors.black, width: 3.5),
+                              right: BorderSide(color: Colors.black, width: 3.5),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      // State contents
                       if (_scanningOCR) ...[
                         const Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            CircularProgressIndicator(color: AppColors.primary),
+                            CircularProgressIndicator(color: Colors.black),
                             SizedBox(height: 14),
                             Text(
                               'Menjalankan OCR & Pemindaian...',
-                              style: TextStyle(color: Colors.white, fontSize: 12),
+                              style: TextStyle(color: Colors.black, fontSize: 13, fontWeight: FontWeight.bold),
                             ),
                           ],
                         ),
@@ -1827,27 +2021,40 @@ class _OcrScanModalState extends State<_OcrScanModal> {
                         // Animated Scanning Laser line
                         const _ScannerAnimation(),
                         const Positioned(
-                          bottom: 20,
+                          bottom: 24,
                           child: Text(
                             'Menyelaraskan struktur struk...',
-                            style: TextStyle(color: AppColors.primary, fontSize: 11, fontWeight: FontWeight.bold),
+                            style: TextStyle(color: Colors.black, fontSize: 12, fontWeight: FontWeight.w900),
                           ),
                         ),
                       ] else ...[
-                        // Viewfinder corners outline overlay
-                        Opacity(
-                          opacity: 0.5,
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.qr_code_scanner_rounded, size: 48, color: Colors.white),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Posisikan struk di dalam bingkai',
-                                style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 11),
+                        // Idle instructions
+                        Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFCCFF00),
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.black, width: 2.0),
+                                boxShadow: const [
+                                  BoxShadow(color: Colors.black, offset: Offset(0, 3), blurRadius: 0),
+                                ],
                               ),
-                            ],
-                          ),
+                              child: const Icon(Icons.qr_code_scanner_rounded, size: 40, color: Colors.black),
+                            ),
+                            const SizedBox(height: 14),
+                            const Text(
+                              'Posisikan struk di dalam bingkai',
+                              style: TextStyle(color: Colors.black, fontSize: 14, fontWeight: FontWeight.w900),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Pastikan nama toko & nominal terlihat jelas',
+                              style: TextStyle(color: Color(0xFF6B7280), fontSize: 11.5, fontWeight: FontWeight.w500),
+                            ),
+                          ],
                         ),
                       ],
                     ],
@@ -1857,27 +2064,39 @@ class _OcrScanModalState extends State<_OcrScanModal> {
               const SizedBox(height: 24),
 
               // Control trigger button
-              SizedBox(
+              Container(
                 width: double.infinity,
-                height: 48,
-                child: ElevatedButton.icon(
-                  icon: const Icon(
-                    Icons.camera_alt_rounded,
-                    color: Colors.black,
-                    size: 20,
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.black,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                height: 50,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFCCFF00),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.black, width: 2.0),
+                  boxShadow: const [
+                    BoxShadow(color: Colors.black, offset: Offset(0, 3), blurRadius: 0),
+                  ],
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: _isScanning || _scanningOCR ? null : _capturePhoto,
+                    child: const Center(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.camera_alt_rounded,
+                            color: Colors.black,
+                            size: 20,
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            'Jepret Struk Belanjaan',
+                            style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: Colors.black),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  onPressed: _isScanning || _scanningOCR ? null : _capturePhoto,
-                  label: const Text(
-                    'Jepret Struk Belanjaan',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                   ),
                 ),
               ),
@@ -1894,17 +2113,20 @@ class _OcrScanModalState extends State<_OcrScanModal> {
         width: double.infinity,
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Colors.green.shade900.withValues(alpha: 0.2),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.primary, width: 1.5),
+          color: const Color(0xFFE5F9E0),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.black, width: 2.0),
+          boxShadow: const [
+            BoxShadow(color: Colors.black, offset: Offset(0, 3), blurRadius: 0),
+          ],
         ),
         child: const Column(
           children: [
-            Icon(Icons.check_circle_rounded, color: AppColors.primary, size: 40),
+            Icon(Icons.check_circle_rounded, color: Colors.black, size: 36),
             SizedBox(height: 10),
             Text(
               'Sukses Menyimpan Transaksi! 🎉',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.primary),
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.black),
             ),
           ],
         ),
@@ -1916,17 +2138,20 @@ class _OcrScanModalState extends State<_OcrScanModal> {
         width: double.infinity,
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Colors.red.shade900.withValues(alpha: 0.2),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.red, width: 1.5),
+          color: const Color(0xFFFFDAD6),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.black, width: 2.0),
+          boxShadow: const [
+            BoxShadow(color: Colors.black, offset: Offset(0, 3), blurRadius: 0),
+          ],
         ),
         child: const Column(
           children: [
-            Icon(Icons.cancel_rounded, color: Colors.red, size: 40),
+            Icon(Icons.cancel_rounded, color: Colors.black, size: 36),
             SizedBox(height: 10),
             Text(
               'Draf Transaksi Dibatalkan',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.red),
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.black),
             ),
           ],
         ),
@@ -1936,20 +2161,23 @@ class _OcrScanModalState extends State<_OcrScanModal> {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.grey.shade900,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.primary, width: 1.5),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.black, width: 2.0),
+        boxShadow: const [
+          BoxShadow(color: Colors.black, offset: Offset(0, 4), blurRadius: 0),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          const Row(
             children: [
-              const Icon(Icons.auto_awesome, color: Colors.amber, size: 20),
-              const SizedBox(width: 8),
-              const Text(
+              Icon(Icons.auto_awesome, color: Colors.black, size: 20),
+              SizedBox(width: 8),
+              Text(
                 'TINJAU HASIL SCAN OCR',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Colors.white),
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Colors.black),
               ),
             ],
           ),
@@ -1958,31 +2186,54 @@ class _OcrScanModalState extends State<_OcrScanModal> {
           _buildRow('Nominal', 'Rp ${_ocrDraft!.amount.toInt()}'),
           _buildRow('Kategori', _ocrDraft!.category),
           _buildRow('Metode', _ocrDraft!.walletName),
-          const SizedBox(height: 20),
+          const SizedBox(height: 18),
           Row(
             children: [
               Expanded(
-                child: OutlinedButton(
-                  onPressed: _cancelDraft,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.red,
-                    side: const BorderSide(color: Colors.red),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                child: Container(
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.black, width: 2.0),
+                    boxShadow: const [
+                      BoxShadow(color: Colors.black, offset: Offset(0, 2), blurRadius: 0),
+                    ],
                   ),
-                  child: const Text('Hapus', style: TextStyle(fontWeight: FontWeight.bold)),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(8),
+                      onTap: _cancelDraft,
+                      child: const Center(
+                        child: Text('Hapus', style: TextStyle(fontWeight: FontWeight.w800, color: Colors.red, fontSize: 13)),
+                      ),
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: ElevatedButton(
-                  onPressed: _confirmDraft,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.black,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                child: Container(
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFCCFF00),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.black, width: 2.0),
+                    boxShadow: const [
+                      BoxShadow(color: Colors.black, offset: Offset(0, 2), blurRadius: 0),
+                    ],
                   ),
-                  child: const Text('Konfirmasi', style: TextStyle(fontWeight: FontWeight.bold)),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(8),
+                      onTap: _confirmDraft,
+                      child: const Center(
+                        child: Text('Konfirmasi', style: TextStyle(fontWeight: FontWeight.w900, color: Colors.black, fontSize: 13)),
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -1998,8 +2249,8 @@ class _OcrScanModalState extends State<_OcrScanModal> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.7))),
-          Text(val, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white)),
+          Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280), fontWeight: FontWeight.w600)),
+          Text(val, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.black)),
         ],
       ),
     );
@@ -2042,19 +2293,20 @@ class _ScannerAnimationState extends State<_ScannerAnimation>
         return Stack(
           children: [
             Positioned(
-              top: _ctrl.value * 200.0,
-              left: 0,
-              right: 0,
+              top: _ctrl.value * 220.0,
+              left: 20,
+              right: 20,
               child: Container(
                 height: 3,
-                decoration: const BoxDecoration(
-                  color: AppColors.primary,
-                  boxShadow: [
+                decoration: BoxDecoration(
+                  color: const Color(0xFFCCFF00),
+                  border: Border.all(color: Colors.black, width: 1.0),
+                  boxShadow: const [
                     BoxShadow(
-                      color: AppColors.primary,
-                      blurRadius: 10,
-                      spreadRadius: 3,
-                ),
+                      color: Colors.black,
+                      offset: Offset(0, 2),
+                      blurRadius: 0,
+                    ),
                   ],
                 ),
               ),

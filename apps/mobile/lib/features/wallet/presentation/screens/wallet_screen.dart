@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_spacing.dart';
-import '../../../../shared/widgets/filter_chip_widget.dart';
-import '../../../../shared/widgets/interactive_donut_chart.dart';
 import '../../../../core/providers/mock_providers.dart';
-import '../../../../core/models/wallet_model.dart';
-import '../../../../core/institutions/institution_logo_widget.dart';
+import '../../../../core/theme/neo_brutalism_decorations.dart';
+import '../../../../shared/widgets/interactive_donut_chart.dart';
+import '../widgets/wallet_filter_row.dart';
+import '../widgets/wallet_gradient_header.dart';
+import '../widgets/wallet_grid_card.dart';
 
+/// Orchestrator screen for the Wallet feature.
+/// Features a Halofin brand gradient header with interactive donut chart card,
+/// followed by a Neo-Brutalist white canvas holding the user's wallet cards.
 class WalletScreen extends ConsumerStatefulWidget {
   const WalletScreen({super.key});
 
@@ -20,34 +21,27 @@ class WalletScreen extends ConsumerStatefulWidget {
 
 class _WalletScreenState extends ConsumerState<WalletScreen> {
   String _activeFilter = 'Semua';
-
-  final formatCurrency = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
-
-  Color _getIconColor(String type) {
-    switch (type) {
-      case 'Bank': return const Color(0xFF005EAA);
-      case 'E-Wallet': return const Color(0xFF00AED6);
-      case 'Mutual Fund': return Colors.teal;
-      case 'Stock': return Colors.indigo;
-      case 'Crypto': return Colors.orange;
-      case 'Cash': return Colors.green;
-      default: return Colors.grey;
-    }
-  }
+  final formatCurrency = NumberFormat.currency(
+    locale: 'id_ID',
+    symbol: 'Rp ',
+    decimalDigits: 0,
+  );
 
   String _mapTypeToFilter(String type) {
     if (type == 'Bank') return 'Bank';
     if (type == 'E-Wallet') return 'E-Wallet';
-    if (['Mutual Fund', 'Stock', 'Bond', 'Deposit', 'Crypto'].contains(type)) return 'Investasi';
+    if (['Mutual Fund', 'Stock', 'Bond', 'Deposit', 'Crypto'].contains(type)) {
+      return 'Investasi';
+    }
     return 'Lainnya';
   }
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
+    final topSafeArea = MediaQuery.of(context).padding.top;
     final wallets = ref.watch(walletsProvider);
 
-    // Compute chart data
+    // Compute chart data (exact logic preserved)
     double totalBank = 0, totalEwallet = 0, totalInvest = 0, totalOther = 0;
     double totalBalance = 0;
     for (var w in wallets) {
@@ -90,192 +84,134 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
     }).toList();
 
     return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Wallet Finansialmu', style: TextStyle(fontWeight: FontWeight.bold)),
-        centerTitle: true,
-        backgroundColor: Colors.white,
-        elevation: 0,
-      ),
-      body: SingleChildScrollView(
+      backgroundColor: Colors.white,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: NeoBrutalism.brandGradient,
+        ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Donut Chart Container
-            Container(
-              margin: const EdgeInsets.all(AppSpacing.edgeMargin),
-              padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(32),
-                border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
-                boxShadow: const [
-                  BoxShadow(color: Color(0x0C000000), blurRadius: 10, offset: Offset(0, 4)),
-                ],
-              ),
-              child: InteractiveDonutChart(
-                centerTitle: 'Total Balance',
-                centerAmount: formatCurrency.format(totalBalance),
-                data: chartData,
-              ),
+            // 1. Top Gradient Header & Donut Chart (Pinned at top)
+            WalletGradientHeader(
+              topSafeArea: topSafeArea,
+              totalBalanceFormatted: formatCurrency.format(totalBalance),
+              chartData: chartData,
             ),
-            
-            // Your Wallets Header
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.edgeMargin),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                   Text('Your Wallets', style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
-                   Text('Sort by Value', style: textTheme.labelSmall?.copyWith(color: AppColors.textSecondary, fontWeight: FontWeight.bold)),
-                ],
-              ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
 
-            // Filters
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.edgeMargin),
-              child: Row(
-                children: ['Semua', 'E-Wallet', 'Bank', 'Investasi', 'Lainnya'].map((filter) {
-                  return Padding(
-                    padding: const EdgeInsets.only(right: AppSpacing.sm),
-                    child: FilterChipWidget(
-                      label: filter,
-                      isSelected: _activeFilter == filter,
-                      onTap: () => setState(() => _activeFilter = filter),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-
-            // Wallet Grid
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.edgeMargin),
-              child: GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  mainAxisSpacing: AppSpacing.md,
-                  crossAxisSpacing: AppSpacing.md,
-                  childAspectRatio: 1.1,
-                ),
-                itemCount: filteredWallets.length + 1,
-                itemBuilder: (context, index) {
-                  if (index == 0) {
-                    // Add New
-                    return GestureDetector(
-                      onTap: () => context.push('/wallet/add'),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade50,
-                          borderRadius: BorderRadius.circular(24),
-                          border: Border.all(color: Colors.grey.shade300, style: BorderStyle.solid, width: 2),
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
+            // 2. White Canvas holding the user's wallet cards
+            Expanded(
+              child: Container(
+                color: Colors.white,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.only(top: 8, bottom: 100),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Section Header: "Your Wallets" + Neo-Brutalist "Sort by Value" button
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Container(
-                              height: 48,
-                              width: 48,
-                              decoration: const BoxDecoration(
-                                color: AppColors.primary,
-                                shape: BoxShape.circle,
+                            const Text(
+                              'Your Wallets',
+                              style: TextStyle(
+                                fontFamily: 'Plus Jakarta Sans',
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.black,
+                                letterSpacing: -0.3,
                               ),
-                              child: const Icon(Icons.add, color: Colors.black, size: 28),
                             ),
-                            const SizedBox(height: AppSpacing.sm),
-                            Text('Add New', style: textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold)),
-                            Text('Wallet or Asset', style: textTheme.labelSmall?.copyWith(color: AppColors.textSecondary, fontSize: 10)),
+                            // Neo-Brutalist Sort Pill Button
+                            GestureDetector(
+                              onTap: () {},
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 5,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF3F4F6),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: Colors.black,
+                                    width: 1.5,
+                                  ),
+                                  boxShadow: const [
+                                    BoxShadow(
+                                      color: Colors.black,
+                                      offset: Offset(0, 1.5),
+                                      blurRadius: 0,
+                                    ),
+                                  ],
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: const [
+                                    Icon(
+                                      Icons.swap_vert,
+                                      size: 14,
+                                      color: Colors.black,
+                                    ),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      'Sort by Value',
+                                      style: TextStyle(
+                                        fontFamily: 'Plus Jakarta Sans',
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w800,
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
                           ],
                         ),
                       ),
-                    );
-                  }
+                      const SizedBox(height: 12),
 
-                  final wallet = filteredWallets[index - 1];
-                  return _buildWalletCard(
-                    context,
-                    wallet: wallet,
-                    totalBalance: totalBalance,
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: AppSpacing.xxl * 2),
-          ],
-        ),
-      ),
-    );
-  }
+                      // Filter Pills
+                      WalletFilterRow(
+                        activeFilter: _activeFilter,
+                        onFilterSelected: (filter) =>
+                            setState(() => _activeFilter = filter),
+                      ),
+                      const SizedBox(height: 14),
 
-  Widget _buildWalletCard(
-    BuildContext context, {
-    required WalletModel wallet,
-    required double totalBalance,
-  }) {
-    final textTheme = Theme.of(context).textTheme;
-    final color = _getIconColor(wallet.type);
-    final progressValue = totalBalance == 0 ? 0.0 : wallet.balance / totalBalance;
-
-    return GestureDetector(
-      onTap: () => context.push('/wallet/${wallet.id}'),
-      child: Container(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.grey.shade100),
-          boxShadow: [
-            BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 8, offset: const Offset(0, 2)),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                InstitutionLogoWidget(
-                  institutionId: wallet.institutionId,
-                  walletName: wallet.name,
-                  walletType: wallet.type,
-                  size: 40,
-                  borderWidth: 1.5,
-                ),
-                const Icon(Icons.more_horiz, color: Colors.grey, size: 20),
-              ],
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(wallet.name, style: textTheme.labelMedium?.copyWith(color: AppColors.textSecondary, fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
-                Text(wallet.isAutoSync ? 'Akun Otomatis' : 'Akun Manual', style: textTheme.labelSmall?.copyWith(color: Colors.grey.shade400, fontSize: 9)),
-                const SizedBox(height: 2),
-                Text(
-                  formatCurrency.format(wallet.balance), 
-                  style: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  height: 4,
-                  width: double.infinity,
-                  decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(2)),
-                  child: FractionallySizedBox(
-                    alignment: Alignment.centerLeft,
-                    widthFactor: progressValue.clamp(0.0, 1.0),
-                    child: Container(decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2))),
+                      // Wallet Cards 2-Column Grid
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: GridView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            mainAxisSpacing: 14,
+                            crossAxisSpacing: 14,
+                            childAspectRatio: 1.12,
+                          ),
+                          itemCount: filteredWallets.length + 1,
+                          itemBuilder: (context, index) {
+                            if (index == 0) {
+                              return const WalletAddCard();
+                            }
+                            final wallet = filteredWallets[index - 1];
+                            return WalletAccountCard(
+                              wallet: wallet,
+                              totalBalance: totalBalance,
+                              formatCurrency: formatCurrency,
+                            );
+                          },
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
+              ),
             ),
           ],
         ),

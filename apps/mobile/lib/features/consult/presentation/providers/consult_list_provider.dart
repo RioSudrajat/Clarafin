@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/models/consultant.dart';
+import 'consultant_filter_provider.dart';
 
 /// Categories available for filtering matching user reference image
 const List<String> consultCategories = [
@@ -9,6 +10,8 @@ const List<String> consultCategories = [
   'Insurance',
   'Debt',
   'Business',
+  'Keluarga',
+  'Pasangan',
 ];
 
 /// Search query notifier
@@ -42,13 +45,40 @@ final consultantsListProvider = Provider<List<Consultant>>((ref) {
   return ConsultantRepository.initialConsultants;
 });
 
-/// Filtered consultants provider combining search and category
+/// Filtered consultants provider combining search, category, and advanced filter sheet
 final filteredConsultantsProvider = Provider<List<Consultant>>((ref) {
   final all = ref.watch(consultantsListProvider);
   final query = ref.watch(consultSearchQueryProvider).trim().toLowerCase();
   final category = ref.watch(consultSelectedCategoryProvider);
+  final filter = ref.watch(consultantFilterProvider);
 
   return all.where((c) {
+    // Fee filter
+    if (c.feePerSession < filter.minFee || c.feePerSession > filter.maxFee) {
+      return false;
+    }
+
+    // Rating filter
+    if (filter.minRating > 0 && c.rating < filter.minRating) {
+      return false;
+    }
+
+    // Methods filter
+    if (filter.methods.isNotEmpty) {
+      final matchesMethod = c.methods.any((m) => filter.methods.contains(m));
+      if (!matchesMethod) return false;
+    }
+
+    // Advanced Specializations filter
+    if (filter.specializations.isNotEmpty) {
+      final matchesSpec = c.specializations.any((s) =>
+          filter.specializations.contains(s) ||
+          filter.specializations.any((fs) =>
+              s.toLowerCase().contains(fs.toLowerCase()) ||
+              fs.toLowerCase().contains(s.toLowerCase())));
+      if (!matchesSpec) return false;
+    }
+
     // Category match
     if (category != 'All') {
       final matchesCategory = _matchesCategory(c, category);
@@ -107,6 +137,17 @@ bool _matchesCategory(Consultant c, String category) {
           allText.contains('bisnis') ||
           allText.contains('umkm') ||
           allText.contains('korporat');
+    case 'Keluarga':
+      return allText.contains('keluarga') ||
+          allText.contains('pendidikan') ||
+          allText.contains('anak') ||
+          allText.contains('waris') ||
+          allText.contains('family');
+    case 'Pasangan':
+      return allText.contains('pasangan') ||
+          allText.contains('pranikah') ||
+          allText.contains('pasutri') ||
+          allText.contains('pernikahan');
     default:
       return true;
   }

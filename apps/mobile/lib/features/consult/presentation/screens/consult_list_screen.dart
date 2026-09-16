@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/consult_list_provider.dart';
+import '../widgets/consult_active_filters_bar.dart';
 import '../widgets/consult_category_filter_row.dart';
 import '../widgets/consult_empty_state.dart';
+import '../widgets/consult_filter_bottom_sheet.dart';
 import '../widgets/consult_gradient_header.dart';
 import '../widgets/consult_match_expert_banner.dart';
 import '../widgets/consult_search_bar.dart';
@@ -12,37 +14,74 @@ import '../widgets/consultant_card.dart';
 /// Primary screen orchestrator for the Consultation feature.
 /// Strictly follows Code Guidelines: lightweight orchestrator (< 150 lines)
 /// delegating visual presentation to isolated, modular widgets.
-class ConsultListScreen extends ConsumerWidget {
-  const ConsultListScreen({super.key});
+class ConsultListScreen extends ConsumerStatefulWidget {
+  final String? initialCategory;
+
+  const ConsultListScreen({super.key, this.initialCategory});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ConsultListScreen> createState() => _ConsultListScreenState();
+}
+
+class _ConsultListScreenState extends ConsumerState<ConsultListScreen> {
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialCategory != null && widget.initialCategory!.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ref
+            .read(consultSelectedCategoryProvider.notifier)
+            .setCategory(widget.initialCategory!);
+      });
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant ConsultListScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialCategory != null &&
+        widget.initialCategory != oldWidget.initialCategory) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ref
+            .read(consultSelectedCategoryProvider.notifier)
+            .setCategory(widget.initialCategory!);
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final filteredConsultants = ref.watch(filteredConsultantsProvider);
     final topSafeArea = MediaQuery.paddingOf(context).top;
 
     return Scaffold(
       backgroundColor: Colors.white,
-      body: CustomScrollView(
-        physics: const ClampingScrollPhysics(),
-        slivers: [
-          // ── Gradient Header with Curved Bottom Boundary ──
-          SliverToBoxAdapter(
-            child: ConsultGradientHeader(
-              topSafeArea: topSafeArea,
-              onFilterTap: () {
-                // Focus search or filter interaction
-              },
-            ),
+      body: Column(
+        children: [
+          // ── Fixed Gradient Header (Absolute at Top) ──
+          ConsultGradientHeader(
+            topSafeArea: topSafeArea,
+            onFilterTap: () => ConsultFilterBottomSheet.show(context),
           ),
 
-          // ── Stadium Search Bar ──
-          const SliverToBoxAdapter(
-            child: ConsultSearchBar(),
-          ),
+          // ── Scrollable Body Content (White Canvas) ──
+          Expanded(
+            child: CustomScrollView(
+              physics: const ClampingScrollPhysics(),
+              slivers: [
+                // ── Stadium Search Bar ──
+                const SliverToBoxAdapter(
+                  child: ConsultSearchBar(),
+                ),
 
           // ── Category Filter Pills ──
           const SliverToBoxAdapter(
             child: ConsultCategoryFilterRow(),
+          ),
+
+          // ── Active Filters Indicators & Reset ──
+          const SliverToBoxAdapter(
+            child: ConsultActiveFiltersBar(),
           ),
 
           // ── Section Title ──
@@ -123,6 +162,9 @@ class ConsultListScreen extends ConsumerWidget {
           ),
         ],
       ),
-    );
-  }
+    ),
+  ],
+),
+);
+}
 }

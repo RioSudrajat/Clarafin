@@ -4,10 +4,11 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/theme/neo_brutalism_decorations.dart';
 import '../../../../core/providers/mock_providers.dart';
 import '../../../../core/models/transaction_model.dart';
 import '../../../../features/budget/presentation/providers/finance_providers.dart';
+import '../../../../core/institutions/institution_logo_widget.dart';
 import '../../../../shared/widgets/period_selector_widget.dart';
 
 class IkhtisarTab extends ConsumerStatefulWidget {
@@ -52,7 +53,6 @@ class _IkhtisarTabState extends ConsumerState<IkhtisarTab> {
     }
   }
 
-  @override
   @override
   Widget build(BuildContext context) {
     final wallets = ref.watch(walletsProvider);
@@ -114,77 +114,115 @@ class _IkhtisarTabState extends ConsumerState<IkhtisarTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Total Net Worth (No Container card)
-          Row(
-            children: [
-              Text(
-                _touchedBalance != null ? 'Aset pada ${_formatTouchedDate(_touchedDate!)}' : 'Total Aset',
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              if (_touchedBalance == null) ...[
-                const SizedBox(width: 6),
-                IconButton(
-                  icon: Icon(
-                    _isAssetVisible ? Icons.visibility : Icons.visibility_off,
-                    color: AppColors.textSecondary,
-                    size: 18,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      _isAssetVisible = !_isAssetVisible;
-                    });
-                  },
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
+          // ── Neo-Brutalist Total Aset Card ──
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.black, width: 2.0),
+              boxShadow: const [
+                BoxShadow(
+                  color: Colors.black,
+                  offset: Offset(0, 3),
+                  blurRadius: 0,
                 ),
               ],
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            _isAssetVisible ? currencyFormat.format(_touchedBalance ?? totalAssets) : '••••••••',
-            style: const TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
             ),
-          ),
-          const SizedBox(height: 6),
-          _touchedBalance != null
-              ? const SizedBox(height: 18) // Spacing placeholder
-              : Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'PnL Periode Ini: ',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
+                    Row(
+                      children: [
+                        Text(
+                          _touchedBalance != null ? 'Aset pada ${_formatTouchedDate(_touchedDate!)}' : 'TOTAL ASET',
+                          style: const TextStyle(
+                            fontFamily: 'Plus Jakarta Sans',
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.5,
+                            color: Color(0xFF6B7280),
+                          ),
+                        ),
+                        if (_touchedBalance == null) ...[
+                          const SizedBox(width: 6),
+                          InkWell(
+                            onTap: () => setState(() => _isAssetVisible = !_isAssetVisible),
+                            child: Icon(
+                              _isAssetVisible ? Icons.visibility : Icons.visibility_off,
+                              color: const Color(0xFF6B7280),
+                              size: 18,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    if (_touchedBalance == null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: isPositive ? NeoBrutalism.lime : const Color(0xFFFFE4E6),
+                          borderRadius: BorderRadius.circular(100),
+                          border: Border.all(color: Colors.black, width: 1.5),
+                        ),
+                        child: Text(
+                          '${isPositive ? '+' : ''}${changePercentage.toStringAsFixed(1)}%',
+                          style: TextStyle(
+                            fontFamily: 'Plus Jakarta Sans',
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
+                            color: isPositive ? NeoBrutalism.dark : const Color(0xFFBE123C),
+                          ),
+                        ),
                       ),
-                    ),
-                    Text(
-                      '${isPositive ? '+' : ''}${currencyFormat.format(netCashflow)} (${isPositive ? '+' : ''}${changePercentage.toStringAsFixed(2)}%)',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: isPositive ? AppColors.success : AppColors.error,
-                      ),
-                    ),
-                    const Icon(
-                      Icons.chevron_right,
-                      size: 14,
-                      color: AppColors.textSecondary,
-                    ),
                   ],
                 ),
-          const SizedBox(height: 16),
-
-          // Area Line Chart
-          _buildAreaChart(spots, spotTimes, stepMs),
-          const SizedBox(height: 10),
+                const SizedBox(height: 8),
+                Text(
+                  _isAssetVisible ? currencyFormat.format(_touchedBalance ?? totalAssets) : '••••••••',
+                  style: const TextStyle(
+                    fontFamily: 'Plus Jakarta Sans',
+                    fontSize: 26,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.black,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                _touchedBalance != null
+                    ? const SizedBox(height: 18)
+                    : Row(
+                        children: [
+                          const Text(
+                            'PnL Periode Ini: ',
+                            style: TextStyle(
+                              fontFamily: 'Plus Jakarta Sans',
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF6B7280),
+                            ),
+                          ),
+                          Text(
+                            '${isPositive ? '+' : ''}${currencyFormat.format(netCashflow)}',
+                            style: TextStyle(
+                              fontFamily: 'Plus Jakarta Sans',
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              color: isPositive ? const Color(0xFF0F758A) : AppColors.error,
+                            ),
+                          ),
+                        ],
+                      ),
+                const SizedBox(height: 14),
+                // Area Line Chart
+                _buildAreaChart(spots, spotTimes, stepMs),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
 
           // Period Selector Widget (moved here below line chart)
           PeriodSelectorWidget(
@@ -202,7 +240,7 @@ class _IkhtisarTabState extends ConsumerState<IkhtisarTab> {
           const SizedBox(height: 20),
 
           // Asset Breakdown Section (Revisian: di bawah Chart)
-          Text('Rincian Aset', style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+          Text('Rincian Aset', style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, fontFamily: 'Plus Jakarta Sans')),
           const SizedBox(height: 12),
           _buildAssetFilters(),
           const SizedBox(height: 12),
@@ -211,20 +249,27 @@ class _IkhtisarTabState extends ConsumerState<IkhtisarTab> {
 
           // Balance Summary
           Container(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-              border: Border.all(color: Colors.grey.shade100),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.black, width: 2.0),
+              boxShadow: const [
+                BoxShadow(
+                  color: Colors.black,
+                  offset: Offset(0, 3),
+                  blurRadius: 0,
+                ),
+              ],
             ),
             child: Column(
               children: [
-                _buildSummaryRow('Net Balance (Wallet)', currencyFormat.format(totalWalletBalance), icon: Icons.account_balance_wallet, iconColor: AppColors.primaryDark),
-                Divider(height: 24, color: Colors.grey.shade100),
-                _buildSummaryRow('Tabungan Goals', currencyFormat.format(totalGoalsSaved), icon: Icons.track_changes, iconColor: Colors.amber),
-                Divider(height: 24, color: Colors.grey.shade100),
-                _buildSummaryRow('Pemasukan Periode Ini', currencyFormat.format(periodIncome), icon: Icons.arrow_downward, iconColor: AppColors.success),
-                const SizedBox(height: 12),
+                _buildSummaryRow('Net Balance (Wallet)', currencyFormat.format(totalWalletBalance), icon: Icons.account_balance_wallet, iconColor: const Color(0xFF0F758A)),
+                const Divider(height: 22, color: Colors.black12, thickness: 1),
+                _buildSummaryRow('Tabungan Goals', currencyFormat.format(totalGoalsSaved), icon: Icons.track_changes, iconColor: Colors.amber.shade800),
+                const Divider(height: 22, color: Colors.black12, thickness: 1),
+                _buildSummaryRow('Pemasukan Periode Ini', currencyFormat.format(periodIncome), icon: Icons.arrow_downward, iconColor: const Color(0xFF0F758A)),
+                const Divider(height: 22, color: Colors.black12, thickness: 1),
                 _buildSummaryRow('Pengeluaran Periode Ini', currencyFormat.format(periodExpense), icon: Icons.arrow_upward, iconColor: AppColors.error),
               ],
             ),
@@ -387,20 +432,30 @@ class _IkhtisarTabState extends ConsumerState<IkhtisarTab> {
             },
             child: Container(
               margin: const EdgeInsets.only(right: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
               decoration: BoxDecoration(
-                color: isSelected ? AppColors.primary : Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(AppSpacing.chipRadius),
+                color: isSelected ? NeoBrutalism.lime : Colors.white,
+                borderRadius: BorderRadius.circular(10),
                 border: Border.all(
-                  color: isSelected ? AppColors.primaryDark : Colors.grey.shade200,
-                  width: 1,
+                  color: Colors.black,
+                  width: isSelected ? 2.0 : 1.5,
                 ),
+                boxShadow: isSelected
+                    ? const [
+                        BoxShadow(
+                          color: Colors.black,
+                          offset: Offset(0, 2),
+                          blurRadius: 0,
+                        ),
+                      ]
+                    : null,
               ),
               child: Text(
                 filter,
                 style: TextStyle(
-                  color: isSelected ? AppColors.textPrimary : AppColors.textSecondary,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                  fontFamily: 'Plus Jakarta Sans',
+                  color: isSelected ? NeoBrutalism.dark : const Color(0xFF4B5563),
+                  fontWeight: isSelected ? FontWeight.w900 : FontWeight.w700,
                   fontSize: 12,
                 ),
               ),
@@ -424,6 +479,7 @@ class _IkhtisarTabState extends ConsumerState<IkhtisarTab> {
           totalAssets: totalAssets,
           icon: _getWalletIcon(wallet.type),
           iconColor: _getWalletColor(wallet.type),
+          institutionId: wallet.institutionId,
         ));
       }
       if (goals.isNotEmpty) {
@@ -449,6 +505,7 @@ class _IkhtisarTabState extends ConsumerState<IkhtisarTab> {
           totalAssets: totalAssets,
           icon: Icons.account_balance,
           iconColor: Colors.blue,
+          institutionId: wallet.institutionId,
         ));
       }
     } else if (_selectedAssetFilter == 'E-Wallet') {
@@ -461,6 +518,7 @@ class _IkhtisarTabState extends ConsumerState<IkhtisarTab> {
           totalAssets: totalAssets,
           icon: Icons.account_balance_wallet,
           iconColor: Colors.purple,
+          institutionId: wallet.institutionId,
         ));
       }
     } else if (_selectedAssetFilter == 'Investasi') {
@@ -474,6 +532,7 @@ class _IkhtisarTabState extends ConsumerState<IkhtisarTab> {
           totalAssets: totalAssets,
           icon: Icons.trending_up,
           iconColor: Colors.teal,
+          institutionId: wallet.institutionId,
         ));
       }
     } else if (_selectedAssetFilter == 'Goals') {
@@ -491,12 +550,24 @@ class _IkhtisarTabState extends ConsumerState<IkhtisarTab> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey.shade100),
+          border: Border.all(color: Colors.black, width: 2.0),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black,
+              offset: Offset(0, 3),
+              blurRadius: 0,
+            ),
+          ],
         ),
         child: const Center(
           child: Text(
             'Tidak ada aset di kategori ini',
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+            style: TextStyle(
+              fontFamily: 'Plus Jakarta Sans',
+              color: Color(0xFF6B7280),
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+            ),
           ),
         ),
       );
@@ -505,14 +576,21 @@ class _IkhtisarTabState extends ConsumerState<IkhtisarTab> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        border: Border.all(color: Colors.grey.shade100),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.black, width: 2.0),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black,
+            offset: Offset(0, 3),
+            blurRadius: 0,
+          ),
+        ],
       ),
       child: ListView.separated(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
         itemCount: items.length,
-        separatorBuilder: (context, index) => Divider(height: 1, color: Colors.grey.shade100),
+        separatorBuilder: (context, index) => const Divider(height: 1, color: Colors.black12, thickness: 1),
         itemBuilder: (context, index) => items[index],
       ),
     );
@@ -525,6 +603,7 @@ class _IkhtisarTabState extends ConsumerState<IkhtisarTab> {
     required double totalAssets,
     required IconData icon,
     required Color iconColor,
+    String? institutionId,
   }) {
     final portionPct = totalAssets > 0 ? (balance / totalAssets) : 0.0;
 
@@ -535,11 +614,30 @@ class _IkhtisarTabState extends ConsumerState<IkhtisarTab> {
         children: [
           Row(
             children: [
-              CircleAvatar(
-                radius: 18,
-                backgroundColor: iconColor.withValues(alpha: 0.1),
-                child: Icon(icon, color: iconColor, size: 16),
-              ),
+              if (category == 'Tabungan Target')
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFEF3C7),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.black, width: 2.0),
+                    boxShadow: const [
+                      BoxShadow(color: Colors.black, offset: Offset(0, 1.5), blurRadius: 0),
+                    ],
+                  ),
+                  child: const Center(
+                    child: Icon(Icons.track_changes, color: Colors.black, size: 18),
+                  ),
+                )
+              else
+                InstitutionLogoWidget(
+                  institutionId: institutionId,
+                  walletName: name,
+                  walletType: category,
+                  size: 36,
+                  borderWidth: 2.0,
+                ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -685,24 +783,56 @@ class _IkhtisarTabState extends ConsumerState<IkhtisarTab> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: ctaColor.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(AppSpacing.cardRadius),
-        border: Border.all(color: ctaColor.withValues(alpha: 0.15)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.black, width: 2.0),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black,
+            offset: Offset(0, 3),
+            blurRadius: 0,
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(text, style: TextStyle(fontSize: 12, color: Colors.grey.shade700, height: 1.5)),
-          const SizedBox(height: 12),
+          Text(
+            text,
+            style: const TextStyle(
+              fontFamily: 'Plus Jakarta Sans',
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF374151),
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 14),
           GestureDetector(
             onTap: onTap,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
-                color: ctaColor,
-                borderRadius: BorderRadius.circular(AppSpacing.buttonRadius),
+                color: NeoBrutalism.lime,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.black, width: 2.0),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Colors.black,
+                    offset: Offset(0, 2),
+                    blurRadius: 0,
+                  ),
+                ],
               ),
-              child: Text(ctaText, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.black)),
+              child: Text(
+                ctaText,
+                style: const TextStyle(
+                  fontFamily: 'Plus Jakarta Sans',
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.black,
+                ),
+              ),
             ),
           ),
         ],

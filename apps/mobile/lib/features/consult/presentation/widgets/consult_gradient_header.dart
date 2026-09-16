@@ -1,9 +1,12 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/theme/neo_brutalism_decorations.dart';
+import '../providers/consultant_filter_provider.dart';
 
 /// Top header widget for the Consultation screen.
 /// Features the brand teal-to-lime gradient, centered bold title,
 /// top-right circular filter action, and a curved white bottom boundary with a 2px black border.
-class ConsultGradientHeader extends StatelessWidget {
+class ConsultGradientHeader extends ConsumerWidget {
   final double topSafeArea;
   final VoidCallback? onFilterTap;
 
@@ -16,7 +19,8 @@ class ConsultGradientHeader extends StatelessWidget {
   static const double _curveRadius = 28.0;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hasActiveFilters = ref.watch(consultantFilterProvider).hasActiveFilters;
     final headerHeight = topSafeArea + 10.0 + 40.0 + 16.0 + _curveRadius;
 
     return SizedBox(
@@ -28,17 +32,7 @@ class ConsultGradientHeader extends StatelessWidget {
           Positioned.fill(
             child: Container(
               decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Color(0xFF0F758A), // Deep teal
-                    Color(0xFF198696),
-                    Color(0xFF8AD830),
-                    Color(0xFFBFFF00), // Bright Lime Green
-                  ],
-                  stops: [0.0, 0.25, 0.65, 1.0],
-                ),
+                gradient: NeoBrutalism.brandGradient,
               ),
             ),
           ),
@@ -100,28 +94,47 @@ class ConsultGradientHeader extends StatelessWidget {
                 // Circular Filter Button (2px black border, 2px shadow)
                 GestureDetector(
                   onTap: onFilterTap,
-                  child: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.black, width: 2.0),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Colors.black,
-                          offset: Offset(0, 2),
-                          blurRadius: 0,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.black, width: 2.0),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Colors.black,
+                              offset: Offset(0, 2),
+                              blurRadius: 0,
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                    child: const Center(
-                      child: Icon(
-                        Icons.filter_list_rounded,
-                        size: 20,
-                        color: Colors.black,
+                        child: const Center(
+                          child: Icon(
+                            Icons.filter_list_rounded,
+                            size: 20,
+                            color: Colors.black,
+                          ),
+                        ),
                       ),
-                    ),
+                      if (hasActiveFilters)
+                        Positioned(
+                          top: -1,
+                          right: -1,
+                          child: Container(
+                            width: 12,
+                            height: 12,
+                            decoration: BoxDecoration(
+                              color: NeoBrutalism.lime,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.black, width: 2.0),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
               ],

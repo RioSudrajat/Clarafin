@@ -110,7 +110,7 @@ class _AllServicesBottomSheetState extends State<AllServicesBottomSheet> {
           category: 'tracker',
           svgKey: 'ai_clarafin',
           badgeColor: NeoBrutalism.lime,
-          route: '/session',
+          route: '/ai-chat',
           isBadgeNew: true,
           description: 'Tanya jawab solusi keuangan bersama AI',
         ),
@@ -172,7 +172,7 @@ class _AllServicesBottomSheetState extends State<AllServicesBottomSheet> {
           category: 'health_check',
           svgKey: 'score',
           badgeColor: Color(0xFFEDE9FE),
-          route: '/budget',
+          route: '/score',
           description: 'Skor kesehatan finansial neobrutalis',
         ),
         ServiceItem(
@@ -237,6 +237,7 @@ class _AllServicesBottomSheetState extends State<AllServicesBottomSheet> {
           category: 'rewards',
           svgKey: 'kupon',
           badgeColor: Color(0xFFFEF3C7),
+          route: '/vouchers',
           description: 'Klaim diskon s.d. 50% untuk sesi konseling',
         ),
         ServiceItem(
@@ -274,7 +275,14 @@ class _AllServicesBottomSheetState extends State<AllServicesBottomSheet> {
     }
 
     if (item.route != null) {
-      context.push(item.route!);
+      if (item.route!.startsWith('/consult') ||
+          item.route!.startsWith('/home') ||
+          item.route!.startsWith('/wallet') ||
+          item.route!.startsWith('/budget')) {
+        context.go(item.route!);
+      } else {
+        context.push(item.route!);
+      }
       return;
     }
 
@@ -379,7 +387,7 @@ class _AllServicesBottomSheetState extends State<AllServicesBottomSheet> {
           ElevatedButton(
             onPressed: () {
               Navigator.of(ctx).pop();
-              context.push('/consult');
+              context.go('/consult');
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: NeoBrutalism.lime,

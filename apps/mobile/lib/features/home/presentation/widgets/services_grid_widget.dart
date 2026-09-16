@@ -18,7 +18,7 @@ class ServicesGridWidget extends StatelessWidget {
         category: 'counseling',
         svgKey: 'individu',
         badgeColor: const Color(0xFFD1FAE5), // Mint
-        onTap: () => context.push('/consult'),
+        onTap: () => context.go('/consult?category=All'),
       ),
       ServiceItem(
         id: 'pasangan',
@@ -26,7 +26,7 @@ class ServicesGridWidget extends StatelessWidget {
         category: 'counseling',
         svgKey: 'pasangan',
         badgeColor: const Color(0xFFFFE4E6), // Peach
-        onTap: () => context.push('/consult'),
+        onTap: () => context.go('/consult?category=Pasangan'),
       ),
       ServiceItem(
         id: 'keluarga',
@@ -34,7 +34,7 @@ class ServicesGridWidget extends StatelessWidget {
         category: 'counseling',
         svgKey: 'keluarga',
         badgeColor: const Color(0xFFE0F2FE), // Sky
-        onTap: () => context.push('/consult'),
+        onTap: () => context.go('/consult?category=Keluarga'),
       ),
       ServiceItem(
         id: 'ai_clarafin',
@@ -43,7 +43,7 @@ class ServicesGridWidget extends StatelessWidget {
         svgKey: 'ai_clarafin',
         badgeColor: NeoBrutalism.lime,
         isBadgeNew: true,
-        onTap: () => context.push('/session'),
+        onTap: () => context.push('/ai-chat'),
       ),
     ];
 
@@ -54,7 +54,7 @@ class ServicesGridWidget extends StatelessWidget {
         category: 'counseling',
         svgKey: 'umkm',
         badgeColor: const Color(0xFFFFEDD5), // Soft orange
-        onTap: () => context.push('/consult'),
+        onTap: () => context.go('/consult?category=Business'),
       ),
       ServiceItem(
         id: 'score',
@@ -62,7 +62,7 @@ class ServicesGridWidget extends StatelessWidget {
         category: 'health_check',
         svgKey: 'score',
         badgeColor: const Color(0xFFEDE9FE), // Lavender
-        onTap: () => context.go('/budget'),
+        onTap: () => context.push('/score'),
       ),
       ServiceItem(
         id: 'kupon',
@@ -70,7 +70,7 @@ class ServicesGridWidget extends StatelessWidget {
         category: 'rewards',
         svgKey: 'kupon',
         badgeColor: const Color(0xFFFEF3C7), // Soft yellow
-        onTap: () => _showCouponModal(context),
+        onTap: () => context.push('/vouchers'),
       ),
       ServiceItem(
         id: 'more',
@@ -238,181 +238,4 @@ class ServicesGridWidget extends StatelessWidget {
     );
   }
 
-  void _showCouponModal(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-          border: const Border(
-            top: BorderSide(color: Colors.black, width: 2.5),
-            left: BorderSide(color: Colors.black, width: 2),
-            right: BorderSide(color: Colors.black, width: 2),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.15),
-              blurRadius: 16,
-              offset: const Offset(0, -6),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 44,
-                height: 5,
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(9999),
-                ),
-              ),
-            ),
-            Row(
-              children: const [
-                Icon(Icons.local_offer_outlined, size: 24, color: NeoBrutalism.dark),
-                SizedBox(width: 8),
-                Text(
-                  'Kupon & Promo Clarafin',
-                  style: TextStyle(
-                    fontFamily: 'Plus Jakarta Sans',
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
-                    color: NeoBrutalism.dark,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Gunakan kode promo ini saat memesan sesi konseling finansialmu.',
-              style: TextStyle(
-                fontFamily: 'Plus Jakarta Sans',
-                fontSize: 12,
-                color: Color(0xFF6B7280),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFEF3C7),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.black, width: 2),
-                boxShadow: NeoBrutalism.shadow(yOffset: 2),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Text(
-                          'CLARAFIN50',
-                          style: TextStyle(
-                            fontFamily: 'Plus Jakarta Sans',
-                            fontSize: 16,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 0.5,
-                            color: NeoBrutalism.dark,
-                          ),
-                        ),
-                        SizedBox(height: 2),
-                        Text(
-                          'Diskon 50% untuk sesi konsultasi pertamamu',
-                          style: TextStyle(
-                            fontFamily: 'Plus Jakarta Sans',
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF4B5563),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.of(ctx).pop();
-                      context.push('/consult');
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: NeoBrutalism.lime,
-                      foregroundColor: Colors.black,
-                      elevation: 0,
-                      side: const BorderSide(color: Colors.black, width: 2),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    child: const Text('Pakai', style: TextStyle(fontWeight: FontWeight.w900)),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: const Color(0xFFD1FAE5),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.black, width: 2),
-                boxShadow: NeoBrutalism.shadow(yOffset: 2),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Text(
-                          'FREE15MIN',
-                          style: TextStyle(
-                            fontFamily: 'Plus Jakarta Sans',
-                            fontSize: 16,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 0.5,
-                            color: NeoBrutalism.dark,
-                          ),
-                        ),
-                        SizedBox(height: 2),
-                        Text(
-                          'Gratis sesi perkenalan & discovery 15 menit',
-                          style: TextStyle(
-                            fontFamily: 'Plus Jakarta Sans',
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF4B5563),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.of(ctx).pop();
-                      context.push('/consult');
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: Colors.black,
-                      elevation: 0,
-                      side: const BorderSide(color: Colors.black, width: 2),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    child: const Text('Klaim', style: TextStyle(fontWeight: FontWeight.w900)),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
-        ),
-      ),
-    );
-  }
 }

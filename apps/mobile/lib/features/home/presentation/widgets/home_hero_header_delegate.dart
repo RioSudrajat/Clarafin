@@ -38,17 +38,7 @@ class HomeHeroHeaderDelegate extends SliverPersistentHeaderDelegate {
             clipper: _TealHeaderClipper(whiteSheetTop: whiteSheetTop),
             child: Container(
               decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Color(0xFF0F758A), // Deep teal
-                    Color(0xFF198696),
-                    Color(0xFF8AD830),
-                    Color(0xFFBFFF00), // Bright Lime Green
-                  ],
-                  stops: [0.0, 0.25, 0.65, 1.0],
-                ),
+                gradient: NeoBrutalism.brandGradient,
               ),
             ),
           ),
