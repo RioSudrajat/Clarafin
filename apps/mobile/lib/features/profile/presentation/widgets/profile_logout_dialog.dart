@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 
 class ProfileLogoutDialog {
-  static void show(BuildContext context) {
+  static void show(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -38,9 +40,18 @@ class ProfileLogoutDialog {
             ),
           ),
           GestureDetector(
-            onTap: () {
+            onTap: () async {
               Navigator.of(ctx).pop();
-              context.go('/login');
+              try {
+                await ref.read(authProvider.notifier).logout();
+                if (context.mounted) {
+                  context.go('/login');
+                }
+              } catch (_) {
+                if (context.mounted) {
+                  context.go('/login');
+                }
+              }
             },
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

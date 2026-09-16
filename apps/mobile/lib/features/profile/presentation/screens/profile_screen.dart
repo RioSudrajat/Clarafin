@@ -168,7 +168,7 @@ class ProfileScreen extends ConsumerWidget {
 
                     // Logout Button
                     GestureDetector(
-                      onTap: () => ProfileLogoutDialog.show(context),
+                      onTap: () => ProfileLogoutDialog.show(context, ref),
                       child: Container(
                         width: double.infinity,
                         height: 48,

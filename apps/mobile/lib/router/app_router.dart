@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../shared/widgets/app_bottom_nav.dart';
+import '../features/splash/presentation/screens/splash_screen.dart';
 import '../features/auth/presentation/screens/auth_login_screen.dart';
 import '../features/auth/presentation/screens/auth_register_screen.dart';
 import '../features/onboarding/presentation/screens/onboarding_welcome_screen.dart';
@@ -40,7 +41,23 @@ import '../features/notification/presentation/screens/notification_screen.dart';
 import '../features/services/presentation/screens/financial_health_screen.dart';
 import '../features/services/presentation/screens/voucher_screen.dart';
 import '../features/export/presentation/screens/export_data_screen.dart';
+import '../features/auth/presentation/providers/auth_provider.dart';
 import '../core/models/transaction_model.dart';
+
+class RouterNotifier extends ChangeNotifier {
+  final Ref _ref;
+
+  RouterNotifier(this._ref) {
+    _ref.listen<AuthState>(
+      authProvider,
+      (previous, next) => notifyListeners(),
+    );
+  }
+}
+
+final routerNotifierProvider = Provider<RouterNotifier>((ref) {
+  return RouterNotifier(ref);
+});
 
 // Keys for each navigator branch
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -50,13 +67,46 @@ final _consultNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'consult');
 final _walletNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'wallet');
 
 final goRouterProvider = Provider<GoRouter>((ref) {
+  final routerNotifier = ref.watch(routerNotifierProvider);
+
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
-    initialLocation: '/login',
+    initialLocation: '/splash',
+    refreshListenable: routerNotifier,
+    redirect: (context, state) {
+      final auth = ref.read(authProvider);
+      final location = state.matchedLocation;
+
+      // Allow splash screen to display its animation
+      if (location == '/splash') {
+        return null;
+      }
+
+      final isAuthRoute = location == '/login' ||
+          location == '/register' ||
+          location.startsWith('/onboarding');
+
+      // Not logged in and attempting to visit a protected route
+      if (!auth.isLoggedIn) {
+        return isAuthRoute ? null : '/login';
+      }
+
+      // Logged in and attempting to visit login or register
+      if (location == '/login' || location == '/register') {
+        return '/home';
+      }
+
+      return null;
+    },
     routes: [
       GoRoute(
         path: '/',
         redirect: (context, state) => '/home',
+      ),
+      GoRoute(
+        path: '/splash',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const SplashScreen(),
       ),
       // --- Auth & Onboarding (outside shell) ---
       GoRoute(

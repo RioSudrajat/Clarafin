@@ -48,4 +48,32 @@ class WalletModel {
       institutionId: institutionId ?? this.institutionId,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'type': type,
+    'balance': balance,
+    'isAutoSync': isAutoSync,
+    'returnPercentage': returnPercentage,
+    'dividendDropDate': dividendDropDate?.toIso8601String(),
+    'isVolatile': isVolatile,
+    'hasClaimedDividend': hasClaimedDividend,
+    'institutionId': institutionId,
+  };
+
+  factory WalletModel.fromJson(Map<String, dynamic> json) => WalletModel(
+    id: json['id'] as String? ?? '',
+    name: json['name'] as String? ?? '',
+    type: json['type'] as String? ?? '',
+    balance: (json['balance'] as num?)?.toDouble() ?? 0.0,
+    isAutoSync: json['isAutoSync'] as bool? ?? false,
+    returnPercentage: (json['returnPercentage'] as num?)?.toDouble(),
+    dividendDropDate: json['dividendDropDate'] != null
+        ? DateTime.tryParse(json['dividendDropDate'] as String)
+        : null,
+    isVolatile: json['isVolatile'] as bool? ?? false,
+    hasClaimedDividend: json['hasClaimedDividend'] as bool? ?? false,
+    institutionId: json['institutionId'] as String?,
+  );
 }

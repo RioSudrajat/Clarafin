@@ -82,4 +82,36 @@ class UserProfile {
       selectedAvatarIndex: clearAvatarIndex ? null : (selectedAvatarIndex ?? this.selectedAvatarIndex),
     );
   }
+
+  Map<String, dynamic> toJson() => {
+    'name': name,
+    'email': email,
+    'phone': phone,
+    'avatarUrl': avatarUrl,
+    'tier': tier,
+    'memberSince': memberSince,
+    'biometricsEnabled': biometricsEnabled,
+    'notificationsEnabled': notificationsEnabled,
+    'promoAlertsEnabled': promoAlertsEnabled,
+    'pin': pin,
+    'currency': currency,
+    'language': language,
+    'selectedAvatarIndex': selectedAvatarIndex,
+  };
+
+  factory UserProfile.fromJson(Map<String, dynamic> json) => UserProfile(
+    name: json['name'] as String? ?? '',
+    email: json['email'] as String? ?? '',
+    phone: json['phone'] as String? ?? '',
+    avatarUrl: json['avatarUrl'] as String? ?? 'assets/images/avatars/avatar_1.png',
+    tier: json['tier'] as String? ?? 'Clarafin Pro Member',
+    memberSince: json['memberSince'] as String? ?? 'Januari 2024',
+    biometricsEnabled: json['biometricsEnabled'] as bool? ?? true,
+    notificationsEnabled: json['notificationsEnabled'] as bool? ?? true,
+    promoAlertsEnabled: json['promoAlertsEnabled'] as bool? ?? false,
+    pin: json['pin'] as String? ?? '123456',
+    currency: json['currency'] as String? ?? 'IDR',
+    language: json['language'] as String? ?? 'Bahasa Indonesia',
+    selectedAvatarIndex: json['selectedAvatarIndex'] as int? ?? 1,
+  );
 }

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../core/providers/mock_providers.dart';
 import '../../../../core/theme/neo_brutalism_decorations.dart';
+import '../../../profile/presentation/providers/user_profile_provider.dart';
 
 class EditUserNameDialog {
   static void show(BuildContext context, WidgetRef ref, String currentName) {
@@ -48,7 +48,7 @@ class EditUserNameDialog {
             onPressed: () {
               final newName = controller.text.trim();
               if (newName.isNotEmpty) {
-                ref.read(userNameProvider.notifier).state = newName;
+                ref.read(userProfileProvider.notifier).updateProfile(name: newName);
               }
               Navigator.of(ctx).pop();
             },

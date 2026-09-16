@@ -52,11 +52,12 @@ Dokumen ini adalah rencana kerja komprehensif (*Master Execution Plan*) untuk pe
 | 34 | Financial Report | `ReportDashboardScreen` | `/reporting` | ⚠️ **Perlu Redesign** | Laporan bulanan, chart distribusi pengeluaran, perbandingan pemasukan. |
 | 35 | Session Branch | `BranchSessionScreen` | `/session` | ⚠️ **Perlu Redesign** | Hub percakapan asisten finansial AI Clarafin. |
 | 36 | AI Chat | `AiChatScreen` | `/ai-chat` | ⚠️ **Perlu Redesign** | Chatbot copilot finansial cerdas. |
-| 37 | Auth Login | `AuthLoginScreen` | `/login` | ✅ **Selesai** | Form login Neo-Brutalism, background gradien biru satu warna, logo polos tanpa wrapper. |
-| 38 | Auth Register | `AuthRegisterScreen` | `/register` | ✅ **Selesai** | Form registrasi Neo-Brutalism dengan validasi terms checkbox, logo polos. |
-| 39 | Onboarding Welcome | `OnboardingWelcomeScreen` | `/onboarding` | ✅ **Selesai** | Splash/Carousel 3 benefit, capsule indicator, tombol neon lime, modular < 200 baris. |
-| 40 | Onboarding Wallet | `OnboardingWalletSetupScreen` | `/onboarding/wallet-setup` | ✅ **Selesai** | Step 1/2 header, 4 tactile wallet cards, tactile inputs, modular < 200 baris. |
-| 41 | Onboarding Goal | `OnboardingSetGoalScreen` | `/onboarding/goal` | ✅ **Selesai** | Step 2/2 header, 4 tactile goal cards, target mulai badges, navigasi ke /home. |
+| 37 | Splash Screen | `SplashScreen` | `/splash` | ✅ **Selesai** | Splash screen gradien biru-teal, logo transparan tanpa circle container, brand wordmark Quicksand, auto-routing. |
+| 38 | Auth Login | `AuthLoginScreen` | `/login` | ✅ **Selesai** | Form login Neo-Brutalism, background gradien biru satu warna, logo polos tanpa wrapper. |
+| 39 | Auth Register | `AuthRegisterScreen` | `/register` | ✅ **Selesai** | Form registrasi Neo-Brutalism dengan validasi terms checkbox, logo polos. |
+| 40 | Onboarding Welcome | `OnboardingWelcomeScreen` | `/onboarding` | ✅ **Selesai** | Splash/Carousel 3 benefit, capsule indicator, tombol neon lime, modular < 200 baris. |
+| 41 | Onboarding Wallet | `OnboardingWalletSetupScreen` | `/onboarding/wallet-setup` | ✅ **Selesai** | Step 1/2 header, 4 tactile wallet cards, tactile inputs, modular < 200 baris. |
+| 42 | Onboarding Goal | `OnboardingSetGoalScreen` | `/onboarding/goal` | ✅ **Selesai** | Step 2/2 header, 4 tactile goal cards, target mulai badges, navigasi ke /home. |
 
 ---
 
@@ -169,7 +170,8 @@ Dokumen ini adalah rencana kerja komprehensif (*Master Execution Plan*) untuk pe
 
 ### 🔹 Phase 5: Auth, Onboarding & Analytics
 > Memastikan pintu masuk aplikasi dan pelaporan analitik selaras dengan gaya visual baru.
-1. **Task 5.1**: ✅ Redesign `AuthLoginScreen` (`/login`) & `AuthRegisterScreen` (`/register`) bergaya Neo-Brutalism dengan background gradien biru/teal satu warna dan logo transparan tanpa background container (Modular < 200 baris, verified di emulator).
+1. **Task 5.0**: ✅ Implementasi `SplashScreen` (`/splash`) & konfigurasi Android native launch screen (gradien biru-teal `#094E58` &rarr; `#147D8C`, logo transparan tanpa circle badge, wordmark Quicksand `clarafin`, auto-transition ke `/login`).
+2. **Task 5.1**: ✅ Redesign `AuthLoginScreen` (`/login`) & `AuthRegisterScreen` (`/register`) bergaya Neo-Brutalism dengan background gradien biru/teal satu warna dan logo transparan tanpa background container (Modular < 200 baris, verified di emulator).
 2. **Task 5.2**: ✅ Redesign Onboarding Flow: `OnboardingWelcomeScreen`, `OnboardingWalletSetupScreen`, `OnboardingSetGoalScreen` (Modular < 200 baris, verified di emulator).
 3. **Task 5.3**: Redesign `ReportDashboardScreen` (`/reporting`): Visualisasi grafik PnL, pie chart alokasi pengeluaran, tab Ikhtisar/Pengeluaran/Pemasukan.
 4. **Task 5.4**: Redesign AI Assistant Sessions: `BranchSessionScreen` (`/session`) & `AiChatScreen` (`/ai-chat`).

@@ -20,4 +20,28 @@ class TransactionModel {
     this.targetWalletId,
     this.targetGoalId,
   });
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'title': title,
+    'category': category,
+    'amount': amount,
+    'date': date.toIso8601String(),
+    'type': type,
+    'walletId': walletId,
+    'targetWalletId': targetWalletId,
+    'targetGoalId': targetGoalId,
+  };
+
+  factory TransactionModel.fromJson(Map<String, dynamic> json) => TransactionModel(
+    id: json['id'] as String? ?? '',
+    title: json['title'] as String? ?? '',
+    category: json['category'] as String? ?? '',
+    amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
+    date: DateTime.tryParse(json['date'] as String? ?? '') ?? DateTime.now(),
+    type: json['type'] as String? ?? 'expense',
+    walletId: json['walletId'] as String? ?? '',
+    targetWalletId: json['targetWalletId'] as String?,
+    targetGoalId: json['targetGoalId'] as String?,
+  );
 }

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/providers/mock_providers.dart';
 import '../../../../core/theme/neo_brutalism_decorations.dart';
+import 'recent_activity_empty_card.dart';
 
 class RecentActivitySection extends ConsumerWidget {
   const RecentActivitySection({super.key});
@@ -54,7 +55,9 @@ class RecentActivitySection extends ConsumerWidget {
         // Transaction List Items
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: ListView.builder(
+          child: transactions.isEmpty
+              ? const RecentActivityEmptyCard()
+              : ListView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             padding: EdgeInsets.zero,
