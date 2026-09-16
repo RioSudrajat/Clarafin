@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/wallet_model.dart';
@@ -101,5 +101,16 @@ class LocalStorageService {
   Future<void> saveProfile(String userId, UserProfile profile) async {
     final key = 'clarafin_profile_$userId';
     await _prefs.setString(key, jsonEncode(profile.toJson()));
+  }
+
+  // Total Budget
+  double getTotalBudget(String userId) {
+    final key = 'clarafin_total_budget_$userId';
+    return _prefs.getDouble(key) ?? 5000000.0;
+  }
+
+  Future<void> saveTotalBudget(String userId, double amount) async {
+    final key = 'clarafin_total_budget_$userId';
+    await _prefs.setDouble(key, amount);
   }
 }

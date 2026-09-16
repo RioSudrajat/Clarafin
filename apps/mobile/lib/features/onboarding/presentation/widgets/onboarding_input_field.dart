@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/theme/neo_brutalism_decorations.dart';
 
@@ -8,6 +9,7 @@ class OnboardingInputField extends StatelessWidget {
   final IconData? prefixIcon;
   final String? prefixText;
   final TextInputType? keyboardType;
+  final List<TextInputFormatter>? inputFormatters;
 
   const OnboardingInputField({
     super.key,
@@ -16,6 +18,7 @@ class OnboardingInputField extends StatelessWidget {
     this.prefixIcon,
     this.prefixText,
     this.keyboardType,
+    this.inputFormatters,
   });
 
   @override
@@ -64,6 +67,7 @@ class OnboardingInputField extends StatelessWidget {
                 child: TextField(
                   controller: controller,
                   keyboardType: keyboardType,
+                  inputFormatters: inputFormatters,
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,

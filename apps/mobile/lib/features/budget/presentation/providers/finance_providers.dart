@@ -3,12 +3,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/models/goal_model.dart';
 import '../../domain/models/budget_category_model.dart';
 import '../../domain/models/bill_model.dart';
+import '../../../../core/models/transaction_category_model.dart';
 import '../../../../core/services/local_storage_service.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 
 export '../../domain/models/goal_model.dart';
 export '../../domain/models/budget_category_model.dart';
 export '../../domain/models/bill_model.dart';
+export '../../domain/models/budget_summary_model.dart';
+import '../../../../core/providers/mock_providers.dart';
+import '../../domain/models/budget_summary_model.dart';
 
 // --- NOTIFIERS ---
 
@@ -115,6 +119,23 @@ class BudgetsNotifier extends Notifier<List<BudgetCategoryModel>> {
   }
 }
 
+class MonthlyTotalBudgetNotifier extends Notifier<double> {
+  @override
+  double build() {
+    final userId = ref.watch(authProvider.select((s) => s.currentUser?.id));
+    if (userId == null || userId.isEmpty) return 5000000.0;
+    return ref.read(localStorageServiceProvider).getTotalBudget(userId);
+  }
+
+  void setTotalBudget(double amount) {
+    state = amount;
+    final userId = ref.read(authProvider).currentUser?.id;
+    if (userId != null && userId.isNotEmpty) {
+      ref.read(localStorageServiceProvider).saveTotalBudget(userId, amount);
+    }
+  }
+}
+
 class BillsNotifier extends Notifier<List<BillModel>> {
   @override
   List<BillModel> build() {
@@ -155,4 +176,66 @@ final goalsProvider = NotifierProvider<GoalsNotifier, List<GoalModel>>(GoalsNoti
 
 final budgetsProvider = NotifierProvider<BudgetsNotifier, List<BudgetCategoryModel>>(BudgetsNotifier.new);
 
+final monthlyTotalBudgetProvider = NotifierProvider<MonthlyTotalBudgetNotifier, double>(
+  MonthlyTotalBudgetNotifier.new,
+);
+
 final billsProvider = NotifierProvider<BillsNotifier, List<BillModel>>(BillsNotifier.new);
+
+/// Budgets synchronized dynamically with transactions of the current month
+final syncedBudgetsProvider = Provider<List<BudgetCategoryModel>>((ref) {
+  final rawBudgets = ref.watch(budgetsProvider);
+  final transactions = ref.watch(transactionsProvider);
+  final now = DateTime.now();
+
+  return rawBudgets.map((budget) {
+    final target = budget.name.toLowerCase().trim();
+    final spent = transactions.where((t) {
+      if (t.type != 'expense') return false;
+      if (t.date.year != now.year || t.date.month != now.month) return false;
+      final cat = t.category.toLowerCase().trim();
+      if (cat == target) return true;
+      if (cat.startsWith('$target •') ||
+          cat.startsWith('$target -') ||
+          cat.startsWith('$target:')) {
+        return true;
+      }
+      final mainPart = cat.split('•').first.trim();
+      return mainPart == target;
+    }).fold<double>(0.0, (sum, t) => sum + t.amount);
+
+    final mainCat = TransactionCategories.findCategory(budget.name);
+    return budget.copyWith(
+      spentAmount: spent,
+      icon: mainCat?.icon ?? budget.icon,
+      iconColor: mainCat?.color ?? budget.iconColor,
+      iconBgColor: mainCat?.bgColor ?? budget.iconBgColor,
+    );
+  }).toList();
+});
+
+/// Comprehensive monthly budget summary
+final monthlyBudgetSummaryProvider = Provider<BudgetSummary>((ref) {
+  final totalBudget = ref.watch(monthlyTotalBudgetProvider);
+  final budgets = ref.watch(syncedBudgetsProvider);
+  final transactions = ref.watch(transactionsProvider);
+  final now = DateTime.now();
+
+  final totalSpent = transactions.where((t) {
+    return t.type == 'expense' && t.date.year == now.year && t.date.month == now.month;
+  }).fold<double>(0.0, (sum, t) => sum + t.amount);
+
+  final totalAllocated = budgets.fold<double>(0.0, (sum, b) => sum + b.totalAmount);
+  final remainingAllocation = (totalBudget - totalAllocated).clamp(0.0, double.infinity);
+  final remainingBudget = totalBudget - totalSpent;
+  final progress = totalBudget > 0 ? (totalSpent / totalBudget).clamp(0.0, 1.0) : 0.0;
+
+  return BudgetSummary(
+    totalBudget: totalBudget,
+    totalAllocated: totalAllocated,
+    remainingAllocation: remainingAllocation,
+    totalSpent: totalSpent,
+    remainingBudget: remainingBudget,
+    progress: progress,
+  );
+});

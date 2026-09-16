@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -125,6 +126,10 @@ class _OnboardingWalletSetupScreenState extends State<OnboardingWalletSetupScree
                 controller: _balanceController,
                 prefixText: 'Rp ',
                 keyboardType: TextInputType.number,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  _RupiahDotFormatter(),
+                ],
               ),
               const SizedBox(height: 24),
               _buildSubmitButton(context),
@@ -173,6 +178,34 @@ class _OnboardingWalletSetupScreenState extends State<OnboardingWalletSetupScree
           ),
         ),
       ),
+    );
+  }
+}
+
+class _RupiahDotFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final text = newValue.text.replaceAll('.', '');
+    if (text.isEmpty) {
+      return newValue.copyWith(text: '');
+    }
+
+    final buffer = StringBuffer();
+    final len = text.length;
+    for (int i = 0; i < len; i++) {
+      if (i > 0 && (len - i) % 3 == 0) {
+        buffer.write('.');
+      }
+      buffer.write(text[i]);
+    }
+
+    final formatted = buffer.toString();
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
     );
   }
 }

@@ -29,12 +29,18 @@ class GoalDetailScreen extends ConsumerWidget {
     String walletId,
     String walletName,
     double amount,
+    WidgetRef ref,
   ) {
+    final wallets = ref.read(walletsProvider);
+    final wallet = wallets.where((w) => w.id == walletId).firstOrNull;
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (ctx) => GoalSourceActionSheet(
+        institutionId: wallet?.institutionId,
+        walletType: wallet?.type,
         walletName: walletName,
         currentAmount: amount,
         onAddFunds: () {
@@ -94,6 +100,7 @@ class GoalDetailScreen extends ConsumerWidget {
                         wId,
                         wName,
                         amt,
+                        ref,
                       ),
                     ),
                   ],

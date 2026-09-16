@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/models/transaction_category_model.dart';
 import '../../../../core/providers/mock_providers.dart';
 import '../../../../core/theme/neo_brutalism_decorations.dart';
 import 'recent_activity_empty_card.dart';
@@ -67,85 +68,86 @@ class RecentActivitySection extends ConsumerWidget {
               final isExpense = tx.type == 'expense' || tx.type == 'transfer';
               final amountText = '${isExpense ? "- " : "+ "}${currencyFormat.format(tx.amount)}';
 
-              Color iconBg;
-              Color iconColor;
-              IconData txIcon;
+              final display = TransactionCategories.getCategoryDisplay(
+                tx.category.isNotEmpty ? tx.category : tx.title,
+              );
+              final displayTitle = tx.category.isNotEmpty ? tx.category : tx.title;
 
-              if (index == 0) {
-                iconBg = NeoBrutalism.dark;
-                iconColor = Colors.white;
-                txIcon = Icons.directions_car;
-              } else if (index == 1) {
-                iconBg = NeoBrutalism.lime;
-                iconColor = NeoBrutalism.dark;
-                txIcon = Icons.coffee_outlined;
-              } else {
-                iconBg = NeoBrutalism.coral;
-                iconColor = const Color(0xFFB91C1C);
-                txIcon = Icons.play_circle_outline;
-              }
-
-              return Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: Colors.black, width: 2),
-                  boxShadow: NeoBrutalism.shadow(yOffset: 3),
-                ),
-                child: Row(
-                  children: [
-                    // Category Icon Badge
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: iconBg,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.black, width: 2),
+              return GestureDetector(
+                onTap: () => context.push('/transaction/success', extra: {'transaction': tx}),
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.black, width: 2),
+                    boxShadow: NeoBrutalism.shadow(yOffset: 3),
+                  ),
+                  child: Row(
+                    children: [
+                      // Category Icon Badge (Synchronized Notion Emoji / Icon)
+                      Container(
+                        width: 46,
+                        height: 46,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: display.bgColor,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.black, width: 1.8),
+                        ),
+                        child: Text(
+                          display.emoji,
+                          style: const TextStyle(fontSize: 22),
+                        ),
                       ),
-                      child: Icon(txIcon, size: 20, color: iconColor),
-                    ),
-                    const SizedBox(width: 14),
-                    // Title & Subtitle
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            tx.title,
-                            style: const TextStyle(
-                              fontFamily: 'Plus Jakarta Sans',
-                              fontSize: 14,
-                              fontWeight: FontWeight.w900,
-                              color: NeoBrutalism.dark,
+                      const SizedBox(width: 14),
+                      // Title & Subtitle
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              displayTitle,
+                              style: const TextStyle(
+                                fontFamily: 'Plus Jakarta Sans',
+                                fontSize: 14,
+                                fontWeight: FontWeight.w900,
+                                color: NeoBrutalism.dark,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${DateFormat('h:mm a').format(tx.date)} • ${DateFormat('d MMM').format(tx.date)}',
-                            style: const TextStyle(
-                              fontFamily: 'Plus Jakarta Sans',
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: NeoBrutalism.textMuted,
+                            const SizedBox(height: 2),
+                            Text(
+                              tx.notes != null && tx.notes!.isNotEmpty
+                                  ? '${tx.notes} • ${DateFormat('d MMM').format(tx.date)}'
+                                  : '${DateFormat('h:mm a').format(tx.date)} • ${DateFormat('d MMM').format(tx.date)}',
+                              style: const TextStyle(
+                                fontFamily: 'Plus Jakarta Sans',
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: NeoBrutalism.textMuted,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                    // Amount
-                    Text(
-                      amountText,
-                      style: const TextStyle(
-                        fontFamily: 'Plus Jakarta Sans',
-                        fontSize: 14,
-                        fontWeight: FontWeight.w900,
-                        color: NeoBrutalism.dark,
+                      const SizedBox(width: 8),
+                      // Amount
+                      Text(
+                        amountText,
+                        style: TextStyle(
+                          fontFamily: 'Plus Jakarta Sans',
+                          fontSize: 14,
+                          fontWeight: FontWeight.w900,
+                          color: isExpense ? const Color(0xFFDC2626) : const Color(0xFF10B981),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               );
             },

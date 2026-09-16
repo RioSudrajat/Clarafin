@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/providers/mock_providers.dart';
 import '../../../budget/presentation/providers/finance_providers.dart';
 import '../widgets/goal_form_header.dart';
 import '../widgets/goal_form_inputs.dart';
 import '../widgets/goal_icon_selector.dart';
 import '../widgets/goal_priority_selector.dart';
+import '../widgets/goal_source_action_sheet.dart';
+import '../widgets/goal_source_funds_section.dart';
 import '../widgets/goal_submit_button.dart';
 
 /// Screen for creating or editing savings goals.
@@ -184,6 +187,54 @@ class _AddEditGoalScreenState extends ConsumerState<AddEditGoalScreen> {
                         isEditing: isEditing,
                         onPressed: _saveGoal,
                       ),
+                      if (isEditing) ...[
+                        const SizedBox(height: 24),
+                        Builder(
+                          builder: (context) {
+                            final goals = ref.watch(goalsProvider);
+                            final goal = goals.where((g) => g.id == widget.goalId).firstOrNull;
+                            if (goal == null) return const SizedBox.shrink();
+                            final wallets = ref.watch(walletsProvider);
+                            return GoalSourceFundsSection(
+                              goal: goal,
+                              wallets: wallets,
+                              padding: EdgeInsets.zero,
+                              onAddSource: () => context.push('/transaction/entry', extra: {
+                                'type': 'Transfer',
+                                'targetGoalId': goal.id,
+                              }),
+                              onTapSource: (wId, wName, amt) {
+                                final w = wallets.where((x) => x.id == wId).firstOrNull;
+                                showModalBottomSheet(
+                                  context: context,
+                                  backgroundColor: Colors.transparent,
+                                  isScrollControlled: true,
+                                  builder: (ctx) => GoalSourceActionSheet(
+                                    institutionId: w?.institutionId,
+                                    walletType: w?.type,
+                                    walletName: wName,
+                                    currentAmount: amt,
+                                    onAddFunds: () {
+                                      context.push('/transaction/entry', extra: {
+                                        'type': 'Transfer',
+                                        'targetGoalId': goal.id,
+                                        'sourceWalletId': wId,
+                                      });
+                                    },
+                                    onWithdrawFunds: () {
+                                      context.push('/transaction/entry', extra: {
+                                        'type': 'Transfer',
+                                        'sourceWalletId': 'goal:${goal.id}:$wId',
+                                        'targetWalletId': wId,
+                                      });
+                                    },
+                                  ),
+                                );
+                              },
+                            );
+                          },
+                        ),
+                      ],
                       const SizedBox(height: 24),
                     ],
                   ),

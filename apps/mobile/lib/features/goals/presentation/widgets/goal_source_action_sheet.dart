@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/institutions/institution_logo_widget.dart';
 import '../../../../core/theme/neo_brutalism_decorations.dart';
 
 /// Neo-Brutalism action bottom sheet for managing contributions from a specific wallet.
 class GoalSourceActionSheet extends StatelessWidget {
+  final String? institutionId;
+  final String? walletType;
   final String walletName;
   final double currentAmount;
   final VoidCallback onAddFunds;
@@ -11,6 +14,8 @@ class GoalSourceActionSheet extends StatelessWidget {
 
   const GoalSourceActionSheet({
     super.key,
+    this.institutionId,
+    this.walletType,
     required this.walletName,
     required this.currentAmount,
     required this.onAddFunds,
@@ -115,13 +120,30 @@ class GoalSourceActionSheet extends StatelessWidget {
           const SizedBox(height: 18),
 
           // Header
-          Text(
-            walletName,
-            style: const TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w900,
-              color: Colors.black,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              InstitutionLogoWidget(
+                institutionId: institutionId,
+                walletName: walletName,
+                walletType: walletType,
+                size: 30,
+                borderWidth: 1.5,
+              ),
+              const SizedBox(width: 10),
+              Flexible(
+                child: Text(
+                  walletName,
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.black,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 4),
           Text(

@@ -8,6 +8,7 @@ class TransactionModel {
   final String walletId; // Source wallet
   final String? targetWalletId; // Target wallet for transfer
   final String? targetGoalId; // Target goal for transfer
+  final String? notes; // Optional user description/notes
 
   TransactionModel({
     required this.id,
@@ -19,6 +20,7 @@ class TransactionModel {
     required this.walletId,
     this.targetWalletId,
     this.targetGoalId,
+    this.notes,
   });
 
   Map<String, dynamic> toJson() => {
@@ -31,6 +33,7 @@ class TransactionModel {
     'walletId': walletId,
     'targetWalletId': targetWalletId,
     'targetGoalId': targetGoalId,
+    'notes': notes,
   };
 
   factory TransactionModel.fromJson(Map<String, dynamic> json) => TransactionModel(
@@ -43,5 +46,6 @@ class TransactionModel {
     walletId: json['walletId'] as String? ?? '',
     targetWalletId: json['targetWalletId'] as String?,
     targetGoalId: json['targetGoalId'] as String?,
+    notes: json['notes'] as String?,
   );
 }

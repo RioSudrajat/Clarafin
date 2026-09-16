@@ -9,6 +9,7 @@ class GoalSourceFundsSection extends StatelessWidget {
   final GoalModel goal;
   final List<WalletModel> wallets;
   final VoidCallback onAddSource;
+  final EdgeInsetsGeometry padding;
   final void Function(
     String walletId,
     String walletName,
@@ -21,6 +22,7 @@ class GoalSourceFundsSection extends StatelessWidget {
     required this.wallets,
     required this.onAddSource,
     required this.onTapSource,
+    this.padding = const EdgeInsets.symmetric(horizontal: 16),
   });
 
   @override
@@ -28,7 +30,7 @@ class GoalSourceFundsSection extends StatelessWidget {
     final contributions = goal.contributions.entries.toList();
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: padding,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -140,6 +142,7 @@ class GoalSourceFundsSection extends StatelessWidget {
                   : 0;
 
               return GoalSourceWalletItem(
+                institutionId: wallet?.institutionId,
                 walletName: walletName,
                 walletType: walletType,
                 amount: amount,

@@ -11,6 +11,7 @@ import '../../../../core/models/wallet_model.dart';
 import '../../../../core/providers/mock_providers.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../budget/presentation/providers/finance_providers.dart';
+import '../widgets/category_picker_bottom_sheet.dart';
 
 class TransactionEntryScreen extends ConsumerStatefulWidget {
   final String? prefilledType;
@@ -40,7 +41,9 @@ class _TransactionEntryScreenState extends ConsumerState<TransactionEntryScreen>
   String? _targetWalletId;
   String? _targetGoalId;
   String? _successReturnTo;
-  String _category = 'Makanan & minuman';
+  String _category = 'Food & Beverage';
+  String? _subCategory;
+  String _categoryEmoji = '🍜';
   bool _showInlineSuccess = false;
 
   final _amountController = TextEditingController(text: '');
@@ -54,17 +57,6 @@ class _TransactionEntryScreenState extends ConsumerState<TransactionEntryScreen>
   late AnimationController _snapBackController;
   late Animation<double> _sheetProgressAnimation;
   late AnimationController _cursorBlinkController;
-
-  final _categories = [
-    'Makanan & minuman',
-    'Transport',
-    'Belanja',
-    'Hiburan',
-    'Tagihan',
-    'Pendidikan',
-    'Kesehatan',
-    'Lainnya',
-  ];
 
   @override
   void initState() {
@@ -180,16 +172,19 @@ class _TransactionEntryScreenState extends ConsumerState<TransactionEntryScreen>
         ? 'income'
         : (_type == 'Pengeluaran' ? 'expense' : 'transfer');
     final notes = _notesController.text.trim();
+    final effectiveCategory = _type == 'Transfer'
+        ? 'Transfer'
+        : (_subCategory != null ? '$_category • $_subCategory' : _category);
+
     final tx = TransactionModel(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       walletId: _selectedWalletId!,
       type: type,
       amount: amt,
-      category: _type == 'Transfer' ? 'Transfer' : _category,
+      category: effectiveCategory,
       date: _selectedDate,
-      title: notes.isNotEmpty
-          ? notes
-          : (_type == 'Transfer' ? 'Transfer' : _category),
+      title: effectiveCategory,
+      notes: notes.isNotEmpty ? notes : null,
       targetWalletId: _targetWalletId,
       targetGoalId: _targetGoalId,
     );
@@ -407,6 +402,15 @@ class _TransactionEntryScreenState extends ConsumerState<TransactionEntryScreen>
                     _type = val;
                     _targetWalletId = null;
                     _targetGoalId = null;
+                    if (_type == 'Pemasukan') {
+                      _category = 'Income';
+                      _subCategory = null;
+                      _categoryEmoji = '💰';
+                    } else if (_type == 'Pengeluaran') {
+                      _category = 'Food & Beverage';
+                      _subCategory = null;
+                      _categoryEmoji = '🍜';
+                    }
                     final filtered = _getFilteredWallets(wallets);
                     if (_selectedWalletId != null &&
                         !filtered.any((w) => w.id == _selectedWalletId)) {
@@ -921,21 +925,25 @@ class _TransactionEntryScreenState extends ConsumerState<TransactionEntryScreen>
                     Container(
                       width: 36,
                       height: 36,
+                      alignment: Alignment.center,
                       decoration: BoxDecoration(
                         color: const Color(0xFFCCFF00),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(color: Colors.black, width: 1.5),
                       ),
-                      child: const Icon(
-                        Icons.restaurant,
-                        size: 18,
-                        color: Colors.black,
+                      child: Text(
+                        _categoryEmoji,
+                        style: const TextStyle(fontSize: 18),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        _category,
+                        _subCategory != null
+                            ? '$_category • $_subCategory'
+                            : _category,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           fontFamily: 'Plus Jakarta Sans',
                           fontSize: 14,
@@ -1237,28 +1245,22 @@ class _TransactionEntryScreenState extends ConsumerState<TransactionEntryScreen>
     }
   }
 
-  void _showCategoryPicker() {
-    showModalBottomSheet(
-      context: context,
-      builder: (ctx) => Container(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: _categories.map((cat) {
-            return ListTile(
-              title: Text(cat),
-              trailing: _category == cat
-                  ? const Icon(Icons.check, color: AppColors.primary)
-                  : null,
-              onTap: () {
-                setState(() => _category = cat);
-                Navigator.pop(ctx);
-              },
-            );
-          }).toList(),
-        ),
-      ),
+  void _showCategoryPicker() async {
+    final isIncome = _type == 'Pemasukan';
+    final result = await CategoryPickerBottomSheet.show(
+      context,
+      isIncome: isIncome,
+      selectedCategoryName: _category,
+      selectedSubcategoryName: _subCategory,
     );
+
+    if (result != null) {
+      setState(() {
+        _category = result.category;
+        _subCategory = result.subcategory;
+        _categoryEmoji = result.emoji;
+      });
+    }
   }
 
   String _formatAmount(String amount) {

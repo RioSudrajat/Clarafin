@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/models/transaction_category_model.dart';
 import '../../../../core/models/transaction_model.dart';
 import '../../../../core/theme/neo_brutalism_decorations.dart';
 
@@ -16,38 +17,6 @@ class TransactionHistoryListItem extends StatelessWidget {
     this.onTap,
   });
 
-  static IconData getCategoryIcon(String category) {
-    return switch (category.toLowerCase()) {
-      'makan' || 'makanan & minuman' || 'food & bev' || 'food' => Icons.restaurant_rounded,
-      'transport' || 'transportasi' => Icons.directions_car_rounded,
-      'belanja' || 'shopping' || 'groceries' => Icons.shopping_bag_rounded,
-      'hiburan' || 'entertainment' => Icons.sports_esports_rounded,
-      'tagihan' || 'subscription' || 'bills' => Icons.receipt_long_rounded,
-      'pendidikan' || 'education' => Icons.school_rounded,
-      'kesehatan' || 'health' => Icons.medical_services_rounded,
-      'gaji' || 'income' || 'penjualan' => Icons.payments_rounded,
-      'investasi' || 'investment' => Icons.trending_up_rounded,
-      'transfer' => Icons.swap_horiz_rounded,
-      _ => Icons.account_balance_wallet_rounded,
-    };
-  }
-
-  static Color getCategoryColor(String category) {
-    return switch (category.toLowerCase()) {
-      'makan' || 'makanan & minuman' || 'food & bev' || 'food' => const Color(0xFFFFB703),
-      'transport' || 'transportasi' => const Color(0xFF0F758A),
-      'belanja' || 'shopping' || 'groceries' => const Color(0xFFFB8500),
-      'hiburan' || 'entertainment' => const Color(0xFF8338EC),
-      'tagihan' || 'subscription' || 'bills' => const Color(0xFF3A86FF),
-      'pendidikan' || 'education' => const Color(0xFF38B000),
-      'kesehatan' || 'health' => const Color(0xFFE63946),
-      'gaji' || 'income' || 'penjualan' => const Color(0xFF10B981),
-      'investasi' || 'investment' => const Color(0xFF8338EC),
-      'transfer' => const Color(0xFF028090),
-      _ => const Color(0xFF6B7280),
-    };
-  }
-
   @override
   Widget build(BuildContext context) {
     final currencyFormat = NumberFormat.currency(
@@ -58,8 +27,10 @@ class TransactionHistoryListItem extends StatelessWidget {
 
     final isIncome = transaction.type == 'income';
     final isTransfer = transaction.type == 'transfer';
-    final categoryColor = getCategoryColor(transaction.category);
-    final categoryIcon = getCategoryIcon(transaction.category);
+    final display = TransactionCategories.getCategoryDisplay(
+      transaction.category.isNotEmpty ? transaction.category : transaction.title,
+    );
+    final displayTitle = transaction.category.isNotEmpty ? transaction.category : transaction.title;
     final timeStr = DateFormat('HH:mm').format(transaction.date);
 
     return Padding(
@@ -88,26 +59,31 @@ class TransactionHistoryListItem extends StatelessWidget {
             ),
             child: Row(
               children: [
+                // Synchronized Notion Emoji / Icon Badge
                 Container(
                   width: 44,
                   height: 44,
+                  alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: categoryColor.withValues(alpha: 0.18),
+                    color: display.bgColor,
                     borderRadius: BorderRadius.circular(NeoBrutalism.radiusSm),
                     border: Border.all(
                       color: NeoBrutalism.borderBlack,
                       width: 1.5,
                     ),
                   ),
-                  child: Icon(categoryIcon, color: categoryColor, size: 22),
+                  child: display.emoji.isNotEmpty
+                      ? Text(display.emoji, style: const TextStyle(fontSize: 20))
+                      : Icon(display.icon, color: display.color, size: 22),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Category Name as Primary Title
                       Text(
-                        transaction.title,
+                        displayTitle,
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 13,
                           fontWeight: FontWeight.w800,
@@ -147,6 +123,21 @@ class TransactionHistoryListItem extends StatelessWidget {
                               color: NeoBrutalism.textMuted,
                             ),
                           ),
+                          if (transaction.notes != null && transaction.notes!.isNotEmpty) ...[
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                '• ${transaction.notes!}',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: NeoBrutalism.textMuted,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ],
