@@ -6,6 +6,8 @@
 | Active Phase | `mobile_frontend` |
 | Last Updated | 2026-03-11 |
 
+Dokumen di bawah ini adalah arsip HaloFin per Maret 2026. Rancangan yang dipakai untuk membangun produk konsultasi bernama Clarafin ada di [docs-rework-clarafin](../docs-rework-clarafin/README.md). Urutan backend di `tech/Backend.md` tidak dipakai untuk launch itu.
+
 ## Reading Order
 
 Baca dokumen dalam urutan ini agar mendapat konteks yang utuh:
