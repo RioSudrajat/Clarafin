@@ -9,6 +9,7 @@ Whenever working on code or UI in this repository, follow these rules:
    - For mobile layouts and avoiding overflows: Consult `.agents/skills/antislop-layoutmobile/SKILL.md`.
    - For accessibility and contrast: Consult `.agents/skills/antislop-human/SKILL.md`.
    - For writing complete code without placeholders: Consult `.agents/skills/full-output-enforcement/SKILL.md`.
+   - When stress-testing plans, ideas, or architecture: Consult `.agents/skills/grill-me/SKILL.md` or `.agents/skills/grill-with-docs/SKILL.md`.
 
 2. **Style Precedence**:
    - The authoritative design system for this project is defined in `apps/mobile/docs/DESIGN_SYSTEM.md` (Halofin Neo-Brutalism: 2px black borders, hard drop shadows, Plus Jakarta Sans, Lime & Deep Teal palette).

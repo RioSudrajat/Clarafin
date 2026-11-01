@@ -1,12 +1,12 @@
 # Panduan Penggunaan Skill Antigravity (Skills Guidelines)
 
-Dokumen ini adalah panduan resmi yang menjelaskan **kapan, mengapa, dan bagaimana** agen AI Antigravity harus menggunakan 19 custom skills yang terpasang di dalam workspace `.agents/skills/` agar menghasilkan kode Flutter dan desain antarmuka berstandar tinggi (*designer-crafted*), bebas klise AI (*anti-slop*), dan berkinerja tinggi.
+Dokumen ini adalah panduan resmi yang menjelaskan **kapan, mengapa, dan bagaimana** agen AI Antigravity harus menggunakan 23 custom skills yang terpasang di dalam workspace `.agents/skills/` agar menghasilkan kode Flutter dan desain antarmuka berstandar tinggi (*designer-crafted*), bebas klise AI (*anti-slop*), dan berkinerja tinggi.
 
 ---
 
 ## 1. Ikhtisar & Struktur Skill Workspace
 
-Repositori Halofin dilengkapi dengan 19 skills modular yang terbagi menjadi 4 pilar fungsional:
+Repositori Halofin dilengkapi dengan 23 skills modular yang terbagi menjadi 5 pilar fungsional:
 
 ```
 .agents/skills/
@@ -34,7 +34,13 @@ Repositori Halofin dilengkapi dengan 19 skills modular yang terbagi menjadi 4 pi
 │
 └── [Pilar 4: Evolusi Proyek & Brand Identity]
     ├── redesign-existing-projects   # Metodologi upgrade UI lama tanpa merusak logika bisnis
-    └── brandkit                     # Ekstraksi & penataan token brand, palet, & tipografi
+    │   └── brandkit                     # Ekstraksi & penataan token brand, palet, & tipografi
+│
+└── [Pilar 5: Stress-Testing, Perencanaan, & Domain Modeling]
+    ├── grill-me                     # Wawancara terstruktur untuk menajamkan rencana & desain
+    ├── grilling                     # Mesin wawancara pohon keputusan (design tree frontier)
+    ├── grill-with-docs              # Wawancara rencana + pencatatan ADR & GLOSSARY inline
+    └── domain-modeling              # Manajemen model domain, validasi terminologi, & ADR format
 ```
 
 ---
@@ -84,6 +90,16 @@ Repositori Halofin dilengkapi dengan 19 skills modular yang terbagi menjadi 4 pi
 | :--- | :--- | :--- | :--- |
 | **`redesign-existing-projects`** | **Wajib diaktifkan** saat merombak halaman yang sudah ada (seperti yang dilakukan pada Wallet & Budget Screen). Memastikan fitur dan data lama tidak hilang saat visual diupgrade. | Jangan gunakan saat membangun fitur yang 100% baru dari nol tanpa ada kode lama. | `CODE_GUIDELINES.md`, `antislop` |
 | **`brandkit`** | Saat mendefinisikan sistem warna baru, membuat token institusi baru, atau memperluas palet warna tema Halofin. | Tidak perlu jika sistem token brand sudah lengkap dan tidak ada penambahan warna baru. | `DESIGN_SYSTEM.md` |
+
+---
+
+### 2.5 Pilar 5: Stress-Testing, Perencanaan, & Domain Modeling
+
+| Skill Name | Waktu Tepat Menggunakan (Trigger) | Kapan DILARANG Digunakan (Anti-Trigger) | Kombinasi Sinergis |
+| :--- | :--- | :--- | :--- |
+| **`grill-me`** / **`grilling`** | Saat user ingin **menguji ketahanan ide/rencana (stress-test)**, mencari celah arsitektur, atau meminta interview agresif sebelum implementasi besar (`/grill-me`, "grill me", "uji rencanaku"). | Jangan gunakan untuk instruksi perbaikan bug kecil yang sudah jelas penyebabnya, atau tugas koding sepele. | `CODE_GUIDELINES.md`, `/plan` |
+| **`grill-with-docs`** | Saat proses wawancara/stress-test harus menghasilkan dokumentasi resmi proyek: **Architecture Decision Records (`docs/adr/`)** dan **Domain Glossary (`GLOSSARY.md`)**. | Jangan gunakan jika keputusan arsitektur tidak memiliki trade-off signifikan atau bersifat sementara. | `grilling`, `domain-modeling` |
+| **`domain-modeling`** | Saat mendefinisikan terminologi domain fintech baru, menyelaraskan batas bounded contexts, menyusun `GLOSSARY.md`, atau mencatat ADR baru. | Jangan gunakan untuk mencatat detail implementasi remeh (misal: nama variabel lokal, utility helpers biasa). | `grill-with-docs`, `CODE_GUIDELINES.md` |
 
 ---
 

@@ -23,6 +23,8 @@ Semua skill kustom workspace tersimpan di dalam `.agents/skills/`. Agen harus me
 | **Eksplorasi Gaya Neo-Brutalisme / Industrial** | `industrial-brutalist-ui` | `apps/mobile/docs/DESIGN_SYSTEM.md` |
 | **Integrasi & Prompting Google Stitch** | `stitch-design-taste` | `StitchMCP` tools |
 | **Pembuatan Brand Kit & Token Warna Baru** | `brandkit` | `minimalist-ui` |
+| **Stress-Testing Ide, Rencana, & Desain Arsitektur** | `grill-me`, `grilling` | `apps/mobile/docs/CODE_GUIDELINES.md` |
+| **Wawancara Arsitektur + ADR & Domain Glossary** | `grill-with-docs`, `domain-modeling` | `grilling`, `apps/mobile/docs/CODE_GUIDELINES.md` |
 
 ---
 
