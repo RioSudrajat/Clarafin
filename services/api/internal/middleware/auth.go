@@ -215,6 +215,8 @@ type jwksCache struct {
 	ttl                time.Duration
 	unknownRefreshWait time.Duration
 
+	refreshMu sync.Mutex
+
 	mu                 sync.RWMutex
 	keys               map[string]jwkEntry
 	ordered            []jwkEntry
@@ -240,7 +242,7 @@ func (c *jwksCache) lookupKey(ctx context.Context, kid string, method jwt.Signin
 	c.mu.RUnlock()
 
 	if !valid || !found {
-		if err := c.refresh(ctx, !found && valid); err != nil && !valid {
+		if err := c.refresh(ctx, kid, !found && valid); err != nil && !valid {
 			return nil, err
 		}
 		c.mu.RLock()
@@ -287,18 +289,29 @@ func (c *jwksCache) findLocked(kid string) (jwkEntry, bool) {
 	return jwkEntry{}, false
 }
 
-func (c *jwksCache) refresh(ctx context.Context, onUnknownKID bool) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+func (c *jwksCache) refresh(ctx context.Context, kid string, onUnknownKID bool) error {
+	// Serialize outbound refreshes separately from c.mu so cached reads never stall on network I/O.
+	c.refreshMu.Lock()
+	defer c.refreshMu.Unlock()
 
 	now := time.Now()
-	if !onUnknownKID && now.Before(c.expiresAt) {
+	c.mu.Lock()
+	if onUnknownKID {
+		if _, found := c.findLocked(kid); found {
+			c.mu.Unlock()
+			return nil
+		}
+		// Rate-limit unknown-kid refreshes before HTTP I/O so failing or slow endpoints stay throttled.
+		if !c.lastUnknownRefresh.IsZero() && now.Sub(c.lastUnknownRefresh) < c.unknownRefreshWait {
+			c.mu.Unlock()
+			return errors.New("JWKS unknown-kid refresh throttled")
+		}
+		c.lastUnknownRefresh = now
+	} else if now.Before(c.expiresAt) {
+		c.mu.Unlock()
 		return nil
 	}
-	// Rate-limit refreshes triggered by unknown kids so spoofed headers cannot DoS the JWKS endpoint.
-	if onUnknownKID && !c.lastUnknownRefresh.IsZero() && now.Sub(c.lastUnknownRefresh) < c.unknownRefreshWait {
-		return errors.New("JWKS unknown-kid refresh throttled")
-	}
+	c.mu.Unlock()
 
 	reqCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -341,12 +354,11 @@ func (c *jwksCache) refresh(ctx context.Context, onUnknownKID bool) error {
 		ordered = append(ordered, entry)
 	}
 
+	c.mu.Lock()
 	c.keys = nextKeys
 	c.ordered = ordered
-	c.expiresAt = now.Add(c.ttl)
-	if onUnknownKID {
-		c.lastUnknownRefresh = now
-	}
+	c.expiresAt = time.Now().Add(c.ttl)
+	c.mu.Unlock()
 	return nil
 }
 

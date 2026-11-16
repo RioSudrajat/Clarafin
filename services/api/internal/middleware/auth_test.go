@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -382,5 +383,207 @@ func TestRequireAuth_JWKS_ES256_RS256_AndRotation(t *testing.T) {
 	protected.ServeHTTP(rec4, req4)
 	if rec4.Code != http.StatusOK {
 		t.Fatalf("expected HTTP 200 after JWKS key rotation, got %d (%s)", rec4.Code, rec4.Body.String())
+	}
+}
+
+func encodeECJWKPayload(kid string, key *ecdsa.PrivateKey) map[string]any {
+	xPad := key.PublicKey.X.FillBytes(make([]byte, 32))
+	yPad := key.PublicKey.Y.FillBytes(make([]byte, 32))
+	return map[string]any{
+		"keys": []map[string]any{
+			{
+				"kty": "EC",
+				"use": "sig",
+				"alg": "ES256",
+				"kid": kid,
+				"crv": "P-256",
+				"x":   base64.RawURLEncoding.EncodeToString(xPad),
+				"y":   base64.RawURLEncoding.EncodeToString(yPad),
+			},
+		},
+	}
+}
+
+func signES256WithKid(t *testing.T, key *ecdsa.PrivateKey, kid string, userID uuid.UUID) string {
+	t.Helper()
+	tok := jwt.NewWithClaims(jwt.SigningMethodES256, jwt.MapClaims{
+		"sub": userID.String(),
+		"exp": time.Now().Add(time.Hour).Unix(),
+	})
+	tok.Header["kid"] = kid
+	signed, err := tok.SignedString(key)
+	if err != nil {
+		t.Fatalf("sign ES256 token (%s): %v", kid, err)
+	}
+	return signed
+}
+
+func TestRequireAuth_JWKS_UnknownKidThrottledOnError(t *testing.T) {
+	ecKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatalf("generate EC key: %v", err)
+	}
+
+	var fetchCount atomic.Int32
+	var failFetches atomic.Bool
+	jwksSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		fetchCount.Add(1)
+		if failFetches.Load() {
+			http.Error(w, "upstream jwks unavailable", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(encodeECJWKPayload("ec-kid-1", ecKey))
+	}))
+	defer jwksSrv.Close()
+
+	cfg := &config.Config{
+		AppEnv:          "production",
+		SupabaseJWKSURL: jwksSrv.URL,
+	}
+	protected := middleware.RequireAuth(cfg)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	userID := uuid.New()
+	validSigned := signES256WithKid(t, ecKey, "ec-kid-1", userID)
+
+	// Warm the JWKS cache with a valid request.
+	reqWarm := httptest.NewRequest(http.MethodGet, "/v1/me", nil)
+	reqWarm.Header.Set("Authorization", "Bearer "+validSigned)
+	recWarm := httptest.NewRecorder()
+	protected.ServeHTTP(recWarm, reqWarm)
+	if recWarm.Code != http.StatusOK {
+		t.Fatalf("expected HTTP 200 on initial JWKS request, got %d", recWarm.Code)
+	}
+	if fetchCount.Load() != 1 {
+		t.Fatalf("expected 1 JWKS fetch after warm-up, got %d", fetchCount.Load())
+	}
+
+	// Subsequent unknown-kid requests fail at JWKS endpoint and must stay throttled.
+	failFetches.Store(true)
+	for i := 0; i < 5; i++ {
+		forgedSigned := signES256WithKid(t, ecKey, "forged-kid-"+string(rune('a'+i)), userID)
+		reqForged := httptest.NewRequest(http.MethodGet, "/v1/me", nil)
+		reqForged.Header.Set("Authorization", "Bearer "+forgedSigned)
+		recForged := httptest.NewRecorder()
+		protected.ServeHTTP(recForged, reqForged)
+		assertUnauthorizedResponse(t, recForged, "")
+	}
+
+	if gotFetches := fetchCount.Load(); gotFetches != 2 {
+		t.Fatalf("expected unknown-kid error throttling to allow only 1 failed refresh (total fetches=2), got %d", gotFetches)
+	}
+
+	// Cached valid key must remain usable despite unknown-kid endpoint errors.
+	reqCached := httptest.NewRequest(http.MethodGet, "/v1/me", nil)
+	reqCached.Header.Set("Authorization", "Bearer "+validSigned)
+	recCached := httptest.NewRecorder()
+	protected.ServeHTTP(recCached, reqCached)
+	if recCached.Code != http.StatusOK {
+		t.Fatalf("expected cached valid token to succeed (200), got %d", recCached.Code)
+	}
+}
+
+func TestRequireAuth_JWKS_SlowRefreshDoesNotBlockCachedLookups(t *testing.T) {
+	ecKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatalf("generate EC key: %v", err)
+	}
+
+	var fetchNum atomic.Int32
+	slowFetchStarted := make(chan struct{})
+	releaseSlowFetch := make(chan struct{})
+	var startOnce, releaseOnce sync.Once
+	closeSlowFetch := func() {
+		releaseOnce.Do(func() { close(releaseSlowFetch) })
+	}
+
+	jwksSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		n := fetchNum.Add(1)
+		if n >= 2 {
+			startOnce.Do(func() { close(slowFetchStarted) })
+			select {
+			case <-releaseSlowFetch:
+			case <-r.Context().Done():
+				return
+			}
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(encodeECJWKPayload("ec-kid-1", ecKey))
+	}))
+	defer jwksSrv.Close()
+	defer closeSlowFetch()
+
+	cfg := &config.Config{
+		AppEnv:          "production",
+		SupabaseJWKSURL: jwksSrv.URL,
+	}
+	protected := middleware.RequireAuth(cfg)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	userID := uuid.New()
+	validSigned := signES256WithKid(t, ecKey, "ec-kid-1", userID)
+	unknownSigned := signES256WithKid(t, ecKey, "unknown-slow-kid", userID)
+
+	// Initial request populates cache cleanly.
+	reqWarm := httptest.NewRequest(http.MethodGet, "/v1/me", nil)
+	reqWarm.Header.Set("Authorization", "Bearer "+validSigned)
+	recWarm := httptest.NewRecorder()
+	protected.ServeHTTP(recWarm, reqWarm)
+	if recWarm.Code != http.StatusOK {
+		t.Fatalf("expected HTTP 200 on initial JWKS request, got %d", recWarm.Code)
+	}
+
+	// Start a slow unknown-kid refresh that stalls at the JWKS HTTP endpoint.
+	unknownDone := make(chan int, 1)
+	go func() {
+		reqSlow := httptest.NewRequest(http.MethodGet, "/v1/me", nil)
+		reqSlow.Header.Set("Authorization", "Bearer "+unknownSigned)
+		recSlow := httptest.NewRecorder()
+		protected.ServeHTTP(recSlow, reqSlow)
+		unknownDone <- recSlow.Code
+	}()
+
+	select {
+	case <-slowFetchStarted:
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for slow JWKS refresh to start")
+	}
+
+	// While the slow refresh HTTP request is blocked, concurrent cached lookups must complete immediately.
+	const concurrentHits = 8
+	cachedDone := make(chan int, concurrentHits)
+	for i := 0; i < concurrentHits; i++ {
+		go func() {
+			reqFast := httptest.NewRequest(http.MethodGet, "/v1/me", nil)
+			reqFast.Header.Set("Authorization", "Bearer "+validSigned)
+			recFast := httptest.NewRecorder()
+			protected.ServeHTTP(recFast, reqFast)
+			cachedDone <- recFast.Code
+		}()
+	}
+
+	deadline := time.After(500 * time.Millisecond)
+	for i := 0; i < concurrentHits; i++ {
+		select {
+		case code := <-cachedDone:
+			if code != http.StatusOK {
+				t.Fatalf("concurrent cached request returned %d, want 200", code)
+			}
+		case <-deadline:
+			t.Fatal("cached JWKS lookups stalled while slow refresh was in flight")
+		}
+	}
+
+	closeSlowFetch()
+	select {
+	case code := <-unknownDone:
+		if code != http.StatusUnauthorized {
+			t.Fatalf("unknown-kid request returned %d, want 401", code)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for unblocked slow unknown-kid request")
 	}
 }
