@@ -1,0 +1,39 @@
+-- Drop all 36 canonical tables in reverse FK dependency order.
+-- Preserve pre-existing Supabase auth schema, auth.users, and auth.uid().
+
+DROP TABLE IF EXISTS deleted_account_payment_archives;
+DROP TABLE IF EXISTS audit_events;
+DROP TABLE IF EXISTS platform_settings;
+DROP TABLE IF EXISTS ai_usage_ledger;
+DROP TABLE IF EXISTS pro_subscriptions;
+DROP TABLE IF EXISTS gmail_connections;
+DROP TABLE IF EXISTS payouts;
+DROP TABLE IF EXISTS session_complaints;
+DROP TABLE IF EXISTS session_reviews;
+DROP TABLE IF EXISTS session_notes;
+DROP TABLE IF EXISTS session_messages;
+DROP TABLE IF EXISTS consents;
+DROP TABLE IF EXISTS booking_slot_holds;
+DROP TABLE IF EXISTS sessions;
+DROP TABLE IF EXISTS payments;
+DROP TABLE IF EXISTS orders;
+DROP TABLE IF EXISTS match_expert_submissions;
+DROP TABLE IF EXISTS vouchers;
+DROP TABLE IF EXISTS venues;
+DROP TABLE IF EXISTS practitioner_availability;
+DROP TABLE IF EXISTS staff_practitioner_pins;
+DROP TABLE IF EXISTS problem_tags;
+DROP TABLE IF EXISTS practitioner_packages;
+DROP TABLE IF EXISTS catalog_packages;
+DROP TABLE IF EXISTS practitioner_profiles;
+DROP TABLE IF EXISTS notifications;
+DROP TABLE IF EXISTS bills;
+DROP TABLE IF EXISTS budgets;
+DROP TABLE IF EXISTS ai_drafts;
+DROP TABLE IF EXISTS transactions;
+DROP TABLE IF EXISTS goal_contributions;
+DROP TABLE IF EXISTS goals;
+DROP TABLE IF EXISTS wallets;
+DROP TABLE IF EXISTS categories;
+DROP TABLE IF EXISTS user_preferences;
+DROP TABLE IF EXISTS users;

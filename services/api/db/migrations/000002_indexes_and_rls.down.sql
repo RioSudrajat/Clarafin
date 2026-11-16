@@ -1,0 +1,112 @@
+-- Rollback RLS policies, privileges, RLS flags, and performance indexes.
+
+DROP POLICY IF EXISTS deleted_account_payment_archives_deny_all_client ON deleted_account_payment_archives;
+DROP POLICY IF EXISTS audit_events_deny_all_client ON audit_events;
+DROP POLICY IF EXISTS platform_settings_deny_all_client ON platform_settings;
+DROP POLICY IF EXISTS payouts_deny_all_client ON payouts;
+
+REVOKE ALL ON gmail_connections FROM PUBLIC;
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+    EXECUTE 'REVOKE ALL ON gmail_connections FROM authenticated';
+  END IF;
+END
+$$;
+
+DROP POLICY IF EXISTS gmail_connections_owner_select ON gmail_connections;
+DROP POLICY IF EXISTS consents_owner_revoke_update ON consents;
+DROP POLICY IF EXISTS consents_owner_insert ON consents;
+DROP POLICY IF EXISTS consents_owner_and_active_practitioner_select ON consents;
+DROP POLICY IF EXISTS session_complaints_client_insert ON session_complaints;
+DROP POLICY IF EXISTS session_complaints_participant_select ON session_complaints;
+DROP POLICY IF EXISTS session_reviews_client_insert ON session_reviews;
+DROP POLICY IF EXISTS session_reviews_participant_select ON session_reviews;
+DROP POLICY IF EXISTS session_notes_practitioner_update ON session_notes;
+DROP POLICY IF EXISTS session_notes_practitioner_insert ON session_notes;
+DROP POLICY IF EXISTS session_notes_participant_select ON session_notes;
+DROP POLICY IF EXISTS session_messages_participant_insert ON session_messages;
+DROP POLICY IF EXISTS session_messages_participant_select ON session_messages;
+DROP POLICY IF EXISTS sessions_participant_select ON sessions;
+DROP POLICY IF EXISTS booking_slot_holds_participant_select ON booking_slot_holds;
+DROP POLICY IF EXISTS payments_owner_select ON payments;
+DROP POLICY IF EXISTS orders_owner_select ON orders;
+DROP POLICY IF EXISTS staff_practitioner_pins_select ON staff_practitioner_pins;
+DROP POLICY IF EXISTS practitioner_availability_owner_delete ON practitioner_availability;
+DROP POLICY IF EXISTS practitioner_availability_owner_update ON practitioner_availability;
+DROP POLICY IF EXISTS practitioner_availability_owner_insert ON practitioner_availability;
+DROP POLICY IF EXISTS practitioner_availability_select ON practitioner_availability;
+DROP POLICY IF EXISTS practitioner_packages_owner_delete ON practitioner_packages;
+DROP POLICY IF EXISTS practitioner_packages_owner_update ON practitioner_packages;
+DROP POLICY IF EXISTS practitioner_packages_owner_insert ON practitioner_packages;
+DROP POLICY IF EXISTS practitioner_packages_select ON practitioner_packages;
+DROP POLICY IF EXISTS practitioner_profiles_owner_update ON practitioner_profiles;
+DROP POLICY IF EXISTS practitioner_profiles_select ON practitioner_profiles;
+DROP POLICY IF EXISTS vouchers_authenticated_select ON vouchers;
+DROP POLICY IF EXISTS venues_authenticated_select ON venues;
+DROP POLICY IF EXISTS problem_tags_authenticated_select ON problem_tags;
+DROP POLICY IF EXISTS catalog_packages_authenticated_select ON catalog_packages;
+DROP POLICY IF EXISTS categories_authenticated_select ON categories;
+DROP POLICY IF EXISTS ai_usage_ledger_owner_select ON ai_usage_ledger;
+DROP POLICY IF EXISTS pro_subscriptions_owner_select ON pro_subscriptions;
+DROP POLICY IF EXISTS match_expert_submissions_owner_all ON match_expert_submissions;
+DROP POLICY IF EXISTS notifications_owner_all ON notifications;
+DROP POLICY IF EXISTS bills_owner_all ON bills;
+DROP POLICY IF EXISTS budgets_owner_all ON budgets;
+DROP POLICY IF EXISTS ai_drafts_owner_all ON ai_drafts;
+DROP POLICY IF EXISTS transactions_owner_all ON transactions;
+DROP POLICY IF EXISTS goal_contributions_owner_all ON goal_contributions;
+DROP POLICY IF EXISTS goals_owner_all ON goals;
+DROP POLICY IF EXISTS wallets_owner_all ON wallets;
+DROP POLICY IF EXISTS user_preferences_owner_all ON user_preferences;
+DROP POLICY IF EXISTS users_owner_all ON users;
+
+ALTER TABLE deleted_account_payment_archives DISABLE ROW LEVEL SECURITY;
+ALTER TABLE audit_events DISABLE ROW LEVEL SECURITY;
+ALTER TABLE platform_settings DISABLE ROW LEVEL SECURITY;
+ALTER TABLE ai_usage_ledger DISABLE ROW LEVEL SECURITY;
+ALTER TABLE pro_subscriptions DISABLE ROW LEVEL SECURITY;
+ALTER TABLE gmail_connections DISABLE ROW LEVEL SECURITY;
+ALTER TABLE payouts DISABLE ROW LEVEL SECURITY;
+ALTER TABLE session_complaints DISABLE ROW LEVEL SECURITY;
+ALTER TABLE session_reviews DISABLE ROW LEVEL SECURITY;
+ALTER TABLE session_notes DISABLE ROW LEVEL SECURITY;
+ALTER TABLE session_messages DISABLE ROW LEVEL SECURITY;
+ALTER TABLE consents DISABLE ROW LEVEL SECURITY;
+ALTER TABLE booking_slot_holds DISABLE ROW LEVEL SECURITY;
+ALTER TABLE sessions DISABLE ROW LEVEL SECURITY;
+ALTER TABLE payments DISABLE ROW LEVEL SECURITY;
+ALTER TABLE orders DISABLE ROW LEVEL SECURITY;
+ALTER TABLE match_expert_submissions DISABLE ROW LEVEL SECURITY;
+ALTER TABLE vouchers DISABLE ROW LEVEL SECURITY;
+ALTER TABLE venues DISABLE ROW LEVEL SECURITY;
+ALTER TABLE practitioner_availability DISABLE ROW LEVEL SECURITY;
+ALTER TABLE staff_practitioner_pins DISABLE ROW LEVEL SECURITY;
+ALTER TABLE problem_tags DISABLE ROW LEVEL SECURITY;
+ALTER TABLE practitioner_packages DISABLE ROW LEVEL SECURITY;
+ALTER TABLE catalog_packages DISABLE ROW LEVEL SECURITY;
+ALTER TABLE practitioner_profiles DISABLE ROW LEVEL SECURITY;
+ALTER TABLE notifications DISABLE ROW LEVEL SECURITY;
+ALTER TABLE bills DISABLE ROW LEVEL SECURITY;
+ALTER TABLE budgets DISABLE ROW LEVEL SECURITY;
+ALTER TABLE ai_drafts DISABLE ROW LEVEL SECURITY;
+ALTER TABLE transactions DISABLE ROW LEVEL SECURITY;
+ALTER TABLE goal_contributions DISABLE ROW LEVEL SECURITY;
+ALTER TABLE goals DISABLE ROW LEVEL SECURITY;
+ALTER TABLE wallets DISABLE ROW LEVEL SECURITY;
+ALTER TABLE categories DISABLE ROW LEVEL SECURITY;
+ALTER TABLE user_preferences DISABLE ROW LEVEL SECURITY;
+ALTER TABLE users DISABLE ROW LEVEL SECURITY;
+
+DROP INDEX IF EXISTS idx_audit_events_target;
+DROP INDEX IF EXISTS idx_session_messages_session_time;
+DROP INDEX IF EXISTS idx_slot_holds_expiry;
+DROP INDEX IF EXISTS idx_orders_user_status;
+DROP INDEX IF EXISTS idx_sessions_practitioner_status;
+DROP INDEX IF EXISTS idx_sessions_client_status;
+DROP INDEX IF EXISTS idx_pro_subs_user_active;
+DROP INDEX IF EXISTS idx_ai_ledger_user_month_status;
+DROP INDEX IF EXISTS idx_budgets_user_month;
+DROP INDEX IF EXISTS idx_ai_drafts_user_status;
+DROP INDEX IF EXISTS idx_transactions_user_category_date;
+DROP INDEX IF EXISTS idx_transactions_user_occurred;
