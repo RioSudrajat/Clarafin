@@ -18,3 +18,14 @@ Thumbs.db
 
 # Android builds
 *.apk
+
+# Environment files (.env never pushed; .env.local safe template tracked for team setup)
+.env
+**/.env
+*.env.secret
+!.env.local
+!**/.env.local
+
+# Git worktrees & agent scratch workspaces
+.worktrees/
+.superpowers/
