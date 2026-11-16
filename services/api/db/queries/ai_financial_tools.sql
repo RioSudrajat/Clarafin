@@ -216,3 +216,69 @@ FROM match_expert_submissions
 WHERE user_id = $1
 ORDER BY created_at DESC
 LIMIT 1;
+
+-- name: GetCashflowFilteredPeriodTotals :one
+SELECT
+  COALESCE(SUM(amount) FILTER (WHERE type = 'income'), 0)::bigint AS total_income,
+  COALESCE(SUM(amount) FILTER (WHERE type = 'expense'), 0)::bigint AS total_expense,
+  COALESCE(SUM(amount) FILTER (WHERE type = 'transfer'), 0)::bigint AS total_transfer,
+  (COALESCE(SUM(amount) FILTER (WHERE type = 'income'), 0) - COALESCE(SUM(amount) FILTER (WHERE type = 'expense'), 0))::bigint AS net_cashflow,
+  COUNT(*) FILTER (WHERE type = 'income')::bigint AS income_count,
+  COUNT(*) FILTER (WHERE type = 'expense')::bigint AS expense_count,
+  COUNT(*) FILTER (WHERE type = 'transfer')::bigint AS transfer_count,
+  COUNT(*)::bigint AS total_count
+FROM transactions
+WHERE user_id = sqlc.arg('user_id')
+  AND occurred_at >= sqlc.arg('start_at')::timestamptz
+  AND occurred_at < sqlc.arg('end_at')::timestamptz
+  AND (
+    sqlc.arg('keyword_filter')::text = ''
+    OR POSITION(LOWER(sqlc.arg('keyword_filter')::text) IN LOWER(title)) > 0
+    OR POSITION(LOWER(sqlc.arg('keyword_filter')::text) IN LOWER(COALESCE(note, ''))) > 0
+    OR POSITION(LOWER(sqlc.arg('keyword_filter')::text) IN LOWER(category)) > 0
+  );
+
+-- name: GetCashflowCategoryBreakdownFiltered :many
+SELECT
+  t.type::text AS tx_type,
+  t.category::text AS category,
+  t.category_id,
+  COUNT(*)::bigint AS tx_count,
+  SUM(t.amount)::bigint AS total_amount
+FROM transactions t
+WHERE t.user_id = sqlc.arg('user_id')
+  AND t.occurred_at >= sqlc.arg('start_at')::timestamptz
+  AND t.occurred_at < sqlc.arg('end_at')::timestamptz
+  AND (sqlc.arg('tx_type')::text = '' OR t.type = sqlc.arg('tx_type')::text)
+  AND (
+    sqlc.arg('keyword_filter')::text = ''
+    OR POSITION(LOWER(sqlc.arg('keyword_filter')::text) IN LOWER(t.title)) > 0
+    OR POSITION(LOWER(sqlc.arg('keyword_filter')::text) IN LOWER(COALESCE(t.note, ''))) > 0
+    OR POSITION(LOWER(sqlc.arg('keyword_filter')::text) IN LOWER(t.category)) > 0
+  )
+GROUP BY t.type, t.category, t.category_id
+ORDER BY total_amount DESC, t.category ASC;
+
+-- name: GetCashflowWalletBreakdown :many
+SELECT
+  w.id AS wallet_id,
+  w.name::text AS wallet_name,
+  w.type::text AS wallet_type,
+  w.balance::bigint AS current_balance,
+  COALESCE(SUM(t.amount) FILTER (WHERE t.type = 'income'), 0)::bigint AS total_income,
+  COALESCE(SUM(t.amount) FILTER (WHERE t.type = 'expense'), 0)::bigint AS total_expense,
+  COALESCE(SUM(t.amount) FILTER (WHERE t.type = 'transfer'), 0)::bigint AS total_transfer,
+  COUNT(t.id)::bigint AS tx_count
+FROM transactions t
+JOIN wallets w ON w.id = t.wallet_id AND w.user_id = sqlc.arg('user_id')
+WHERE t.user_id = sqlc.arg('user_id')
+  AND t.occurred_at >= sqlc.arg('start_at')::timestamptz
+  AND t.occurred_at < sqlc.arg('end_at')::timestamptz
+  AND (
+    sqlc.arg('keyword_filter')::text = ''
+    OR POSITION(LOWER(sqlc.arg('keyword_filter')::text) IN LOWER(t.title)) > 0
+    OR POSITION(LOWER(sqlc.arg('keyword_filter')::text) IN LOWER(COALESCE(t.note, ''))) > 0
+    OR POSITION(LOWER(sqlc.arg('keyword_filter')::text) IN LOWER(t.category)) > 0
+  )
+GROUP BY w.id, w.name, w.type, w.balance
+ORDER BY total_expense DESC, total_income DESC, w.name ASC;

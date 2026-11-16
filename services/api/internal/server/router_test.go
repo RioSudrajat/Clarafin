@@ -260,4 +260,28 @@ func TestRouter_EndToEndDevTokenAuthAndAIRateLimit(t *testing.T) {
 	if recQAfter.Code != http.StatusOK {
 		t.Fatalf("GET /v1/ai/quota while chat rate-limited expected 200, got %d (body: %s)", recQAfter.Code, recQAfter.Body.String())
 	}
+
+	// Step 5: Mounted /v1/me, /v1/wallets, and /v1/ai/drafts also remain accessible and auth-protected.
+	reqMeNoAuth := httptest.NewRequest(http.MethodGet, "/v1/me", nil)
+	recMeNoAuth := httptest.NewRecorder()
+	r.ServeHTTP(recMeNoAuth, reqMeNoAuth)
+	if recMeNoAuth.Code != http.StatusUnauthorized {
+		t.Fatalf("unauthenticated /v1/me expected 401, got %d", recMeNoAuth.Code)
+	}
+
+	reqMe := httptest.NewRequest(http.MethodGet, "/v1/me", nil)
+	reqMe.Header.Set("Authorization", "Bearer "+tokEnv.Data.AccessToken)
+	recMe := httptest.NewRecorder()
+	r.ServeHTTP(recMe, reqMe)
+	if recMe.Code != http.StatusOK {
+		t.Fatalf("GET /v1/me expected 200, got %d (body: %s)", recMe.Code, recMe.Body.String())
+	}
+
+	reqDrafts := httptest.NewRequest(http.MethodGet, "/v1/ai/drafts", nil)
+	reqDrafts.Header.Set("Authorization", "Bearer "+tokEnv.Data.AccessToken)
+	recDrafts := httptest.NewRecorder()
+	r.ServeHTTP(recDrafts, reqDrafts)
+	if recDrafts.Code != http.StatusOK {
+		t.Fatalf("GET /v1/ai/drafts while chat rate-limited expected 200, got %d (body: %s)", recDrafts.Code, recDrafts.Body.String())
+	}
 }

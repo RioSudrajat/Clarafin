@@ -74,13 +74,19 @@ func main() {
 
 	store := repository.NewStore(pool)
 	quotaService := service.NewQuotaService(store, service.WithJakartaLocation(jakartaLoc))
+	trackerService := service.NewTrackerService(
+		store,
+		service.WithTrackerJakartaLocation(jakartaLoc),
+		service.WithTrackerQuotaProvider(quotaService),
+	)
 	router := server.NewRouter(server.Dependencies{
-		Config:       cfg,
-		Logger:       logger,
-		Store:        store,
-		QuotaService: quotaService,
-		Redis:        rdb,
-		JakartaLoc:   jakartaLoc,
+		Config:         cfg,
+		Logger:         logger,
+		Store:          store,
+		QuotaService:   quotaService,
+		TrackerService: trackerService,
+		Redis:          rdb,
+		JakartaLoc:     jakartaLoc,
 	})
 
 	srv := &http.Server{

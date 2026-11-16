@@ -25,6 +25,7 @@ type Dependencies struct {
 	Store                   *repository.Store
 	DevUserProvisioner      handler.DevUserProvisioner
 	QuotaService            handler.QuotaProvider
+	TrackerService          handler.TrackerProvider
 	Redis                   *redis.Client
 	JakartaLoc              *time.Location
 	RegisterProtectedRoutes func(r chi.Router)
@@ -56,6 +57,22 @@ func NewRouter(deps Dependencies) http.Handler {
 	quotaService := deps.QuotaService
 	if quotaService == nil && deps.Store != nil {
 		quotaService = service.NewQuotaService(deps.Store, service.WithJakartaLocation(jakartaLoc))
+	}
+
+	trackerService := deps.TrackerService
+	if trackerService == nil && deps.Store != nil {
+		trackerOpts := []service.TrackerOption{
+			service.WithTrackerJakartaLocation(jakartaLoc),
+		}
+		if qs, ok := quotaService.(*service.QuotaService); ok && qs != nil {
+			trackerOpts = append(trackerOpts, service.WithTrackerQuotaProvider(qs))
+		}
+		trackerService = service.NewTrackerService(deps.Store, trackerOpts...)
+	}
+
+	var trackerHandler *handler.TrackerHandler
+	if trackerService != nil {
+		trackerHandler = handler.NewTrackerHandler(trackerService, jakartaLoc)
 	}
 
 	r := chi.NewRouter()
@@ -94,6 +111,10 @@ func NewRouter(deps Dependencies) http.Handler {
 					quotaHandler := handler.NewQuotaHandler(quotaService)
 					ai.Get("/quota", quotaHandler.GetQuota)
 				}
+				if trackerHandler != nil {
+					// Draft confirmations and discards are non-LLM DB mutations and must not burn the 10rpm AI chat limit.
+					trackerHandler.RegisterAIDraftRoutes(ai)
+				}
 
 				// Quota polling stays outside the 10rpm chat rate limiter so UI badge refreshes never starve AI calls.
 				ai.Group(func(aiLimited chi.Router) {
@@ -104,6 +125,9 @@ func NewRouter(deps Dependencies) http.Handler {
 				})
 			})
 
+			if trackerHandler != nil {
+				trackerHandler.RegisterRoutes(authed)
+			}
 			if deps.RegisterProtectedRoutes != nil {
 				deps.RegisterProtectedRoutes(authed)
 			}

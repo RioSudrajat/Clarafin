@@ -548,3 +548,95 @@ UPDATE notifications
 SET is_read = TRUE
 WHERE user_id = $1
   AND is_read = FALSE;
+
+-- name: GetPractitionerStatusByUserID :one
+SELECT status
+FROM practitioner_profiles
+WHERE user_id = $1;
+
+-- name: GetGmailConnectionSummaryByUserID :one
+SELECT user_id, gmail_address, status, last_scanned_at, connected_at
+FROM gmail_connections
+WHERE user_id = $1;
+
+-- name: GetCategoryByID :one
+SELECT
+  id, slug, name, parent_id, group_name, type, emoji, icon_key,
+  color_hex, bg_color_hex, sort_order, is_active, created_at, updated_at
+FROM categories
+WHERE id = $1
+  AND is_active = TRUE;
+
+-- name: SetWalletBalance :one
+UPDATE wallets
+SET
+  balance = $3,
+  updated_at = NOW()
+WHERE user_id = $1
+  AND id = $2
+RETURNING id, user_id, name, type, institution_code, account_number_masked, balance, is_auto_sync, custom_color_hex, return_percentage, dividend_drop_date, is_volatile, has_claimed_dividend, is_archived, created_at, updated_at;
+
+-- name: ListBillsByUser :many
+SELECT
+  id, user_id, title, category, amount, due_date, frequency,
+  is_paid, auto_pay, icon_key, icon_color_hex, icon_bg_color_hex,
+  paid_at, created_at, updated_at
+FROM bills
+WHERE user_id = sqlc.arg('user_id')
+  AND (sqlc.narg('is_paid')::boolean IS NULL OR is_paid = sqlc.narg('is_paid')::boolean)
+ORDER BY is_paid ASC, due_date ASC NULLS LAST, created_at DESC;
+
+-- name: GetBillByID :one
+SELECT
+  id, user_id, title, category, amount, due_date, frequency,
+  is_paid, auto_pay, icon_key, icon_color_hex, icon_bg_color_hex,
+  paid_at, created_at, updated_at
+FROM bills
+WHERE user_id = $1
+  AND id = $2;
+
+-- name: UpdateBill :one
+UPDATE bills
+SET
+  title = COALESCE(sqlc.narg('title')::text, title),
+  category = COALESCE(sqlc.narg('category')::text, category),
+  amount = COALESCE(sqlc.narg('amount')::bigint, amount),
+  due_date = COALESCE(sqlc.narg('due_date')::date, due_date),
+  frequency = COALESCE(sqlc.narg('frequency')::text, frequency),
+  auto_pay = COALESCE(sqlc.narg('auto_pay')::boolean, auto_pay),
+  updated_at = NOW()
+WHERE user_id = sqlc.arg('user_id')
+  AND id = sqlc.arg('id')
+RETURNING id, user_id, title, category, amount, due_date, frequency, is_paid, auto_pay, icon_key, icon_color_hex, icon_bg_color_hex, paid_at, created_at, updated_at;
+
+-- name: ListGoalContributionsByUser :many
+SELECT gc.id, gc.goal_id, gc.wallet_id, gc.contributed_amount, gc.updated_at
+FROM goal_contributions gc
+JOIN goals g ON g.id = gc.goal_id
+WHERE g.user_id = $1
+ORDER BY gc.updated_at DESC;
+
+-- name: AdjustGoalContributionDelta :execrows
+UPDATE goal_contributions gc
+SET
+  contributed_amount = GREATEST(gc.contributed_amount + sqlc.arg('delta')::bigint, 0),
+  updated_at = NOW()
+FROM goals g
+WHERE gc.goal_id = g.id
+  AND g.user_id = sqlc.arg('user_id')
+  AND gc.goal_id = sqlc.arg('goal_id')
+  AND gc.wallet_id = sqlc.arg('wallet_id');
+
+-- name: AdjustGoalSavedAmount :one
+UPDATE goals
+SET
+  saved_amount = GREATEST(saved_amount + sqlc.arg('delta')::bigint, 0),
+  status = CASE
+    WHEN status = 'archived' THEN 'archived'
+    WHEN GREATEST(saved_amount + sqlc.arg('delta')::bigint, 0) >= target_amount THEN 'completed'
+    ELSE 'active'
+  END,
+  updated_at = NOW()
+WHERE user_id = sqlc.arg('user_id')
+  AND id = sqlc.arg('id')
+RETURNING id, user_id, linked_wallet_id, title, target_amount, saved_amount, target_date, priority, source_asset_label, icon_key, tag_color_hex, tag_text_color_hex, status, created_at, updated_at;

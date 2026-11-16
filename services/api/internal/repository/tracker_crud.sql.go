@@ -53,6 +53,82 @@ func (q *Queries) AddGoalSavedAmount(ctx context.Context, arg AddGoalSavedAmount
 	return i, err
 }
 
+const adjustGoalContributionDelta = `-- name: AdjustGoalContributionDelta :execrows
+UPDATE goal_contributions gc
+SET
+  contributed_amount = GREATEST(gc.contributed_amount + $1::bigint, 0),
+  updated_at = NOW()
+FROM goals g
+WHERE gc.goal_id = g.id
+  AND g.user_id = $2
+  AND gc.goal_id = $3
+  AND gc.wallet_id = $4
+`
+
+type AdjustGoalContributionDeltaParams struct {
+	Delta    int64
+	UserID   uuid.UUID
+	GoalID   uuid.UUID
+	WalletID uuid.UUID
+}
+
+func (q *Queries) AdjustGoalContributionDelta(ctx context.Context, arg AdjustGoalContributionDeltaParams) (int64, error) {
+	result, err := q.db.Exec(ctx, adjustGoalContributionDelta,
+		arg.Delta,
+		arg.UserID,
+		arg.GoalID,
+		arg.WalletID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const adjustGoalSavedAmount = `-- name: AdjustGoalSavedAmount :one
+UPDATE goals
+SET
+  saved_amount = GREATEST(saved_amount + $1::bigint, 0),
+  status = CASE
+    WHEN status = 'archived' THEN 'archived'
+    WHEN GREATEST(saved_amount + $1::bigint, 0) >= target_amount THEN 'completed'
+    ELSE 'active'
+  END,
+  updated_at = NOW()
+WHERE user_id = $2
+  AND id = $3
+RETURNING id, user_id, linked_wallet_id, title, target_amount, saved_amount, target_date, priority, source_asset_label, icon_key, tag_color_hex, tag_text_color_hex, status, created_at, updated_at
+`
+
+type AdjustGoalSavedAmountParams struct {
+	Delta  int64
+	UserID uuid.UUID
+	ID     uuid.UUID
+}
+
+func (q *Queries) AdjustGoalSavedAmount(ctx context.Context, arg AdjustGoalSavedAmountParams) (Goal, error) {
+	row := q.db.QueryRow(ctx, adjustGoalSavedAmount, arg.Delta, arg.UserID, arg.ID)
+	var i Goal
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.LinkedWalletID,
+		&i.Title,
+		&i.TargetAmount,
+		&i.SavedAmount,
+		&i.TargetDate,
+		&i.Priority,
+		&i.SourceAssetLabel,
+		&i.IconKey,
+		&i.TagColorHex,
+		&i.TagTextColorHex,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const archiveWallet = `-- name: ArchiveWallet :one
 UPDATE wallets
 SET
@@ -789,6 +865,75 @@ func (q *Queries) GetAIDraftByID(ctx context.Context, arg GetAIDraftByIDParams) 
 	return i, err
 }
 
+const getBillByID = `-- name: GetBillByID :one
+SELECT
+  id, user_id, title, category, amount, due_date, frequency,
+  is_paid, auto_pay, icon_key, icon_color_hex, icon_bg_color_hex,
+  paid_at, created_at, updated_at
+FROM bills
+WHERE user_id = $1
+  AND id = $2
+`
+
+type GetBillByIDParams struct {
+	UserID uuid.UUID
+	ID     uuid.UUID
+}
+
+func (q *Queries) GetBillByID(ctx context.Context, arg GetBillByIDParams) (Bill, error) {
+	row := q.db.QueryRow(ctx, getBillByID, arg.UserID, arg.ID)
+	var i Bill
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Title,
+		&i.Category,
+		&i.Amount,
+		&i.DueDate,
+		&i.Frequency,
+		&i.IsPaid,
+		&i.AutoPay,
+		&i.IconKey,
+		&i.IconColorHex,
+		&i.IconBgColorHex,
+		&i.PaidAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getCategoryByID = `-- name: GetCategoryByID :one
+SELECT
+  id, slug, name, parent_id, group_name, type, emoji, icon_key,
+  color_hex, bg_color_hex, sort_order, is_active, created_at, updated_at
+FROM categories
+WHERE id = $1
+  AND is_active = TRUE
+`
+
+func (q *Queries) GetCategoryByID(ctx context.Context, id uuid.UUID) (Category, error) {
+	row := q.db.QueryRow(ctx, getCategoryByID, id)
+	var i Category
+	err := row.Scan(
+		&i.ID,
+		&i.Slug,
+		&i.Name,
+		&i.ParentID,
+		&i.GroupName,
+		&i.Type,
+		&i.Emoji,
+		&i.IconKey,
+		&i.ColorHex,
+		&i.BgColorHex,
+		&i.SortOrder,
+		&i.IsActive,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getCategoryBySlug = `-- name: GetCategoryBySlug :one
 SELECT
   id, slug, name, parent_id, group_name, type, emoji, icon_key,
@@ -816,6 +961,33 @@ func (q *Queries) GetCategoryBySlug(ctx context.Context, slug string) (Category,
 		&i.IsActive,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getGmailConnectionSummaryByUserID = `-- name: GetGmailConnectionSummaryByUserID :one
+SELECT user_id, gmail_address, status, last_scanned_at, connected_at
+FROM gmail_connections
+WHERE user_id = $1
+`
+
+type GetGmailConnectionSummaryByUserIDRow struct {
+	UserID        uuid.UUID
+	GmailAddress  string
+	Status        string
+	LastScannedAt *time.Time
+	ConnectedAt   time.Time
+}
+
+func (q *Queries) GetGmailConnectionSummaryByUserID(ctx context.Context, userID uuid.UUID) (GetGmailConnectionSummaryByUserIDRow, error) {
+	row := q.db.QueryRow(ctx, getGmailConnectionSummaryByUserID, userID)
+	var i GetGmailConnectionSummaryByUserIDRow
+	err := row.Scan(
+		&i.UserID,
+		&i.GmailAddress,
+		&i.Status,
+		&i.LastScannedAt,
+		&i.ConnectedAt,
 	)
 	return i, err
 }
@@ -856,6 +1028,19 @@ func (q *Queries) GetGoalByID(ctx context.Context, arg GetGoalByIDParams) (Goal,
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const getPractitionerStatusByUserID = `-- name: GetPractitionerStatusByUserID :one
+SELECT status
+FROM practitioner_profiles
+WHERE user_id = $1
+`
+
+func (q *Queries) GetPractitionerStatusByUserID(ctx context.Context, userID uuid.UUID) (string, error) {
+	row := q.db.QueryRow(ctx, getPractitionerStatusByUserID, userID)
+	var status string
+	err := row.Scan(&status)
+	return status, err
 }
 
 const getTransactionByClientMutationID = `-- name: GetTransactionByClientMutationID :one
@@ -1143,6 +1328,58 @@ func (q *Queries) InsertTransactionIdempotent(ctx context.Context, arg InsertTra
 	return i, err
 }
 
+const listBillsByUser = `-- name: ListBillsByUser :many
+SELECT
+  id, user_id, title, category, amount, due_date, frequency,
+  is_paid, auto_pay, icon_key, icon_color_hex, icon_bg_color_hex,
+  paid_at, created_at, updated_at
+FROM bills
+WHERE user_id = $1
+  AND ($2::boolean IS NULL OR is_paid = $2::boolean)
+ORDER BY is_paid ASC, due_date ASC NULLS LAST, created_at DESC
+`
+
+type ListBillsByUserParams struct {
+	UserID uuid.UUID
+	IsPaid *bool
+}
+
+func (q *Queries) ListBillsByUser(ctx context.Context, arg ListBillsByUserParams) ([]Bill, error) {
+	rows, err := q.db.Query(ctx, listBillsByUser, arg.UserID, arg.IsPaid)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Bill{}
+	for rows.Next() {
+		var i Bill
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Title,
+			&i.Category,
+			&i.Amount,
+			&i.DueDate,
+			&i.Frequency,
+			&i.IsPaid,
+			&i.AutoPay,
+			&i.IconKey,
+			&i.IconColorHex,
+			&i.IconBgColorHex,
+			&i.PaidAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listCategories = `-- name: ListCategories :many
 SELECT
   id, slug, name, parent_id, group_name, type, emoji, icon_key,
@@ -1175,6 +1412,40 @@ func (q *Queries) ListCategories(ctx context.Context) ([]Category, error) {
 			&i.SortOrder,
 			&i.IsActive,
 			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listGoalContributionsByUser = `-- name: ListGoalContributionsByUser :many
+SELECT gc.id, gc.goal_id, gc.wallet_id, gc.contributed_amount, gc.updated_at
+FROM goal_contributions gc
+JOIN goals g ON g.id = gc.goal_id
+WHERE g.user_id = $1
+ORDER BY gc.updated_at DESC
+`
+
+func (q *Queries) ListGoalContributionsByUser(ctx context.Context, userID uuid.UUID) ([]GoalContribution, error) {
+	rows, err := q.db.Query(ctx, listGoalContributionsByUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GoalContribution{}
+	for rows.Next() {
+		var i GoalContribution
+		if err := rows.Scan(
+			&i.ID,
+			&i.GoalID,
+			&i.WalletID,
+			&i.ContributedAmount,
 			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
@@ -1394,6 +1665,104 @@ type MarkBillPaidParams struct {
 
 func (q *Queries) MarkBillPaid(ctx context.Context, arg MarkBillPaidParams) (Bill, error) {
 	row := q.db.QueryRow(ctx, markBillPaid, arg.UserID, arg.ID, arg.IsPaid)
+	var i Bill
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Title,
+		&i.Category,
+		&i.Amount,
+		&i.DueDate,
+		&i.Frequency,
+		&i.IsPaid,
+		&i.AutoPay,
+		&i.IconKey,
+		&i.IconColorHex,
+		&i.IconBgColorHex,
+		&i.PaidAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const setWalletBalance = `-- name: SetWalletBalance :one
+UPDATE wallets
+SET
+  balance = $3,
+  updated_at = NOW()
+WHERE user_id = $1
+  AND id = $2
+RETURNING id, user_id, name, type, institution_code, account_number_masked, balance, is_auto_sync, custom_color_hex, return_percentage, dividend_drop_date, is_volatile, has_claimed_dividend, is_archived, created_at, updated_at
+`
+
+type SetWalletBalanceParams struct {
+	UserID  uuid.UUID
+	ID      uuid.UUID
+	Balance int64
+}
+
+func (q *Queries) SetWalletBalance(ctx context.Context, arg SetWalletBalanceParams) (Wallet, error) {
+	row := q.db.QueryRow(ctx, setWalletBalance, arg.UserID, arg.ID, arg.Balance)
+	var i Wallet
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Name,
+		&i.Type,
+		&i.InstitutionCode,
+		&i.AccountNumberMasked,
+		&i.Balance,
+		&i.IsAutoSync,
+		&i.CustomColorHex,
+		&i.ReturnPercentage,
+		&i.DividendDropDate,
+		&i.IsVolatile,
+		&i.HasClaimedDividend,
+		&i.IsArchived,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updateBill = `-- name: UpdateBill :one
+UPDATE bills
+SET
+  title = COALESCE($1::text, title),
+  category = COALESCE($2::text, category),
+  amount = COALESCE($3::bigint, amount),
+  due_date = COALESCE($4::date, due_date),
+  frequency = COALESCE($5::text, frequency),
+  auto_pay = COALESCE($6::boolean, auto_pay),
+  updated_at = NOW()
+WHERE user_id = $7
+  AND id = $8
+RETURNING id, user_id, title, category, amount, due_date, frequency, is_paid, auto_pay, icon_key, icon_color_hex, icon_bg_color_hex, paid_at, created_at, updated_at
+`
+
+type UpdateBillParams struct {
+	Title     *string
+	Category  *string
+	Amount    *int64
+	DueDate   *time.Time
+	Frequency *string
+	AutoPay   *bool
+	UserID    uuid.UUID
+	ID        uuid.UUID
+}
+
+func (q *Queries) UpdateBill(ctx context.Context, arg UpdateBillParams) (Bill, error) {
+	row := q.db.QueryRow(ctx, updateBill,
+		arg.Title,
+		arg.Category,
+		arg.Amount,
+		arg.DueDate,
+		arg.Frequency,
+		arg.AutoPay,
+		arg.UserID,
+		arg.ID,
+	)
 	var i Bill
 	err := row.Scan(
 		&i.ID,

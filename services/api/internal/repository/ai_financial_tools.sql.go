@@ -74,6 +74,137 @@ func (q *Queries) GetCashflowCategoryBreakdown(ctx context.Context, arg GetCashf
 	return items, nil
 }
 
+const getCashflowCategoryBreakdownFiltered = `-- name: GetCashflowCategoryBreakdownFiltered :many
+SELECT
+  t.type::text AS tx_type,
+  t.category::text AS category,
+  t.category_id,
+  COUNT(*)::bigint AS tx_count,
+  SUM(t.amount)::bigint AS total_amount
+FROM transactions t
+WHERE t.user_id = $1
+  AND t.occurred_at >= $2::timestamptz
+  AND t.occurred_at < $3::timestamptz
+  AND ($4::text = '' OR t.type = $4::text)
+  AND (
+    $5::text = ''
+    OR POSITION(LOWER($5::text) IN LOWER(t.title)) > 0
+    OR POSITION(LOWER($5::text) IN LOWER(COALESCE(t.note, ''))) > 0
+    OR POSITION(LOWER($5::text) IN LOWER(t.category)) > 0
+  )
+GROUP BY t.type, t.category, t.category_id
+ORDER BY total_amount DESC, t.category ASC
+`
+
+type GetCashflowCategoryBreakdownFilteredParams struct {
+	UserID        uuid.UUID
+	StartAt       time.Time
+	EndAt         time.Time
+	TxType        string
+	KeywordFilter string
+}
+
+type GetCashflowCategoryBreakdownFilteredRow struct {
+	TxType      string
+	Category    string
+	CategoryID  *uuid.UUID
+	TxCount     int64
+	TotalAmount int64
+}
+
+func (q *Queries) GetCashflowCategoryBreakdownFiltered(ctx context.Context, arg GetCashflowCategoryBreakdownFilteredParams) ([]GetCashflowCategoryBreakdownFilteredRow, error) {
+	rows, err := q.db.Query(ctx, getCashflowCategoryBreakdownFiltered,
+		arg.UserID,
+		arg.StartAt,
+		arg.EndAt,
+		arg.TxType,
+		arg.KeywordFilter,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetCashflowCategoryBreakdownFilteredRow{}
+	for rows.Next() {
+		var i GetCashflowCategoryBreakdownFilteredRow
+		if err := rows.Scan(
+			&i.TxType,
+			&i.Category,
+			&i.CategoryID,
+			&i.TxCount,
+			&i.TotalAmount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getCashflowFilteredPeriodTotals = `-- name: GetCashflowFilteredPeriodTotals :one
+SELECT
+  COALESCE(SUM(amount) FILTER (WHERE type = 'income'), 0)::bigint AS total_income,
+  COALESCE(SUM(amount) FILTER (WHERE type = 'expense'), 0)::bigint AS total_expense,
+  COALESCE(SUM(amount) FILTER (WHERE type = 'transfer'), 0)::bigint AS total_transfer,
+  (COALESCE(SUM(amount) FILTER (WHERE type = 'income'), 0) - COALESCE(SUM(amount) FILTER (WHERE type = 'expense'), 0))::bigint AS net_cashflow,
+  COUNT(*) FILTER (WHERE type = 'income')::bigint AS income_count,
+  COUNT(*) FILTER (WHERE type = 'expense')::bigint AS expense_count,
+  COUNT(*) FILTER (WHERE type = 'transfer')::bigint AS transfer_count,
+  COUNT(*)::bigint AS total_count
+FROM transactions
+WHERE user_id = $1
+  AND occurred_at >= $2::timestamptz
+  AND occurred_at < $3::timestamptz
+  AND (
+    $4::text = ''
+    OR POSITION(LOWER($4::text) IN LOWER(title)) > 0
+    OR POSITION(LOWER($4::text) IN LOWER(COALESCE(note, ''))) > 0
+    OR POSITION(LOWER($4::text) IN LOWER(category)) > 0
+  )
+`
+
+type GetCashflowFilteredPeriodTotalsParams struct {
+	UserID        uuid.UUID
+	StartAt       time.Time
+	EndAt         time.Time
+	KeywordFilter string
+}
+
+type GetCashflowFilteredPeriodTotalsRow struct {
+	TotalIncome   int64
+	TotalExpense  int64
+	TotalTransfer int64
+	NetCashflow   int64
+	IncomeCount   int64
+	ExpenseCount  int64
+	TransferCount int64
+	TotalCount    int64
+}
+
+func (q *Queries) GetCashflowFilteredPeriodTotals(ctx context.Context, arg GetCashflowFilteredPeriodTotalsParams) (GetCashflowFilteredPeriodTotalsRow, error) {
+	row := q.db.QueryRow(ctx, getCashflowFilteredPeriodTotals,
+		arg.UserID,
+		arg.StartAt,
+		arg.EndAt,
+		arg.KeywordFilter,
+	)
+	var i GetCashflowFilteredPeriodTotalsRow
+	err := row.Scan(
+		&i.TotalIncome,
+		&i.TotalExpense,
+		&i.TotalTransfer,
+		&i.NetCashflow,
+		&i.IncomeCount,
+		&i.ExpenseCount,
+		&i.TransferCount,
+		&i.TotalCount,
+	)
+	return i, err
+}
+
 const getCashflowFlowEdges = `-- name: GetCashflowFlowEdges :many
 WITH income_nodes AS (
   SELECT
@@ -309,6 +440,83 @@ func (q *Queries) GetCashflowPeriodTotals(ctx context.Context, arg GetCashflowPe
 		&i.TotalCount,
 	)
 	return i, err
+}
+
+const getCashflowWalletBreakdown = `-- name: GetCashflowWalletBreakdown :many
+SELECT
+  w.id AS wallet_id,
+  w.name::text AS wallet_name,
+  w.type::text AS wallet_type,
+  w.balance::bigint AS current_balance,
+  COALESCE(SUM(t.amount) FILTER (WHERE t.type = 'income'), 0)::bigint AS total_income,
+  COALESCE(SUM(t.amount) FILTER (WHERE t.type = 'expense'), 0)::bigint AS total_expense,
+  COALESCE(SUM(t.amount) FILTER (WHERE t.type = 'transfer'), 0)::bigint AS total_transfer,
+  COUNT(t.id)::bigint AS tx_count
+FROM transactions t
+JOIN wallets w ON w.id = t.wallet_id AND w.user_id = $1
+WHERE t.user_id = $1
+  AND t.occurred_at >= $2::timestamptz
+  AND t.occurred_at < $3::timestamptz
+  AND (
+    $4::text = ''
+    OR POSITION(LOWER($4::text) IN LOWER(t.title)) > 0
+    OR POSITION(LOWER($4::text) IN LOWER(COALESCE(t.note, ''))) > 0
+    OR POSITION(LOWER($4::text) IN LOWER(t.category)) > 0
+  )
+GROUP BY w.id, w.name, w.type, w.balance
+ORDER BY total_expense DESC, total_income DESC, w.name ASC
+`
+
+type GetCashflowWalletBreakdownParams struct {
+	UserID        uuid.UUID
+	StartAt       time.Time
+	EndAt         time.Time
+	KeywordFilter string
+}
+
+type GetCashflowWalletBreakdownRow struct {
+	WalletID       uuid.UUID
+	WalletName     string
+	WalletType     string
+	CurrentBalance int64
+	TotalIncome    int64
+	TotalExpense   int64
+	TotalTransfer  int64
+	TxCount        int64
+}
+
+func (q *Queries) GetCashflowWalletBreakdown(ctx context.Context, arg GetCashflowWalletBreakdownParams) ([]GetCashflowWalletBreakdownRow, error) {
+	rows, err := q.db.Query(ctx, getCashflowWalletBreakdown,
+		arg.UserID,
+		arg.StartAt,
+		arg.EndAt,
+		arg.KeywordFilter,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetCashflowWalletBreakdownRow{}
+	for rows.Next() {
+		var i GetCashflowWalletBreakdownRow
+		if err := rows.Scan(
+			&i.WalletID,
+			&i.WalletName,
+			&i.WalletType,
+			&i.CurrentBalance,
+			&i.TotalIncome,
+			&i.TotalExpense,
+			&i.TotalTransfer,
+			&i.TxCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getLatestMatchExpertSubmission = `-- name: GetLatestMatchExpertSubmission :one
