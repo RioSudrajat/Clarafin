@@ -2010,38 +2010,97 @@ func (s *TrackerService) UpdateBill(ctx context.Context, userID, billID uuid.UUI
 
 	var out *BillUpdateResult
 	err := s.store.WithTx(ctx, func(q *repository.Queries) error {
-		existing, err := q.GetBillByID(ctx, repository.GetBillByIDParams{UserID: userID, ID: billID})
+		existing, err := q.GetBillByIDForUpdate(ctx, repository.GetBillByIDForUpdateParams{UserID: userID, ID: billID})
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				return ErrNotFound
 			}
-			return fmt.Errorf("get bill: %w", err)
+			return fmt.Errorf("lock bill for update: %w", err)
 		}
 
-		updated, err := q.UpdateBill(ctx, repository.UpdateBillParams{
-			Title:     titlePtr,
-			Category:  trimOptionalPtr(input.Category),
-			Amount:    input.Amount,
-			DueDate:   dueDate,
-			Frequency: input.Frequency,
-			AutoPay:   input.AutoPay,
-			UserID:    userID,
-			ID:        billID,
-		})
-		if err != nil {
-			return fmt.Errorf("update bill: %w", err)
+		mutID := trimOptionalPtr(input.ClientMutationID)
+
+		if input.IsPaid != nil && *input.IsPaid && existing.IsPaid {
+			if mutID == nil {
+				return fmt.Errorf("%w: bill is already paid", ErrConflict)
+			}
+
+			existingTx, txErr := q.GetTransactionByClientMutationID(ctx, repository.GetTransactionByClientMutationIDParams{
+				UserID:           userID,
+				ClientMutationID: mutID,
+			})
+			if txErr != nil {
+				if errors.Is(txErr, pgx.ErrNoRows) {
+					return fmt.Errorf("%w: bill is already paid", ErrConflict)
+				}
+				return fmt.Errorf("lookup bill payment transaction: %w", txErr)
+			}
+
+			if !billPaymentMatchesTx(existing, existingTx, input) {
+				return fmt.Errorf("%w: client_mutation_id belongs to a different transaction", ErrConflict)
+			}
+
+			wallet, wErr := q.GetWalletByID(ctx, repository.GetWalletByIDParams{
+				UserID: userID,
+				ID:     existingTx.WalletID,
+			})
+			if wErr != nil {
+				return fmt.Errorf("read wallet for idempotent bill replay: %w", wErr)
+			}
+
+			txDTO := txToDTO(existingTx)
+			bal := wallet.Balance
+			out = &BillUpdateResult{
+				Bill:             billToDTO(existing),
+				Transaction:      &txDTO,
+				WalletBalanceIDR: &bal,
+				IdempotentReplay: true,
+			}
+			return nil
 		}
 
-		res := &BillUpdateResult{Bill: billToDTO(updated)}
+		// Reject a pre-existing unrelated client_mutation_id before marking an unpaid bill paid.
+		if input.IsPaid != nil && *input.IsPaid && !existing.IsPaid && input.WalletID != nil && mutID != nil {
+			if _, txErr := q.GetTransactionByClientMutationID(ctx, repository.GetTransactionByClientMutationIDParams{
+				UserID:           userID,
+				ClientMutationID: mutID,
+			}); txErr == nil {
+				return fmt.Errorf("%w: client_mutation_id already applied to another transaction", ErrConflict)
+			} else if !errors.Is(txErr, pgx.ErrNoRows) {
+				return fmt.Errorf("check client_mutation_id uniqueness: %w", txErr)
+			}
+		}
+
+		currentBill := existing
+		if hasBillMetadataUpdates(input) {
+			updated, err := q.UpdateBill(ctx, repository.UpdateBillParams{
+				Title:     titlePtr,
+				Category:  trimOptionalPtr(input.Category),
+				Amount:    input.Amount,
+				DueDate:   dueDate,
+				Frequency: input.Frequency,
+				AutoPay:   input.AutoPay,
+				UserID:    userID,
+				ID:        billID,
+			})
+			if err != nil {
+				return fmt.Errorf("update bill: %w", err)
+			}
+			currentBill = updated
+		}
+
+		res := &BillUpdateResult{Bill: billToDTO(currentBill)}
 
 		if input.IsPaid != nil {
-			if *input.IsPaid && !existing.IsPaid {
-				paidBill, err := q.MarkBillPaid(ctx, repository.MarkBillPaidParams{
+			if *input.IsPaid && !currentBill.IsPaid {
+				paidBill, err := q.MarkBillPaidIfUnpaid(ctx, repository.MarkBillPaidIfUnpaidParams{
 					UserID: userID,
 					ID:     billID,
-					IsPaid: true,
 				})
 				if err != nil {
+					if errors.Is(err, pgx.ErrNoRows) {
+						return fmt.Errorf("%w: bill is already paid", ErrConflict)
+					}
 					return fmt.Errorf("mark bill paid: %w", err)
 				}
 				res.Bill = billToDTO(paidBill)
@@ -2058,7 +2117,7 @@ func (s *TrackerService) UpdateBill(ctx context.Context, userID, billID uuid.UUI
 						Amount:           paidBill.Amount,
 						Title:            paidBill.Title,
 						Source:           "manual",
-						ClientMutationID: input.ClientMutationID,
+						ClientMutationID: mutID,
 					})
 					if err != nil {
 						return err
@@ -2069,18 +2128,7 @@ func (s *TrackerService) UpdateBill(ctx context.Context, userID, billID uuid.UUI
 					res.WalletBalanceIDR = &bal
 					res.IdempotentReplay = txRes.IdempotentReplay
 				}
-			} else if *input.IsPaid && existing.IsPaid {
-				if mutID := trimOptionalPtr(input.ClientMutationID); mutID != nil {
-					if existingTx, txErr := q.GetTransactionByClientMutationID(ctx, repository.GetTransactionByClientMutationIDParams{
-						UserID:           userID,
-						ClientMutationID: mutID,
-					}); txErr == nil {
-						txDTO := txToDTO(existingTx)
-						res.Transaction = &txDTO
-						res.IdempotentReplay = true
-					}
-				}
-			} else if !*input.IsPaid && existing.IsPaid {
+			} else if !*input.IsPaid && currentBill.IsPaid {
 				unpaidBill, err := q.MarkBillPaid(ctx, repository.MarkBillPaidParams{
 					UserID: userID,
 					ID:     billID,
@@ -2432,6 +2480,10 @@ func validateTransactionInput(input *CreateTransactionInput, now time.Time) erro
 		return fmt.Errorf("%w: client_mutation_id exceeds 128 characters", ErrInvalidInput)
 	}
 
+	if input.CategoryID != nil && *input.CategoryID == uuid.Nil {
+		return fmt.Errorf("%w: category_id cannot be nil UUID", ErrInvalidInput)
+	}
+
 	if txType == "transfer" {
 		if input.DestinationWalletID == nil && input.TargetGoalID == nil {
 			return fmt.Errorf("%w: transfer requires destination_wallet_id or target_goal_id", ErrInvalidInput)
@@ -2444,8 +2496,16 @@ func validateTransactionInput(input *CreateTransactionInput, now time.Time) erro
 				return fmt.Errorf("%w: destination_wallet_id must differ from wallet_id", ErrInvalidInput)
 			}
 		}
-	} else if input.DestinationWalletID != nil {
-		return fmt.Errorf("%w: destination_wallet_id is only allowed for transfer transactions", ErrInvalidInput)
+		if input.TargetGoalID != nil && *input.TargetGoalID == uuid.Nil {
+			return fmt.Errorf("%w: target_goal_id cannot be nil UUID", ErrInvalidInput)
+		}
+	} else {
+		if input.DestinationWalletID != nil {
+			return fmt.Errorf("%w: destination_wallet_id is only allowed for transfer transactions", ErrInvalidInput)
+		}
+		if input.TargetGoalID != nil {
+			return fmt.Errorf("%w: target_goal_id is only allowed for transfer transactions", ErrInvalidInput)
+		}
 	}
 
 	if input.OccurredAt == nil || input.OccurredAt.IsZero() {
@@ -2453,6 +2513,34 @@ func validateTransactionInput(input *CreateTransactionInput, now time.Time) erro
 		input.OccurredAt = &t
 	}
 	return nil
+}
+
+func hasBillMetadataUpdates(input UpdateBillInput) bool {
+	return input.Title != nil ||
+		input.Category != nil ||
+		input.Amount != nil ||
+		input.DueDate != nil ||
+		input.Frequency != nil ||
+		input.AutoPay != nil
+}
+
+func billPaymentMatchesTx(bill repository.Bill, tx repository.Transaction, input UpdateBillInput) bool {
+	if tx.Type != "expense" || tx.Amount != bill.Amount || tx.Title != bill.Title {
+		return false
+	}
+	if input.WalletID != nil && tx.WalletID != *input.WalletID {
+		return false
+	}
+	if input.Amount != nil && *input.Amount != bill.Amount {
+		return false
+	}
+	if input.Title != nil && strings.TrimSpace(*input.Title) != bill.Title {
+		return false
+	}
+	if input.Category != nil && strings.TrimSpace(*input.Category) != tx.Category {
+		return false
+	}
+	return true
 }
 
 func (s *TrackerService) requireStore(userID uuid.UUID) error {

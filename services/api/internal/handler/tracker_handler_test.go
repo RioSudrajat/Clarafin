@@ -323,4 +323,81 @@ func TestTrackerHandler_EndToEndCRUDIdempotencyAndConflictMapping(t *testing.T) 
 	if finalW.Data.Balance != 600000 {
 		t.Fatalf("expected final wallet balance 600000, got %d", finalW.Data.Balance)
 	}
+
+	// Duplicate bill pay without client_mutation_id returns 409 CONFLICT.
+	if recDupBill := doTrackerReq(r, userA.ID, http.MethodPatch, "/v1/bills/"+billEnv.Data.ID.String(), fmt.Sprintf(`{"is_paid":true,"wallet_id":"%s"}`, walletA1.ID)); recDupBill.Code != http.StatusConflict {
+		t.Fatalf("expected 409 on duplicate bill pay without client_mutation_id, got %d (%s)", recDupBill.Code, recDupBill.Body.String())
+	}
+
+	// Sequential bill-pay idempotent replay returns 200 with wallet_balance_idr populated and balance untouched.
+	recBill2 := doTrackerReq(r, userA.ID, http.MethodPost, "/v1/bills", `{"title":"Air PDAM","category":"Bills & Utilities","amount":100000,"frequency":"monthly"}`)
+	if recBill2.Code != http.StatusCreated {
+		t.Fatalf("POST /v1/bills #2 = %d", recBill2.Code)
+	}
+	var bill2Env struct {
+		Data service.BillDTO `json:"data"`
+	}
+	_ = json.Unmarshal(recBill2.Body.Bytes(), &bill2Env)
+	billPayMut := "hdl_bill_mut_" + uuid.NewString()
+	billPayBody := fmt.Sprintf(`{"is_paid":true,"wallet_id":"%s","client_mutation_id":"%s"}`, walletA1.ID, billPayMut)
+
+	recBill2Pay1 := doTrackerReq(r, userA.ID, http.MethodPatch, "/v1/bills/"+bill2Env.Data.ID.String(), billPayBody)
+	if recBill2Pay1.Code != http.StatusOK {
+		t.Fatalf("first PATCH bill pay = %d (%s)", recBill2Pay1.Code, recBill2Pay1.Body.String())
+	}
+	recBill2Pay2 := doTrackerReq(r, userA.ID, http.MethodPatch, "/v1/bills/"+bill2Env.Data.ID.String(), billPayBody)
+	if recBill2Pay2.Code != http.StatusOK {
+		t.Fatalf("replay PATCH bill pay = %d (%s)", recBill2Pay2.Code, recBill2Pay2.Body.String())
+	}
+	var billReplayEnv struct {
+		Data service.BillUpdateResult `json:"data"`
+	}
+	_ = json.Unmarshal(recBill2Pay2.Body.Bytes(), &billReplayEnv)
+	if !billReplayEnv.Data.IdempotentReplay || billReplayEnv.Data.WalletBalanceIDR == nil || *billReplayEnv.Data.WalletBalanceIDR != 500000 {
+		t.Fatalf("expected bill replay with wallet_balance_idr=500000, got %+v", billReplayEnv.Data)
+	}
+
+	// target_goal_id validation on non-transfer or nil UUID returns 400 INVALID_REQUEST.
+	badGoalExpense := fmt.Sprintf(`{"wallet_id":"%s","target_goal_id":"%s","type":"expense","category":"Food & Beverage","amount":10000,"title":"Bad"}`, walletA1.ID, goalEnv.Data.ID)
+	if recBadGoal := doTrackerReq(r, userA.ID, http.MethodPost, "/v1/transactions", badGoalExpense); recBadGoal.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 for target_goal_id on expense, got %d (%s)", recBadGoal.Code, recBadGoal.Body.String())
+	}
+	badGoalNil := fmt.Sprintf(`{"wallet_id":"%s","target_goal_id":"00000000-0000-0000-0000-000000000000","type":"transfer","category":"Incoming Transfer","amount":10000,"title":"Nil"}`, walletA1.ID)
+	if recNilGoal := doTrackerReq(r, userA.ID, http.MethodPost, "/v1/transactions", badGoalNil); recNilGoal.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 for nil target_goal_id, got %d (%s)", recNilGoal.Code, recNilGoal.Body.String())
+	}
+}
+
+func TestTrackerHandler_PaginationInt32OverflowValidation(t *testing.T) {
+	store, _ := openTestStore(t)
+	r := newTestTrackerRouter(store)
+	userID := uuid.New()
+
+	invalidQueries := []string{
+		"/v1/transactions?limit=4294967297",
+		"/v1/transactions?limit=9999999999",
+		"/v1/transactions?limit=0",
+		"/v1/transactions?limit=-5",
+		"/v1/transactions?offset=4294967297",
+		"/v1/transactions?offset=-1",
+		"/v1/notifications?limit=4294967297",
+		"/v1/notifications?limit=0",
+		"/v1/notifications?limit=-10",
+	}
+
+	for _, path := range invalidQueries {
+		rec := doTrackerReq(r, userID, http.MethodGet, path, "")
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("GET %s expected 400 INVALID_REQUEST, got %d (body: %s)", path, rec.Code, rec.Body.String())
+		}
+		var env struct {
+			Error domain.ErrorDetail `json:"error"`
+		}
+		if err := json.Unmarshal(rec.Body.Bytes(), &env); err != nil {
+			t.Fatalf("unmarshal error for %s: %v", path, err)
+		}
+		if env.Error.Code != domain.ErrCodeInvalidRequest {
+			t.Fatalf("GET %s expected code INVALID_REQUEST, got %q", path, env.Error.Code)
+		}
+	}
 }

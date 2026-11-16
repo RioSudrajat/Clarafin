@@ -903,6 +903,45 @@ func (q *Queries) GetBillByID(ctx context.Context, arg GetBillByIDParams) (Bill,
 	return i, err
 }
 
+const getBillByIDForUpdate = `-- name: GetBillByIDForUpdate :one
+SELECT
+  id, user_id, title, category, amount, due_date, frequency,
+  is_paid, auto_pay, icon_key, icon_color_hex, icon_bg_color_hex,
+  paid_at, created_at, updated_at
+FROM bills
+WHERE user_id = $1
+  AND id = $2
+FOR UPDATE
+`
+
+type GetBillByIDForUpdateParams struct {
+	UserID uuid.UUID
+	ID     uuid.UUID
+}
+
+func (q *Queries) GetBillByIDForUpdate(ctx context.Context, arg GetBillByIDForUpdateParams) (Bill, error) {
+	row := q.db.QueryRow(ctx, getBillByIDForUpdate, arg.UserID, arg.ID)
+	var i Bill
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Title,
+		&i.Category,
+		&i.Amount,
+		&i.DueDate,
+		&i.Frequency,
+		&i.IsPaid,
+		&i.AutoPay,
+		&i.IconKey,
+		&i.IconColorHex,
+		&i.IconBgColorHex,
+		&i.PaidAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getCategoryByID = `-- name: GetCategoryByID :one
 SELECT
   id, slug, name, parent_id, group_name, type, emoji, icon_key,
@@ -1665,6 +1704,46 @@ type MarkBillPaidParams struct {
 
 func (q *Queries) MarkBillPaid(ctx context.Context, arg MarkBillPaidParams) (Bill, error) {
 	row := q.db.QueryRow(ctx, markBillPaid, arg.UserID, arg.ID, arg.IsPaid)
+	var i Bill
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Title,
+		&i.Category,
+		&i.Amount,
+		&i.DueDate,
+		&i.Frequency,
+		&i.IsPaid,
+		&i.AutoPay,
+		&i.IconKey,
+		&i.IconColorHex,
+		&i.IconBgColorHex,
+		&i.PaidAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const markBillPaidIfUnpaid = `-- name: MarkBillPaidIfUnpaid :one
+UPDATE bills
+SET
+  is_paid = TRUE,
+  paid_at = NOW(),
+  updated_at = NOW()
+WHERE user_id = $1
+  AND id = $2
+  AND is_paid = FALSE
+RETURNING id, user_id, title, category, amount, due_date, frequency, is_paid, auto_pay, icon_key, icon_color_hex, icon_bg_color_hex, paid_at, created_at, updated_at
+`
+
+type MarkBillPaidIfUnpaidParams struct {
+	UserID uuid.UUID
+	ID     uuid.UUID
+}
+
+func (q *Queries) MarkBillPaidIfUnpaid(ctx context.Context, arg MarkBillPaidIfUnpaidParams) (Bill, error) {
+	row := q.db.QueryRow(ctx, markBillPaidIfUnpaid, arg.UserID, arg.ID)
 	var i Bill
 	err := row.Scan(
 		&i.ID,

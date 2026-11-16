@@ -595,6 +595,27 @@ FROM bills
 WHERE user_id = $1
   AND id = $2;
 
+-- name: GetBillByIDForUpdate :one
+SELECT
+  id, user_id, title, category, amount, due_date, frequency,
+  is_paid, auto_pay, icon_key, icon_color_hex, icon_bg_color_hex,
+  paid_at, created_at, updated_at
+FROM bills
+WHERE user_id = $1
+  AND id = $2
+FOR UPDATE;
+
+-- name: MarkBillPaidIfUnpaid :one
+UPDATE bills
+SET
+  is_paid = TRUE,
+  paid_at = NOW(),
+  updated_at = NOW()
+WHERE user_id = $1
+  AND id = $2
+  AND is_paid = FALSE
+RETURNING id, user_id, title, category, amount, due_date, frequency, is_paid, auto_pay, icon_key, icon_color_hex, icon_bg_color_hex, paid_at, created_at, updated_at;
+
 -- name: UpdateBill :one
 UPDATE bills
 SET

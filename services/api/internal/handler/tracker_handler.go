@@ -312,20 +312,20 @@ func (h *TrackerHandler) ListTransactions(w http.ResponseWriter, r *http.Request
 		filter.DateTo = &t
 	}
 	if rawLimit := strings.TrimSpace(q.Get("limit")); rawLimit != "" {
-		v, err := strconv.Atoi(rawLimit)
-		if err != nil || v <= 0 {
+		v, err := parseInt32QueryParam(rawLimit, 1)
+		if err != nil {
 			domain.WriteError(w, http.StatusBadRequest, domain.ErrCodeInvalidRequest, "Invalid limit parameter.", reqID)
 			return
 		}
-		filter.Limit = int32(v)
+		filter.Limit = v
 	}
 	if rawOffset := strings.TrimSpace(q.Get("offset")); rawOffset != "" {
-		v, err := strconv.Atoi(rawOffset)
-		if err != nil || v < 0 {
+		v, err := parseInt32QueryParam(rawOffset, 0)
+		if err != nil {
 			domain.WriteError(w, http.StatusBadRequest, domain.ErrCodeInvalidRequest, "Invalid offset parameter.", reqID)
 			return
 		}
-		filter.Offset = int32(v)
+		filter.Offset = v
 	}
 
 	res, err := h.service.ListTransactions(r.Context(), userID, filter)
@@ -676,12 +676,12 @@ func (h *TrackerHandler) ListNotifications(w http.ResponseWriter, r *http.Reques
 	}
 	var limit int32 = 50
 	if raw := strings.TrimSpace(r.URL.Query().Get("limit")); raw != "" {
-		v, err := strconv.Atoi(raw)
-		if err != nil || v <= 0 {
+		v, err := parseInt32QueryParam(raw, 1)
+		if err != nil {
 			domain.WriteError(w, http.StatusBadRequest, domain.ErrCodeInvalidRequest, "Invalid limit parameter.", reqID)
 			return
 		}
-		limit = int32(v)
+		limit = v
 	}
 	items, err := h.service.ListNotifications(r.Context(), userID, limit)
 	if err != nil {
@@ -787,4 +787,12 @@ func parseQueryTimestamp(raw string, loc *time.Location) (time.Time, error) {
 		return t, nil
 	}
 	return time.Time{}, errors.New("invalid timestamp")
+}
+
+func parseInt32QueryParam(raw string, minVal int64) (int32, error) {
+	v, err := strconv.ParseInt(raw, 10, 32)
+	if err != nil || v < minVal {
+		return 0, errors.New("invalid integer query parameter")
+	}
+	return int32(v), nil
 }

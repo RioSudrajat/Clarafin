@@ -349,3 +349,283 @@ func TestTrackerService_DraftConfirmAndBillPayAtomicity(t *testing.T) {
 		t.Fatalf("expected wallet balance 122000 after paying bill, got (%+v, %v)", wAfterBill, err)
 	}
 }
+
+func TestTrackerService_ConcurrentBillPayDoubleDeductionAndIdempotentReplay(t *testing.T) {
+	store, ctx := openQuotaTestStore(t)
+	user := createTempTrackerUser(t, ctx, store, "bill-race")
+	svc := service.NewTrackerService(store)
+
+	wallet, err := svc.CreateWallet(ctx, user.ID, service.CreateWalletInput{
+		Name: "BCA Bill", Type: "bank", Balance: 2000000,
+	})
+	if err != nil {
+		t.Fatalf("CreateWallet: %v", err)
+	}
+	otherWallet, err := svc.CreateWallet(ctx, user.ID, service.CreateWalletInput{
+		Name: "GoPay Bill", Type: "ewallet", Balance: 500000,
+	})
+	if err != nil {
+		t.Fatalf("CreateWallet other: %v", err)
+	}
+
+	// 1. Multi-goroutine concurrent double-pay WITHOUT client_mutation_id:
+	// exactly 1 caller transitions false -> true and deducts wallet once; others get ErrConflict.
+	raceBill, err := svc.CreateBill(ctx, user.ID, service.CreateBillInput{
+		Title:     "PLN Token",
+		Category:  svcStrPtr("Bills & Utilities"),
+		Amount:    300000,
+		Frequency: "monthly",
+	})
+	if err != nil {
+		t.Fatalf("CreateBill race: %v", err)
+	}
+
+	const workers = 5
+	paidTrue := true
+	var wg sync.WaitGroup
+	okCh := make(chan *service.BillUpdateResult, workers)
+	errCh := make(chan error, workers)
+
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			res, err := svc.UpdateBill(ctx, user.ID, raceBill.ID, service.UpdateBillInput{
+				IsPaid:   &paidTrue,
+				WalletID: &wallet.ID,
+			})
+			if err != nil {
+				errCh <- err
+				return
+			}
+			okCh <- res
+		}()
+	}
+	wg.Wait()
+	close(okCh)
+	close(errCh)
+
+	if len(okCh) != 1 {
+		t.Fatalf("expected exactly 1 winning concurrent bill payment, got %d", len(okCh))
+	}
+	if len(errCh) != workers-1 {
+		t.Fatalf("expected %d competing callers to fail, got %d", workers-1, len(errCh))
+	}
+	for err := range errCh {
+		if !errors.Is(err, service.ErrConflict) {
+			t.Fatalf("expected competing caller error to be ErrConflict, got %v", err)
+		}
+	}
+
+	var txCount int
+	if err := store.Pool.QueryRow(ctx, `SELECT COUNT(*) FROM transactions WHERE user_id = $1 AND title = 'PLN Token'`, user.ID).Scan(&txCount); err != nil {
+		t.Fatalf("count bill tx: %v", err)
+	}
+	if txCount != 1 {
+		t.Fatalf("expected 1 expense transaction for PLN Token, got %d", txCount)
+	}
+	wAfterRace, err := svc.GetWallet(ctx, user.ID, wallet.ID)
+	if err != nil || wAfterRace.Balance != 1700000 {
+		t.Fatalf("expected BCA Bill balance 1700000 after race, got (%+v, %v)", wAfterRace, err)
+	}
+
+	// 2. Unrelated earlier transaction cannot hijack an unpaid bill or masquerade as a bill replay.
+	unrelatedMutID := "unrelated_tx_" + uuid.NewString()
+	if _, err := svc.CreateTransaction(ctx, user.ID, service.CreateTransactionInput{
+		WalletID:         wallet.ID,
+		Type:             "expense",
+		Category:         "Food & Beverage",
+		Amount:           50000,
+		Title:            "Lunch",
+		ClientMutationID: &unrelatedMutID,
+	}); err != nil {
+		t.Fatalf("CreateTransaction unrelated: %v", err)
+	}
+
+	idemBill, err := svc.CreateBill(ctx, user.ID, service.CreateBillInput{
+		Title:     "BPJS Kesehatan",
+		Category:  svcStrPtr("Bills & Utilities"),
+		Amount:    150000,
+		Frequency: "monthly",
+	})
+	if err != nil {
+		t.Fatalf("CreateBill idem: %v", err)
+	}
+
+	// Passing an unrelated client_mutation_id on an unpaid bill must fail with ErrConflict.
+	if _, err := svc.UpdateBill(ctx, user.ID, idemBill.ID, service.UpdateBillInput{
+		IsPaid:           &paidTrue,
+		WalletID:         &wallet.ID,
+		ClientMutationID: &unrelatedMutID,
+	}); !errors.Is(err, service.ErrConflict) {
+		t.Fatalf("expected ErrConflict when paying unpaid bill with pre-existing unrelated client_mutation_id, got %v", err)
+	}
+
+	// Authentic bill payment with fresh client_mutation_id succeeds and populates WalletBalanceIDR.
+	billMutID := "bill_pay_idem_" + uuid.NewString()
+	firstPay, err := svc.UpdateBill(ctx, user.ID, idemBill.ID, service.UpdateBillInput{
+		IsPaid:           &paidTrue,
+		WalletID:         &wallet.ID,
+		ClientMutationID: &billMutID,
+	})
+	if err != nil {
+		t.Fatalf("first idempotent UpdateBill: %v", err)
+	}
+	if firstPay.IdempotentReplay || firstPay.WalletBalanceIDR == nil || *firstPay.WalletBalanceIDR != 1500000 {
+		t.Fatalf("unexpected first bill payment result: %+v", firstPay)
+	}
+
+	// Sequential idempotent replay keeps bill.UpdatedAt untouched and returns non-nil WalletBalanceIDR.
+	replayPay, err := svc.UpdateBill(ctx, user.ID, idemBill.ID, service.UpdateBillInput{
+		Title:            svcStrPtr("BPJS Kesehatan"),
+		IsPaid:           &paidTrue,
+		WalletID:         &wallet.ID,
+		ClientMutationID: &billMutID,
+	})
+	if err != nil {
+		t.Fatalf("sequential idempotent UpdateBill replay: %v", err)
+	}
+	if !replayPay.IdempotentReplay || replayPay.Transaction == nil || replayPay.WalletBalanceIDR == nil || *replayPay.WalletBalanceIDR != 1500000 {
+		t.Fatalf("expected authentic replay with WalletBalanceIDR=1500000, got %+v", replayPay)
+	}
+	if !replayPay.Bill.UpdatedAt.Equal(firstPay.Bill.UpdatedAt) {
+		t.Fatalf("expected bill updated_at to remain untouched on replay (%v vs %v)", replayPay.Bill.UpdatedAt, firstPay.Bill.UpdatedAt)
+	}
+
+	// Mismatched client_mutation_id or mismatched wallet/amount on replay must return ErrConflict.
+	if _, err := svc.UpdateBill(ctx, user.ID, idemBill.ID, service.UpdateBillInput{
+		IsPaid:           &paidTrue,
+		WalletID:         &wallet.ID,
+		ClientMutationID: &unrelatedMutID,
+	}); !errors.Is(err, service.ErrConflict) {
+		t.Fatalf("expected ErrConflict on replay with unrelated client_mutation_id, got %v", err)
+	}
+	if _, err := svc.UpdateBill(ctx, user.ID, idemBill.ID, service.UpdateBillInput{
+		IsPaid:           &paidTrue,
+		WalletID:         &otherWallet.ID,
+		ClientMutationID: &billMutID,
+	}); !errors.Is(err, service.ErrConflict) {
+		t.Fatalf("expected ErrConflict on replay with mismatched wallet_id, got %v", err)
+	}
+	if _, err := svc.UpdateBill(ctx, user.ID, idemBill.ID, service.UpdateBillInput{
+		Title:            svcStrPtr("Mutated Title"),
+		IsPaid:           &paidTrue,
+		WalletID:         &wallet.ID,
+		ClientMutationID: &billMutID,
+	}); !errors.Is(err, service.ErrConflict) {
+		t.Fatalf("expected ErrConflict on replay with mismatched title, got %v", err)
+	}
+
+	wFinal, err := svc.GetWallet(ctx, user.ID, wallet.ID)
+	if err != nil || wFinal.Balance != 1500000 {
+		t.Fatalf("expected final wallet balance 1500000 without double deduction, got (%+v, %v)", wFinal, err)
+	}
+
+	// 3. Multi-goroutine concurrent bill payment WITH identical client_mutation_id:
+	// 1 fresh transition + (workers-1) idempotent replays, 1 tx row, single wallet deduction.
+	concIdemBill, err := svc.CreateBill(ctx, user.ID, service.CreateBillInput{
+		Title:     "Streaming Music",
+		Category:  svcStrPtr("Bills & Utilities"),
+		Amount:    50000,
+		Frequency: "monthly",
+	})
+	if err != nil {
+		t.Fatalf("CreateBill concIdem: %v", err)
+	}
+	concMutID := "bill_conc_idem_" + uuid.NewString()
+	var concWG sync.WaitGroup
+	concResCh := make(chan *service.BillUpdateResult, workers)
+	concErrCh := make(chan error, workers)
+	for i := 0; i < workers; i++ {
+		concWG.Add(1)
+		go func() {
+			defer concWG.Done()
+			r, err := svc.UpdateBill(ctx, user.ID, concIdemBill.ID, service.UpdateBillInput{
+				IsPaid:           &paidTrue,
+				WalletID:         &wallet.ID,
+				ClientMutationID: &concMutID,
+			})
+			if err != nil {
+				concErrCh <- err
+				return
+			}
+			concResCh <- r
+		}()
+	}
+	concWG.Wait()
+	close(concResCh)
+	close(concErrCh)
+
+	for err := range concErrCh {
+		t.Fatalf("concurrent identical client_mutation_id bill pay failed: %v", err)
+	}
+	freshPayCount, replayPayCount := 0, 0
+	for r := range concResCh {
+		if r.WalletBalanceIDR == nil || *r.WalletBalanceIDR != 1450000 {
+			t.Fatalf("expected WalletBalanceIDR=1450000 on every concurrent result, got %+v", r)
+		}
+		if r.IdempotentReplay {
+			replayPayCount++
+		} else {
+			freshPayCount++
+		}
+	}
+	if freshPayCount != 1 || replayPayCount != workers-1 {
+		t.Fatalf("expected 1 fresh and %d replays, got fresh=%d replay=%d", workers-1, freshPayCount, replayPayCount)
+	}
+}
+
+func TestTrackerService_TargetGoalIDValidation(t *testing.T) {
+	store, ctx := openQuotaTestStore(t)
+	user := createTempTrackerUser(t, ctx, store, "goal-val")
+	svc := service.NewTrackerService(store)
+
+	wallet, err := svc.CreateWallet(ctx, user.ID, service.CreateWalletInput{
+		Name: "BCA Goal", Type: "bank", Balance: 1000000,
+	})
+	if err != nil {
+		t.Fatalf("CreateWallet: %v", err)
+	}
+	goal, err := svc.CreateGoal(ctx, user.ID, service.CreateGoalInput{
+		Title: "Emergency Fund", TargetAmount: 5000000, Priority: "urgent",
+	})
+	if err != nil {
+		t.Fatalf("CreateGoal: %v", err)
+	}
+
+	for _, txType := range []string{"expense", "income"} {
+		if _, err := svc.CreateTransaction(ctx, user.ID, service.CreateTransactionInput{
+			WalletID:     wallet.ID,
+			TargetGoalID: &goal.ID,
+			Type:         txType,
+			Category:     "Food & Beverage",
+			Amount:       25000,
+			Title:        "Invalid Goal Attachment",
+		}); !errors.Is(err, service.ErrInvalidInput) {
+			t.Fatalf("expected ErrInvalidInput when target_goal_id set on %s, got %v", txType, err)
+		}
+	}
+
+	nilUUID := uuid.Nil
+	if _, err := svc.CreateTransaction(ctx, user.ID, service.CreateTransactionInput{
+		WalletID:     wallet.ID,
+		TargetGoalID: &nilUUID,
+		Type:         "transfer",
+		Category:     "Incoming Transfer",
+		Amount:       25000,
+		Title:        "Nil Target Goal",
+	}); !errors.Is(err, service.ErrInvalidInput) {
+		t.Fatalf("expected ErrInvalidInput when target_goal_id is uuid.Nil, got %v", err)
+	}
+
+	if _, err := svc.CreateTransaction(ctx, user.ID, service.CreateTransactionInput{
+		WalletID:     wallet.ID,
+		TargetGoalID: &goal.ID,
+		Type:         "transfer",
+		Category:     "Incoming Transfer",
+		Amount:       100000,
+		Title:        "Valid Goal Transfer",
+	}); err != nil {
+		t.Fatalf("expected valid transfer with target_goal_id to succeed, got %v", err)
+	}
+}
