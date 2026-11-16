@@ -963,3 +963,201 @@ func TestStore_PractitionersMatchingAndCanonicalCatalogs(t *testing.T) {
 	// Silence unused pgtype import warning check if compiler changes; pgtype.Time is asserted via availRows above.
 	_ = pgtype.Time{}
 }
+
+func TestStore_CrossUserFKRejection(t *testing.T) {
+	store, ctx := openTestStore(t)
+	userA := createTempTestUser(t, ctx, store, "fk-a")
+	userB := createTempTestUser(t, ctx, store, "fk-b")
+
+	walletA1, err := store.CreateWallet(ctx, repository.CreateWalletParams{
+		UserID: userA.ID, Name: "BCA A1", Type: "bank", Balance: 1000000,
+	})
+	if err != nil {
+		t.Fatalf("CreateWallet A1: %v", err)
+	}
+	walletA2, err := store.CreateWallet(ctx, repository.CreateWalletParams{
+		UserID: userA.ID, Name: "GoPay A2", Type: "ewallet", Balance: 250000,
+	})
+	if err != nil {
+		t.Fatalf("CreateWallet A2: %v", err)
+	}
+	walletB, err := store.CreateWallet(ctx, repository.CreateWalletParams{
+		UserID: userB.ID, Name: "Mandiri B", Type: "bank", Balance: 2000000,
+	})
+	if err != nil {
+		t.Fatalf("CreateWallet B: %v", err)
+	}
+
+	goalA, err := store.CreateGoal(ctx, repository.CreateGoalParams{
+		UserID: userA.ID, LinkedWalletID: &walletA1.ID, Title: "Goal A", TargetAmount: 5000000, Priority: "needs",
+	})
+	if err != nil {
+		t.Fatalf("CreateGoal A: %v", err)
+	}
+	goalB, err := store.CreateGoal(ctx, repository.CreateGoalParams{
+		UserID: userB.ID, LinkedWalletID: &walletB.ID, Title: "Goal B", TargetAmount: 5000000, Priority: "needs",
+	})
+	if err != nil {
+		t.Fatalf("CreateGoal B: %v", err)
+	}
+
+	now := time.Now().UTC()
+
+	// 1. InsertTransactionIdempotent rejects cross-user wallet_id, destination_wallet_id, and target_goal_id.
+	txCrossCases := []struct {
+		name              string
+		walletID          uuid.UUID
+		destinationWallet *uuid.UUID
+		targetGoal        *uuid.UUID
+		txType            string
+	}{
+		{name: "foreign wallet_id", walletID: walletB.ID, txType: "expense"},
+		{name: "foreign destination_wallet_id", walletID: walletA1.ID, destinationWallet: &walletB.ID, txType: "transfer"},
+		{name: "foreign target_goal_id", walletID: walletA1.ID, targetGoal: &goalB.ID, txType: "expense"},
+	}
+	for _, tc := range txCrossCases {
+		mutID := "fk_tx_" + uuid.NewString()
+		_, err := store.InsertTransactionIdempotent(ctx, repository.InsertTransactionIdempotentParams{
+			UserID:              userA.ID,
+			WalletID:            tc.walletID,
+			DestinationWalletID: tc.destinationWallet,
+			TargetGoalID:        tc.targetGoal,
+			Type:                tc.txType,
+			Category:            "Others",
+			Amount:              50000,
+			Title:               "Cross User Attempt",
+			OccurredAt:          now,
+			Source:              "manual",
+			ClientMutationID:    strPtr(mutID),
+		})
+		if !errors.Is(err, pgx.ErrNoRows) {
+			t.Fatalf("InsertTransactionIdempotent(%s): expected pgx.ErrNoRows, got %v", tc.name, err)
+		}
+		if _, lookupErr := store.GetTransactionByClientMutationID(ctx, repository.GetTransactionByClientMutationIDParams{
+			UserID:           userA.ID,
+			ClientMutationID: strPtr(mutID),
+		}); !errors.Is(lookupErr, pgx.ErrNoRows) {
+			t.Fatalf("expected zero persisted row for rejected %s, got lookupErr=%v", tc.name, lookupErr)
+		}
+	}
+
+	// Owner's own wallet_id, destination_wallet_id, and target_goal_id succeed cleanly.
+	validMutID := "fk_tx_valid_" + uuid.NewString()
+	if _, err := store.InsertTransactionIdempotent(ctx, repository.InsertTransactionIdempotentParams{
+		UserID:              userA.ID,
+		WalletID:            walletA1.ID,
+		DestinationWalletID: &walletA2.ID,
+		TargetGoalID:        &goalA.ID,
+		Type:                "transfer",
+		Category:            "Incoming Transfer",
+		Amount:              100000,
+		Title:               "Valid Self Transfer",
+		OccurredAt:          now,
+		Source:              "manual",
+		ClientMutationID:    strPtr(validMutID),
+	}); err != nil {
+		t.Fatalf("InsertTransactionIdempotent(valid owner FKs): %v", err)
+	}
+
+	// 2. CreateGoal and UpdateGoal reject cross-user linked_wallet_id.
+	if _, err := store.CreateGoal(ctx, repository.CreateGoalParams{
+		UserID:         userA.ID,
+		LinkedWalletID: &walletB.ID,
+		Title:          "Cross Wallet Goal",
+		TargetAmount:   1000000,
+		Priority:       "wants",
+	}); !errors.Is(err, pgx.ErrNoRows) {
+		t.Fatalf("CreateGoal with foreign linked_wallet_id: expected ErrNoRows, got %v", err)
+	}
+
+	if _, err := store.UpdateGoal(ctx, repository.UpdateGoalParams{
+		UserID:         userA.ID,
+		ID:             goalA.ID,
+		LinkedWalletID: &walletB.ID,
+	}); !errors.Is(err, pgx.ErrNoRows) {
+		t.Fatalf("UpdateGoal with foreign linked_wallet_id: expected ErrNoRows, got %v", err)
+	}
+	unchangedGoal, err := store.GetGoalByID(ctx, repository.GetGoalByIDParams{UserID: userA.ID, ID: goalA.ID})
+	if err != nil || unchangedGoal.LinkedWalletID == nil || *unchangedGoal.LinkedWalletID != walletA1.ID {
+		t.Fatalf("expected goalA.LinkedWalletID to remain %s, got (%+v, %v)", walletA1.ID, unchangedGoal, err)
+	}
+
+	// 3. CreateAIDraft and ConfirmAIDraft reject cross-user wallet_id and destination_wallet_id.
+	if _, err := store.CreateAIDraft(ctx, repository.CreateAIDraftParams{
+		UserID:          userA.ID,
+		WalletID:        &walletB.ID,
+		Source:          "ai_text",
+		Type:            "expense",
+		Category:        "Food & Beverage",
+		Amount:          25000,
+		Title:           "Foreign Draft Wallet",
+		MerchantOrNote:  "test",
+		OccurredAt:      now,
+		ConfidenceScore: 0.9,
+	}); !errors.Is(err, pgx.ErrNoRows) {
+		t.Fatalf("CreateAIDraft with foreign wallet_id: expected ErrNoRows, got %v", err)
+	}
+
+	if _, err := store.CreateAIDraft(ctx, repository.CreateAIDraftParams{
+		UserID:              userA.ID,
+		WalletID:            &walletA1.ID,
+		DestinationWalletID: &walletB.ID,
+		Source:              "ai_text",
+		Type:                "transfer",
+		Category:            "Incoming Transfer",
+		Amount:              25000,
+		Title:               "Foreign Draft Dest Wallet",
+		MerchantOrNote:      "test",
+		OccurredAt:          now,
+		ConfidenceScore:     0.9,
+	}); !errors.Is(err, pgx.ErrNoRows) {
+		t.Fatalf("CreateAIDraft with foreign destination_wallet_id: expected ErrNoRows, got %v", err)
+	}
+
+	// Draft created with nil wallet (prerequisite wallet flow) can still be created.
+	pendingDraft, err := store.CreateAIDraft(ctx, repository.CreateAIDraftParams{
+		UserID:          userA.ID,
+		Source:          "ai_text",
+		Type:            "expense",
+		Category:        "Food & Beverage",
+		Amount:          45000,
+		Title:           "Nasi Goreng",
+		MerchantOrNote:  "pending wallet",
+		OccurredAt:      now,
+		ConfidenceScore: 0.9,
+	})
+	if err != nil {
+		t.Fatalf("CreateAIDraft with nil wallet_id: %v", err)
+	}
+
+	if _, err := store.ConfirmAIDraft(ctx, repository.ConfirmAIDraftParams{
+		UserID:   userA.ID,
+		ID:       pendingDraft.ID,
+		WalletID: &walletB.ID,
+	}); !errors.Is(err, pgx.ErrNoRows) {
+		t.Fatalf("ConfirmAIDraft with foreign wallet_id: expected ErrNoRows, got %v", err)
+	}
+
+	if _, err := store.ConfirmAIDraft(ctx, repository.ConfirmAIDraftParams{
+		UserID:              userA.ID,
+		ID:                  pendingDraft.ID,
+		WalletID:            &walletA1.ID,
+		DestinationWalletID: &walletB.ID,
+	}); !errors.Is(err, pgx.ErrNoRows) {
+		t.Fatalf("ConfirmAIDraft with foreign destination_wallet_id: expected ErrNoRows, got %v", err)
+	}
+
+	stillPending, err := store.GetAIDraftByID(ctx, repository.GetAIDraftByIDParams{UserID: userA.ID, ID: pendingDraft.ID})
+	if err != nil || stillPending.Status != "pending_review" {
+		t.Fatalf("expected draft status to stay pending_review after rejected confirm, got (%+v, %v)", stillPending, err)
+	}
+
+	confirmed, err := store.ConfirmAIDraft(ctx, repository.ConfirmAIDraftParams{
+		UserID:   userA.ID,
+		ID:       pendingDraft.ID,
+		WalletID: &walletA1.ID,
+	})
+	if err != nil || confirmed.Status != "confirmed" || confirmed.WalletID == nil || *confirmed.WalletID != walletA1.ID {
+		t.Fatalf("expected ConfirmAIDraft with owned wallet to succeed, got (%+v, %v)", confirmed, err)
+	}
+}

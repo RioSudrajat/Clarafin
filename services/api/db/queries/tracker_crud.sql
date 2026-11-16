@@ -183,9 +183,42 @@ INSERT INTO transactions (
   occurred_at,
   source,
   client_mutation_id
-) VALUES (
-  $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13
 )
+SELECT
+  sqlc.arg('user_id')::uuid,
+  sqlc.arg('wallet_id')::uuid,
+  sqlc.narg('destination_wallet_id')::uuid,
+  sqlc.narg('target_goal_id')::uuid,
+  sqlc.narg('category_id')::uuid,
+  sqlc.arg('type')::text,
+  sqlc.arg('category')::text,
+  sqlc.arg('amount')::bigint,
+  sqlc.arg('title')::text,
+  sqlc.narg('note')::text,
+  sqlc.arg('occurred_at')::timestamptz,
+  sqlc.arg('source')::text,
+  sqlc.narg('client_mutation_id')::text
+WHERE EXISTS (
+  SELECT 1 FROM wallets w
+  WHERE w.id = sqlc.arg('wallet_id')::uuid
+    AND w.user_id = sqlc.arg('user_id')::uuid
+)
+  AND (
+    sqlc.narg('destination_wallet_id')::uuid IS NULL
+    OR EXISTS (
+      SELECT 1 FROM wallets dw
+      WHERE dw.id = sqlc.narg('destination_wallet_id')::uuid
+        AND dw.user_id = sqlc.arg('user_id')::uuid
+    )
+  )
+  AND (
+    sqlc.narg('target_goal_id')::uuid IS NULL
+    OR EXISTS (
+      SELECT 1 FROM goals g
+      WHERE g.id = sqlc.narg('target_goal_id')::uuid
+        AND g.user_id = sqlc.arg('user_id')::uuid
+    )
+  )
 ON CONFLICT (user_id, client_mutation_id) WHERE client_mutation_id IS NOT NULL DO NOTHING
 RETURNING id, user_id, wallet_id, destination_wallet_id, target_goal_id, category_id, type, category, amount, title, note, occurred_at, source, client_mutation_id, created_at;
 
@@ -248,9 +281,38 @@ INSERT INTO ai_drafts (
   merchant_or_note,
   occurred_at,
   confidence_score
-) VALUES (
-  $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
 )
+SELECT
+  sqlc.arg('user_id')::uuid,
+  sqlc.narg('wallet_id')::uuid,
+  sqlc.narg('destination_wallet_id')::uuid,
+  sqlc.narg('batch_id')::uuid,
+  sqlc.arg('source')::text,
+  sqlc.narg('external_ref_id')::text,
+  sqlc.narg('client_mutation_id')::text,
+  sqlc.arg('type')::text,
+  sqlc.arg('category')::text,
+  sqlc.arg('amount')::bigint,
+  sqlc.arg('title')::text,
+  sqlc.arg('merchant_or_note')::text,
+  sqlc.arg('occurred_at')::timestamptz,
+  sqlc.arg('confidence_score')::real
+WHERE (
+  sqlc.narg('wallet_id')::uuid IS NULL
+  OR EXISTS (
+    SELECT 1 FROM wallets w
+    WHERE w.id = sqlc.narg('wallet_id')::uuid
+      AND w.user_id = sqlc.arg('user_id')::uuid
+  )
+)
+  AND (
+    sqlc.narg('destination_wallet_id')::uuid IS NULL
+    OR EXISTS (
+      SELECT 1 FROM wallets dw
+      WHERE dw.id = sqlc.narg('destination_wallet_id')::uuid
+        AND dw.user_id = sqlc.arg('user_id')::uuid
+    )
+  )
 ON CONFLICT DO NOTHING
 RETURNING id, user_id, wallet_id, destination_wallet_id, batch_id, source, external_ref_id, client_mutation_id, type, category, amount, title, merchant_or_note, occurred_at, confidence_score, status, created_at, updated_at;
 
@@ -294,9 +356,25 @@ SET
   merchant_or_note = COALESCE(sqlc.narg('merchant_or_note')::text, merchant_or_note),
   client_mutation_id = COALESCE(sqlc.narg('client_mutation_id')::text, client_mutation_id),
   updated_at = NOW()
-WHERE user_id = sqlc.arg('user_id')
-  AND id = sqlc.arg('id')
-  AND status = 'pending_review'
+WHERE ai_drafts.user_id = sqlc.arg('user_id')
+  AND ai_drafts.id = sqlc.arg('id')
+  AND ai_drafts.status = 'pending_review'
+  AND (
+    COALESCE(sqlc.narg('wallet_id')::uuid, ai_drafts.wallet_id) IS NULL
+    OR EXISTS (
+      SELECT 1 FROM wallets w
+      WHERE w.id = COALESCE(sqlc.narg('wallet_id')::uuid, ai_drafts.wallet_id)
+        AND w.user_id = sqlc.arg('user_id')
+    )
+  )
+  AND (
+    COALESCE(sqlc.narg('destination_wallet_id')::uuid, ai_drafts.destination_wallet_id) IS NULL
+    OR EXISTS (
+      SELECT 1 FROM wallets dw
+      WHERE dw.id = COALESCE(sqlc.narg('destination_wallet_id')::uuid, ai_drafts.destination_wallet_id)
+        AND dw.user_id = sqlc.arg('user_id')
+    )
+  )
 RETURNING id, user_id, wallet_id, destination_wallet_id, batch_id, source, external_ref_id, client_mutation_id, type, category, amount, title, merchant_or_note, occurred_at, confidence_score, status, created_at, updated_at;
 
 -- name: DiscardAIDraft :one
@@ -349,8 +427,26 @@ INSERT INTO goals (
   icon_key,
   tag_color_hex,
   tag_text_color_hex
-) VALUES (
-  $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+)
+SELECT
+  sqlc.arg('user_id')::uuid,
+  sqlc.narg('linked_wallet_id')::uuid,
+  sqlc.arg('title')::text,
+  sqlc.arg('target_amount')::bigint,
+  sqlc.arg('saved_amount')::bigint,
+  sqlc.narg('target_date')::date,
+  sqlc.arg('priority')::text,
+  sqlc.narg('source_asset_label')::text,
+  sqlc.narg('icon_key')::text,
+  sqlc.narg('tag_color_hex')::text,
+  sqlc.narg('tag_text_color_hex')::text
+WHERE (
+  sqlc.narg('linked_wallet_id')::uuid IS NULL
+  OR EXISTS (
+    SELECT 1 FROM wallets w
+    WHERE w.id = sqlc.narg('linked_wallet_id')::uuid
+      AND w.user_id = sqlc.arg('user_id')::uuid
+  )
 )
 RETURNING id, user_id, linked_wallet_id, title, target_amount, saved_amount, target_date, priority, source_asset_label, icon_key, tag_color_hex, tag_text_color_hex, status, created_at, updated_at;
 
@@ -374,8 +470,16 @@ SET
   priority = COALESCE(sqlc.narg('priority')::text, priority),
   status = COALESCE(sqlc.narg('status')::text, status),
   updated_at = NOW()
-WHERE user_id = sqlc.arg('user_id')
-  AND id = sqlc.arg('id')
+WHERE goals.user_id = sqlc.arg('user_id')
+  AND goals.id = sqlc.arg('id')
+  AND (
+    COALESCE(sqlc.narg('linked_wallet_id')::uuid, goals.linked_wallet_id) IS NULL
+    OR EXISTS (
+      SELECT 1 FROM wallets w
+      WHERE w.id = COALESCE(sqlc.narg('linked_wallet_id')::uuid, goals.linked_wallet_id)
+        AND w.user_id = sqlc.arg('user_id')
+    )
+  )
 RETURNING id, user_id, linked_wallet_id, title, target_amount, saved_amount, target_date, priority, source_asset_label, icon_key, tag_color_hex, tag_text_color_hex, status, created_at, updated_at;
 
 -- name: UpsertGoalContribution :one
@@ -396,8 +500,8 @@ SET
   saved_amount = saved_amount + sqlc.arg('delta')::bigint,
   status = CASE WHEN saved_amount + sqlc.arg('delta')::bigint >= target_amount THEN 'completed' ELSE status END,
   updated_at = NOW()
-WHERE user_id = sqlc.arg('user_id')
-  AND id = sqlc.arg('id')
+WHERE goals.user_id = sqlc.arg('user_id')
+  AND goals.id = sqlc.arg('id')
 RETURNING id, user_id, linked_wallet_id, title, target_amount, saved_amount, target_date, priority, source_asset_label, icon_key, tag_color_hex, tag_text_color_hex, status, created_at, updated_at;
 
 -- name: CreateBill :one

@@ -19,8 +19,8 @@ SET
   saved_amount = saved_amount + $1::bigint,
   status = CASE WHEN saved_amount + $1::bigint >= target_amount THEN 'completed' ELSE status END,
   updated_at = NOW()
-WHERE user_id = $2
-  AND id = $3
+WHERE goals.user_id = $2
+  AND goals.id = $3
 RETURNING id, user_id, linked_wallet_id, title, target_amount, saved_amount, target_date, priority, source_asset_label, icon_key, tag_color_hex, tag_text_color_hex, status, created_at, updated_at
 `
 
@@ -104,9 +104,25 @@ SET
   merchant_or_note = COALESCE($6::text, merchant_or_note),
   client_mutation_id = COALESCE($7::text, client_mutation_id),
   updated_at = NOW()
-WHERE user_id = $8
-  AND id = $9
-  AND status = 'pending_review'
+WHERE ai_drafts.user_id = $8
+  AND ai_drafts.id = $9
+  AND ai_drafts.status = 'pending_review'
+  AND (
+    COALESCE($1::uuid, ai_drafts.wallet_id) IS NULL
+    OR EXISTS (
+      SELECT 1 FROM wallets w
+      WHERE w.id = COALESCE($1::uuid, ai_drafts.wallet_id)
+        AND w.user_id = $8
+    )
+  )
+  AND (
+    COALESCE($2::uuid, ai_drafts.destination_wallet_id) IS NULL
+    OR EXISTS (
+      SELECT 1 FROM wallets dw
+      WHERE dw.id = COALESCE($2::uuid, ai_drafts.destination_wallet_id)
+        AND dw.user_id = $8
+    )
+  )
 RETURNING id, user_id, wallet_id, destination_wallet_id, batch_id, source, external_ref_id, client_mutation_id, type, category, amount, title, merchant_or_note, occurred_at, confidence_score, status, created_at, updated_at
 `
 
@@ -174,9 +190,38 @@ INSERT INTO ai_drafts (
   merchant_or_note,
   occurred_at,
   confidence_score
-) VALUES (
-  $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
 )
+SELECT
+  $1::uuid,
+  $2::uuid,
+  $3::uuid,
+  $4::uuid,
+  $5::text,
+  $6::text,
+  $7::text,
+  $8::text,
+  $9::text,
+  $10::bigint,
+  $11::text,
+  $12::text,
+  $13::timestamptz,
+  $14::real
+WHERE (
+  $2::uuid IS NULL
+  OR EXISTS (
+    SELECT 1 FROM wallets w
+    WHERE w.id = $2::uuid
+      AND w.user_id = $1::uuid
+  )
+)
+  AND (
+    $3::uuid IS NULL
+    OR EXISTS (
+      SELECT 1 FROM wallets dw
+      WHERE dw.id = $3::uuid
+        AND dw.user_id = $1::uuid
+    )
+  )
 ON CONFLICT DO NOTHING
 RETURNING id, user_id, wallet_id, destination_wallet_id, batch_id, source, external_ref_id, client_mutation_id, type, category, amount, title, merchant_or_note, occurred_at, confidence_score, status, created_at, updated_at
 `
@@ -317,8 +362,26 @@ INSERT INTO goals (
   icon_key,
   tag_color_hex,
   tag_text_color_hex
-) VALUES (
-  $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+)
+SELECT
+  $1::uuid,
+  $2::uuid,
+  $3::text,
+  $4::bigint,
+  $5::bigint,
+  $6::date,
+  $7::text,
+  $8::text,
+  $9::text,
+  $10::text,
+  $11::text
+WHERE (
+  $2::uuid IS NULL
+  OR EXISTS (
+    SELECT 1 FROM wallets w
+    WHERE w.id = $2::uuid
+      AND w.user_id = $1::uuid
+  )
 )
 RETURNING id, user_id, linked_wallet_id, title, target_amount, saved_amount, target_date, priority, source_asset_label, icon_key, tag_color_hex, tag_text_color_hex, status, created_at, updated_at
 `
@@ -987,9 +1050,42 @@ INSERT INTO transactions (
   occurred_at,
   source,
   client_mutation_id
-) VALUES (
-  $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13
 )
+SELECT
+  $1::uuid,
+  $2::uuid,
+  $3::uuid,
+  $4::uuid,
+  $5::uuid,
+  $6::text,
+  $7::text,
+  $8::bigint,
+  $9::text,
+  $10::text,
+  $11::timestamptz,
+  $12::text,
+  $13::text
+WHERE EXISTS (
+  SELECT 1 FROM wallets w
+  WHERE w.id = $2::uuid
+    AND w.user_id = $1::uuid
+)
+  AND (
+    $3::uuid IS NULL
+    OR EXISTS (
+      SELECT 1 FROM wallets dw
+      WHERE dw.id = $3::uuid
+        AND dw.user_id = $1::uuid
+    )
+  )
+  AND (
+    $4::uuid IS NULL
+    OR EXISTS (
+      SELECT 1 FROM goals g
+      WHERE g.id = $4::uuid
+        AND g.user_id = $1::uuid
+    )
+  )
 ON CONFLICT (user_id, client_mutation_id) WHERE client_mutation_id IS NOT NULL DO NOTHING
 RETURNING id, user_id, wallet_id, destination_wallet_id, target_goal_id, category_id, type, category, amount, title, note, occurred_at, source, client_mutation_id, created_at
 `
@@ -1330,8 +1426,16 @@ SET
   priority = COALESCE($6::text, priority),
   status = COALESCE($7::text, status),
   updated_at = NOW()
-WHERE user_id = $8
-  AND id = $9
+WHERE goals.user_id = $8
+  AND goals.id = $9
+  AND (
+    COALESCE($1::uuid, goals.linked_wallet_id) IS NULL
+    OR EXISTS (
+      SELECT 1 FROM wallets w
+      WHERE w.id = COALESCE($1::uuid, goals.linked_wallet_id)
+        AND w.user_id = $8
+    )
+  )
 RETURNING id, user_id, linked_wallet_id, title, target_amount, saved_amount, target_date, priority, source_asset_label, icon_key, tag_color_hex, tag_text_color_hex, status, created_at, updated_at
 `
 
