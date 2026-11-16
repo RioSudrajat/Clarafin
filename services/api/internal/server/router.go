@@ -10,6 +10,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 
+	"github.com/clarafin/api/internal/ai"
 	"github.com/clarafin/api/internal/config"
 	"github.com/clarafin/api/internal/domain"
 	"github.com/clarafin/api/internal/handler"
@@ -26,6 +27,7 @@ type Dependencies struct {
 	DevUserProvisioner      handler.DevUserProvisioner
 	QuotaService            handler.QuotaProvider
 	TrackerService          handler.TrackerProvider
+	PractitionerCatalog     handler.PractitionerProvider
 	Redis                   *redis.Client
 	JakartaLoc              *time.Location
 	RegisterProtectedRoutes func(r chi.Router)
@@ -73,6 +75,15 @@ func NewRouter(deps Dependencies) http.Handler {
 	var trackerHandler *handler.TrackerHandler
 	if trackerService != nil {
 		trackerHandler = handler.NewTrackerHandler(trackerService, jakartaLoc)
+	}
+
+	practitionerCatalog := deps.PractitionerCatalog
+	if practitionerCatalog == nil && deps.Store != nil {
+		practitionerCatalog = ai.NewMatchingTool(deps.Store, ai.WithMatchingJakartaLocation(jakartaLoc))
+	}
+	var practitionerHandler *handler.PractitionerHandler
+	if practitionerCatalog != nil {
+		practitionerHandler = handler.NewPractitionerHandler(practitionerCatalog)
 	}
 
 	r := chi.NewRouter()
@@ -127,6 +138,9 @@ func NewRouter(deps Dependencies) http.Handler {
 
 			if trackerHandler != nil {
 				trackerHandler.RegisterRoutes(authed)
+			}
+			if practitionerHandler != nil {
+				practitionerHandler.RegisterRoutes(authed)
 			}
 			if deps.RegisterProtectedRoutes != nil {
 				deps.RegisterProtectedRoutes(authed)

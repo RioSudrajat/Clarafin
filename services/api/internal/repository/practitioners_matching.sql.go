@@ -42,6 +42,92 @@ func (q *Queries) CreateMatchExpertSubmission(ctx context.Context, arg CreateMat
 	return i, err
 }
 
+const getPublicPractitionerByID = `-- name: GetPublicPractitionerByID :one
+SELECT
+  pp.user_id AS practitioner_id,
+  pp.display_name,
+  pp.title_headline,
+  pp.bio,
+  pp.city,
+  pp.practitioner_tier,
+  pp.clients_handled_count,
+  pp.certifications,
+  pp.specializations,
+  pp.languages,
+  pp.supported_methods,
+  pp.gender,
+  pp.birth_year,
+  pp.consulting_style,
+  pp.years_of_experience,
+  pp.is_fully_booked,
+  pp.status,
+  pp.rating_avg,
+  pp.review_count,
+  pp.total_sessions_completed,
+  pp.verified_at,
+  u.avatar_url
+FROM practitioner_profiles pp
+JOIN users u ON u.id = pp.user_id
+WHERE pp.user_id = $1
+  AND pp.status = 'verified'
+  AND u.deleted_at IS NULL
+`
+
+type GetPublicPractitionerByIDRow struct {
+	PractitionerID         uuid.UUID
+	DisplayName            string
+	TitleHeadline          string
+	Bio                    string
+	City                   string
+	PractitionerTier       string
+	ClientsHandledCount    int32
+	Certifications         []string
+	Specializations        []string
+	Languages              []string
+	SupportedMethods       []string
+	Gender                 *string
+	BirthYear              *int32
+	ConsultingStyle        *string
+	YearsOfExperience      int32
+	IsFullyBooked          bool
+	Status                 string
+	RatingAvg              float32
+	ReviewCount            int32
+	TotalSessionsCompleted int32
+	VerifiedAt             *time.Time
+	AvatarUrl              *string
+}
+
+func (q *Queries) GetPublicPractitionerByID(ctx context.Context, userID uuid.UUID) (GetPublicPractitionerByIDRow, error) {
+	row := q.db.QueryRow(ctx, getPublicPractitionerByID, userID)
+	var i GetPublicPractitionerByIDRow
+	err := row.Scan(
+		&i.PractitionerID,
+		&i.DisplayName,
+		&i.TitleHeadline,
+		&i.Bio,
+		&i.City,
+		&i.PractitionerTier,
+		&i.ClientsHandledCount,
+		&i.Certifications,
+		&i.Specializations,
+		&i.Languages,
+		&i.SupportedMethods,
+		&i.Gender,
+		&i.BirthYear,
+		&i.ConsultingStyle,
+		&i.YearsOfExperience,
+		&i.IsFullyBooked,
+		&i.Status,
+		&i.RatingAvg,
+		&i.ReviewCount,
+		&i.TotalSessionsCompleted,
+		&i.VerifiedAt,
+		&i.AvatarUrl,
+	)
+	return i, err
+}
+
 const listActiveAvailabilityByPractitioners = `-- name: ListActiveAvailabilityByPractitioners :many
 SELECT
   id,
@@ -83,6 +169,65 @@ func (q *Queries) ListActiveAvailabilityByPractitioners(ctx context.Context, pra
 	return items, nil
 }
 
+const listActivePackagesByPractitioner = `-- name: ListActivePackagesByPractitioner :many
+SELECT
+  id,
+  practitioner_id,
+  catalog_package_id,
+  service_category,
+  category_tag,
+  tier,
+  package_title,
+  duration_minutes,
+  online_price_idr,
+  offline_price_idr,
+  is_online_active,
+  is_offline_active,
+  is_active,
+  created_at,
+  updated_at
+FROM practitioner_packages
+WHERE practitioner_id = $1
+  AND is_active = TRUE
+ORDER BY tier ASC, service_category ASC, id ASC
+`
+
+func (q *Queries) ListActivePackagesByPractitioner(ctx context.Context, practitionerID uuid.UUID) ([]PractitionerPackage, error) {
+	rows, err := q.db.Query(ctx, listActivePackagesByPractitioner, practitionerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []PractitionerPackage{}
+	for rows.Next() {
+		var i PractitionerPackage
+		if err := rows.Scan(
+			&i.ID,
+			&i.PractitionerID,
+			&i.CatalogPackageID,
+			&i.ServiceCategory,
+			&i.CategoryTag,
+			&i.Tier,
+			&i.PackageTitle,
+			&i.DurationMinutes,
+			&i.OnlinePriceIdr,
+			&i.OfflinePriceIdr,
+			&i.IsOnlineActive,
+			&i.IsOfflineActive,
+			&i.IsActive,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listActiveSlotHoldsInRange = `-- name: ListActiveSlotHoldsInRange :many
 SELECT
   id,
@@ -110,6 +255,67 @@ type ListActiveSlotHoldsInRangeParams struct {
 
 func (q *Queries) ListActiveSlotHoldsInRange(ctx context.Context, arg ListActiveSlotHoldsInRangeParams) ([]BookingSlotHold, error) {
 	rows, err := q.db.Query(ctx, listActiveSlotHoldsInRange, arg.PractitionerIds, arg.RangeStart, arg.RangeEnd)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []BookingSlotHold{}
+	for rows.Next() {
+		var i BookingSlotHold
+		if err := rows.Scan(
+			&i.ID,
+			&i.PractitionerID,
+			&i.OrderID,
+			&i.SessionID,
+			&i.SlotStartAt,
+			&i.SlotEndAt,
+			&i.Status,
+			&i.ExpiresAt,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listActiveSlotHoldsInRangeAt = `-- name: ListActiveSlotHoldsInRangeAt :many
+SELECT
+  id,
+  practitioner_id,
+  order_id,
+  session_id,
+  slot_start_at,
+  slot_end_at,
+  status,
+  expires_at,
+  created_at
+FROM booking_slot_holds
+WHERE practitioner_id = ANY($1::uuid[])
+  AND (status = 'booked' OR (status = 'held' AND expires_at > $2::timestamptz))
+  AND slot_end_at > $3::timestamptz
+  AND slot_start_at < $4::timestamptz
+ORDER BY practitioner_id ASC, slot_start_at ASC
+`
+
+type ListActiveSlotHoldsInRangeAtParams struct {
+	PractitionerIds []uuid.UUID
+	AtTime          time.Time
+	RangeStart      time.Time
+	RangeEnd        time.Time
+}
+
+func (q *Queries) ListActiveSlotHoldsInRangeAt(ctx context.Context, arg ListActiveSlotHoldsInRangeAtParams) ([]BookingSlotHold, error) {
+	rows, err := q.db.Query(ctx, listActiveSlotHoldsInRangeAt,
+		arg.PractitionerIds,
+		arg.AtTime,
+		arg.RangeStart,
+		arg.RangeEnd,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -217,6 +423,61 @@ func (q *Queries) ListActiveVouchers(ctx context.Context) ([]Voucher, error) {
 	return items, nil
 }
 
+const listBlockingSessionsInRange = `-- name: ListBlockingSessionsInRange :many
+SELECT
+  id,
+  practitioner_id,
+  scheduled_start_at,
+  scheduled_end_at,
+  status
+FROM sessions
+WHERE practitioner_id = ANY($1::uuid[])
+  AND status IN ('waiting_partner', 'waiting_payment', 'scheduled', 'ongoing')
+  AND scheduled_end_at > $2::timestamptz
+  AND scheduled_start_at < $3::timestamptz
+ORDER BY practitioner_id ASC, scheduled_start_at ASC
+`
+
+type ListBlockingSessionsInRangeParams struct {
+	PractitionerIds []uuid.UUID
+	RangeStart      time.Time
+	RangeEnd        time.Time
+}
+
+type ListBlockingSessionsInRangeRow struct {
+	ID               uuid.UUID
+	PractitionerID   uuid.UUID
+	ScheduledStartAt time.Time
+	ScheduledEndAt   time.Time
+	Status           string
+}
+
+func (q *Queries) ListBlockingSessionsInRange(ctx context.Context, arg ListBlockingSessionsInRangeParams) ([]ListBlockingSessionsInRangeRow, error) {
+	rows, err := q.db.Query(ctx, listBlockingSessionsInRange, arg.PractitionerIds, arg.RangeStart, arg.RangeEnd)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListBlockingSessionsInRangeRow{}
+	for rows.Next() {
+		var i ListBlockingSessionsInRangeRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.PractitionerID,
+			&i.ScheduledStartAt,
+			&i.ScheduledEndAt,
+			&i.Status,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listCatalogPackages = `-- name: ListCatalogPackages :many
 SELECT
   id, code, service_category, category_tag, tier, participant_type,
@@ -292,6 +553,66 @@ func (q *Queries) ListProblemTags(ctx context.Context) ([]ProblemTag, error) {
 			&i.Label,
 			&i.MinTier,
 			&i.IsActive,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPublicReviewsByPractitioner = `-- name: ListPublicReviewsByPractitioner :many
+SELECT
+  sr.session_id,
+  sr.rating,
+  sr.comment,
+  sr.is_anonymized,
+  CASE
+    WHEN sr.is_anonymized THEN 'Klien Clarafin'
+    ELSE COALESCE(NULLIF(TRIM(u.full_name), ''), 'Klien Clarafin')
+  END::text AS reviewer_name,
+  sr.created_at
+FROM session_reviews sr
+JOIN sessions s ON s.id = sr.session_id
+JOIN users u ON u.id = sr.reviewer_user_id
+WHERE s.practitioner_id = $1
+ORDER BY sr.created_at DESC
+LIMIT $2
+`
+
+type ListPublicReviewsByPractitionerParams struct {
+	PractitionerID uuid.UUID
+	Limit          int32
+}
+
+type ListPublicReviewsByPractitionerRow struct {
+	SessionID    uuid.UUID
+	Rating       int32
+	Comment      *string
+	IsAnonymized bool
+	ReviewerName string
+	CreatedAt    time.Time
+}
+
+func (q *Queries) ListPublicReviewsByPractitioner(ctx context.Context, arg ListPublicReviewsByPractitionerParams) ([]ListPublicReviewsByPractitionerRow, error) {
+	rows, err := q.db.Query(ctx, listPublicReviewsByPractitioner, arg.PractitionerID, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListPublicReviewsByPractitionerRow{}
+	for rows.Next() {
+		var i ListPublicReviewsByPractitionerRow
+		if err := rows.Scan(
+			&i.SessionID,
+			&i.Rating,
+			&i.Comment,
+			&i.IsAnonymized,
+			&i.ReviewerName,
+			&i.CreatedAt,
 		); err != nil {
 			return nil, err
 		}

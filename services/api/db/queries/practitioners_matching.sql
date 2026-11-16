@@ -147,3 +147,105 @@ INSERT INTO match_expert_submissions (
   $1, $2, $3
 )
 RETURNING id, user_id, answers_json, top_practitioner_ids, created_at;
+
+-- name: ListActiveSlotHoldsInRangeAt :many
+SELECT
+  id,
+  practitioner_id,
+  order_id,
+  session_id,
+  slot_start_at,
+  slot_end_at,
+  status,
+  expires_at,
+  created_at
+FROM booking_slot_holds
+WHERE practitioner_id = ANY(sqlc.arg('practitioner_ids')::uuid[])
+  AND (status = 'booked' OR (status = 'held' AND expires_at > sqlc.arg('at_time')::timestamptz))
+  AND slot_end_at > sqlc.arg('range_start')::timestamptz
+  AND slot_start_at < sqlc.arg('range_end')::timestamptz
+ORDER BY practitioner_id ASC, slot_start_at ASC;
+
+-- name: ListBlockingSessionsInRange :many
+SELECT
+  id,
+  practitioner_id,
+  scheduled_start_at,
+  scheduled_end_at,
+  status
+FROM sessions
+WHERE practitioner_id = ANY(sqlc.arg('practitioner_ids')::uuid[])
+  AND status IN ('waiting_partner', 'waiting_payment', 'scheduled', 'ongoing')
+  AND scheduled_end_at > sqlc.arg('range_start')::timestamptz
+  AND scheduled_start_at < sqlc.arg('range_end')::timestamptz
+ORDER BY practitioner_id ASC, scheduled_start_at ASC;
+
+-- name: GetPublicPractitionerByID :one
+SELECT
+  pp.user_id AS practitioner_id,
+  pp.display_name,
+  pp.title_headline,
+  pp.bio,
+  pp.city,
+  pp.practitioner_tier,
+  pp.clients_handled_count,
+  pp.certifications,
+  pp.specializations,
+  pp.languages,
+  pp.supported_methods,
+  pp.gender,
+  pp.birth_year,
+  pp.consulting_style,
+  pp.years_of_experience,
+  pp.is_fully_booked,
+  pp.status,
+  pp.rating_avg,
+  pp.review_count,
+  pp.total_sessions_completed,
+  pp.verified_at,
+  u.avatar_url
+FROM practitioner_profiles pp
+JOIN users u ON u.id = pp.user_id
+WHERE pp.user_id = $1
+  AND pp.status = 'verified'
+  AND u.deleted_at IS NULL;
+
+-- name: ListActivePackagesByPractitioner :many
+SELECT
+  id,
+  practitioner_id,
+  catalog_package_id,
+  service_category,
+  category_tag,
+  tier,
+  package_title,
+  duration_minutes,
+  online_price_idr,
+  offline_price_idr,
+  is_online_active,
+  is_offline_active,
+  is_active,
+  created_at,
+  updated_at
+FROM practitioner_packages
+WHERE practitioner_id = $1
+  AND is_active = TRUE
+ORDER BY tier ASC, service_category ASC, id ASC;
+
+-- name: ListPublicReviewsByPractitioner :many
+SELECT
+  sr.session_id,
+  sr.rating,
+  sr.comment,
+  sr.is_anonymized,
+  CASE
+    WHEN sr.is_anonymized THEN 'Klien Clarafin'
+    ELSE COALESCE(NULLIF(TRIM(u.full_name), ''), 'Klien Clarafin')
+  END::text AS reviewer_name,
+  sr.created_at
+FROM session_reviews sr
+JOIN sessions s ON s.id = sr.session_id
+JOIN users u ON u.id = sr.reviewer_user_id
+WHERE s.practitioner_id = $1
+ORDER BY sr.created_at DESC
+LIMIT $2;

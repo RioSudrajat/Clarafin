@@ -16,6 +16,7 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
+	"github.com/clarafin/api/internal/ai"
 	"github.com/clarafin/api/internal/config"
 	"github.com/clarafin/api/internal/repository"
 	"github.com/clarafin/api/internal/server"
@@ -79,14 +80,16 @@ func main() {
 		service.WithTrackerJakartaLocation(jakartaLoc),
 		service.WithTrackerQuotaProvider(quotaService),
 	)
+	matchingTool := ai.NewMatchingTool(store, ai.WithMatchingJakartaLocation(jakartaLoc))
 	router := server.NewRouter(server.Dependencies{
-		Config:         cfg,
-		Logger:         logger,
-		Store:          store,
-		QuotaService:   quotaService,
-		TrackerService: trackerService,
-		Redis:          rdb,
-		JakartaLoc:     jakartaLoc,
+		Config:              cfg,
+		Logger:              logger,
+		Store:               store,
+		QuotaService:        quotaService,
+		TrackerService:      trackerService,
+		PractitionerCatalog: matchingTool,
+		Redis:               rdb,
+		JakartaLoc:          jakartaLoc,
 	})
 
 	srv := &http.Server{
