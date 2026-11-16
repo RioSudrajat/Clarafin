@@ -24,6 +24,7 @@ import (
 	"github.com/clarafin/api/internal/middleware"
 	"github.com/clarafin/api/internal/repository"
 	"github.com/clarafin/api/internal/server"
+	"github.com/clarafin/api/internal/service"
 )
 
 func openIntegrationDeps(t *testing.T) (*repository.Store, *redis.Client) {
@@ -195,12 +196,41 @@ func TestRouter_EndToEndDevTokenAuthAndAIRateLimit(t *testing.T) {
 		t.Fatalf("unmarshal dev token response: %v", err)
 	}
 
-	// Step 2: Unauthenticated call to /v1/ai/probe returns 401.
+	// Step 2: Unauthenticated call to /v1/ai/probe and /v1/ai/quota return 401.
 	reqNoAuth := httptest.NewRequest(http.MethodPost, "/v1/ai/probe", nil)
 	recNoAuth := httptest.NewRecorder()
 	r.ServeHTTP(recNoAuth, reqNoAuth)
 	if recNoAuth.Code != http.StatusUnauthorized {
 		t.Fatalf("unauthenticated /v1/ai/probe expected 401, got %d", recNoAuth.Code)
+	}
+
+	reqQuotaNoAuth := httptest.NewRequest(http.MethodGet, "/v1/ai/quota", nil)
+	recQuotaNoAuth := httptest.NewRecorder()
+	r.ServeHTTP(recQuotaNoAuth, reqQuotaNoAuth)
+	if recQuotaNoAuth.Code != http.StatusUnauthorized {
+		t.Fatalf("unauthenticated /v1/ai/quota expected 401, got %d", recQuotaNoAuth.Code)
+	}
+
+	// Step 2b: Polling GET /v1/ai/quota 15 times succeeds and does NOT burn the 10rpm AI chat rate limit.
+	for i := 1; i <= 15; i++ {
+		reqQ := httptest.NewRequest(http.MethodGet, "/v1/ai/quota", nil)
+		reqQ.Header.Set("Authorization", "Bearer "+tokEnv.Data.AccessToken)
+		recQ := httptest.NewRecorder()
+		r.ServeHTTP(recQ, reqQ)
+		if recQ.Code != http.StatusOK {
+			t.Fatalf("GET /v1/ai/quota poll #%d expected 200, got %d (body: %s)", i, recQ.Code, recQ.Body.String())
+		}
+		if i == 1 {
+			var qEnv struct {
+				Data service.QuotaStatus `json:"data"`
+			}
+			if err := json.Unmarshal(recQ.Body.Bytes(), &qEnv); err != nil {
+				t.Fatalf("unmarshal GET /v1/ai/quota: %v", err)
+			}
+			if qEnv.Data.PlanType != "free" || qEnv.Data.QuotaTotal != 40 || qEnv.Data.QuotaRemaining != 40 {
+				t.Fatalf("unexpected quota response: %+v", qEnv.Data)
+			}
+		}
 	}
 
 	// Step 3: 10 authenticated calls succeed, 11th returns 429 RATE_LIMITED.
@@ -220,5 +250,14 @@ func TestRouter_EndToEndDevTokenAuthAndAIRateLimit(t *testing.T) {
 	r.ServeHTTP(rec11, req11)
 	if rec11.Code != http.StatusTooManyRequests {
 		t.Fatalf("AI probe request 11 expected 429, got %d (body: %s)", rec11.Code, rec11.Body.String())
+	}
+
+	// Step 4: Even while /v1/ai/probe is rate-limited, GET /v1/ai/quota remains accessible.
+	reqQAfter := httptest.NewRequest(http.MethodGet, "/v1/ai/quota", nil)
+	reqQAfter.Header.Set("Authorization", "Bearer "+tokEnv.Data.AccessToken)
+	recQAfter := httptest.NewRecorder()
+	r.ServeHTTP(recQAfter, reqQAfter)
+	if recQAfter.Code != http.StatusOK {
+		t.Fatalf("GET /v1/ai/quota while chat rate-limited expected 200, got %d (body: %s)", recQAfter.Code, recQAfter.Body.String())
 	}
 }

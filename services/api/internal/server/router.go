@@ -15,6 +15,7 @@ import (
 	"github.com/clarafin/api/internal/handler"
 	"github.com/clarafin/api/internal/middleware"
 	"github.com/clarafin/api/internal/repository"
+	"github.com/clarafin/api/internal/service"
 )
 
 // Dependencies bundles runtime dependencies required to build the HTTP router.
@@ -23,6 +24,7 @@ type Dependencies struct {
 	Logger                  *zap.Logger
 	Store                   *repository.Store
 	DevUserProvisioner      handler.DevUserProvisioner
+	QuotaService            handler.QuotaProvider
 	Redis                   *redis.Client
 	JakartaLoc              *time.Location
 	RegisterProtectedRoutes func(r chi.Router)
@@ -49,6 +51,11 @@ func NewRouter(deps Dependencies) http.Handler {
 	devProvisioner := deps.DevUserProvisioner
 	if devProvisioner == nil && deps.Store != nil {
 		devProvisioner = deps.Store
+	}
+
+	quotaService := deps.QuotaService
+	if quotaService == nil && deps.Store != nil {
+		quotaService = service.NewQuotaService(deps.Store, service.WithJakartaLocation(jakartaLoc))
 	}
 
 	r := chi.NewRouter()
@@ -83,10 +90,18 @@ func NewRouter(deps Dependencies) http.Handler {
 			authed.Use(middleware.RequireAuth(cfg))
 
 			authed.Route("/ai", func(ai chi.Router) {
-				ai.Use(middleware.RateLimitAI(deps.Redis, cfg.AIRateLimitPerMin, time.Minute))
-				if deps.RegisterAIRoutes != nil {
-					deps.RegisterAIRoutes(ai)
+				if quotaService != nil {
+					quotaHandler := handler.NewQuotaHandler(quotaService)
+					ai.Get("/quota", quotaHandler.GetQuota)
 				}
+
+				// Quota polling stays outside the 10rpm chat rate limiter so UI badge refreshes never starve AI calls.
+				ai.Group(func(aiLimited chi.Router) {
+					aiLimited.Use(middleware.RateLimitAI(deps.Redis, cfg.AIRateLimitPerMin, time.Minute))
+					if deps.RegisterAIRoutes != nil {
+						deps.RegisterAIRoutes(aiLimited)
+					}
+				})
 			})
 
 			if deps.RegisterProtectedRoutes != nil {

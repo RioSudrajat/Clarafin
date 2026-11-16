@@ -19,6 +19,7 @@ import (
 	"github.com/clarafin/api/internal/config"
 	"github.com/clarafin/api/internal/repository"
 	"github.com/clarafin/api/internal/server"
+	"github.com/clarafin/api/internal/service"
 )
 
 func main() {
@@ -72,12 +73,14 @@ func main() {
 	startupCancel()
 
 	store := repository.NewStore(pool)
+	quotaService := service.NewQuotaService(store, service.WithJakartaLocation(jakartaLoc))
 	router := server.NewRouter(server.Dependencies{
-		Config:     cfg,
-		Logger:     logger,
-		Store:      store,
-		Redis:      rdb,
-		JakartaLoc: jakartaLoc,
+		Config:       cfg,
+		Logger:       logger,
+		Store:        store,
+		QuotaService: quotaService,
+		Redis:        rdb,
+		JakartaLoc:   jakartaLoc,
 	})
 
 	srv := &http.Server{
