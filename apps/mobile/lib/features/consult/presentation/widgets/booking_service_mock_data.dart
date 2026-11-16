@@ -1,9 +1,12 @@
 import 'booking_service_tier_card.dart';
 import '../../domain/models/consultant.dart';
 
+export 'booking_service_tier_card.dart' show BookingServiceItem, ServiceModel;
+
 class BookingServiceMockData {
-  // ── 1. Personal Advisory (Individu) ──
+  // 1. Personal Advisory (Individu)
   static const ServiceModel personalBasic = ServiceModel(
+    packageCode: 'personal_basic',
     title: 'Fondasi Arus Kas & Utang',
     subtitle: 'Basic',
     categoryTag: 'Personal Advisory • Basic',
@@ -20,6 +23,7 @@ class BookingServiceMockData {
   );
 
   static const ServiceModel personalMedium = ServiceModel(
+    packageCode: 'personal_medium',
     title: 'Optimalisasi Aset & Proteksi',
     subtitle: 'Medium',
     categoryTag: 'Personal Advisory • Medium',
@@ -28,7 +32,7 @@ class BookingServiceMockData {
     basePricePerSession: 299000.0,
     offlinePricePerSession: 449000.0,
     features: [
-      'Perencana Keuangan tersertifikasi resmi CFP® / BKP (301–500 klien)',
+      'Perencana Keuangan tersertifikasi resmi CFP® / BKP (301-500 klien)',
       'Audit alokasi investasi reksa dana, obligasi SBN, & saham',
       'Evaluasi kecukupan polis asuransi jiwa & kesehatan',
       'Simulasi kelayakan KPR & rasio DSR terhadap penghasilan',
@@ -36,6 +40,7 @@ class BookingServiceMockData {
   );
 
   static const ServiceModel personalPremium = ServiceModel(
+    packageCode: 'personal_premium',
     title: 'Menuju Kebebasan Finansial',
     subtitle: 'Premium',
     categoryTag: 'Personal Advisory • Premium',
@@ -51,8 +56,9 @@ class BookingServiceMockData {
     ],
   );
 
-  // ── 2. Couple Advisory (Pasangan & Keluarga) ──
+  // 2. Couple Advisory (Pasangan & Keluarga)
   static const ServiceModel couplePreMarriage = ServiceModel(
+    packageCode: 'couple_pre_marriage',
     title: 'Siap Menikah Tanpa Drama Finansial',
     subtitle: 'Pre-Marriage',
     categoryTag: 'Couple Advisory • Pre-Marriage',
@@ -61,7 +67,7 @@ class BookingServiceMockData {
     basePricePerSession: 349000.0,
     offlinePricePerSession: 529000.0,
     features: [
-      'Praktisi CFP® spesialis keuangan pasangan (301–500 klien)',
+      'Praktisi CFP® spesialis keuangan pasangan (301-500 klien)',
       'Diskusi terbuka profil utang, aset bawaan, & transparansi gaji',
       'Penyusunan anggaran pernikahan tanpa jerat utang baru',
       'Kesepakatan model rekening keluarga (1 pintu / 2 pintu)',
@@ -69,6 +75,7 @@ class BookingServiceMockData {
   );
 
   static const ServiceModel coupleMarriage = ServiceModel(
+    packageCode: 'couple_marriage',
     title: 'Satu Visi Bangun Aset Keluarga',
     subtitle: 'Marriage',
     categoryTag: 'Couple Advisory • Marriage',
@@ -85,6 +92,7 @@ class BookingServiceMockData {
   );
 
   static const ServiceModel couplePremium = ServiceModel(
+    packageCode: 'couple_premium',
     title: 'Mapan Finansial Lintas Generasi',
     subtitle: 'Premium',
     categoryTag: 'Couple Advisory • Premium',
@@ -100,8 +108,9 @@ class BookingServiceMockData {
     ],
   );
 
-  // ── 3. UMKM Advisory ──
+  // 3. UMKM Advisory
   static const ServiceModel umkmBasic = ServiceModel(
+    packageCode: 'umkm_basic',
     title: 'Omzet Ramai, Untung Nyata di Rekening',
     subtitle: 'Basic',
     categoryTag: 'UMKM Advisory • Basic',
@@ -118,6 +127,7 @@ class BookingServiceMockData {
   );
 
   static const ServiceModel umkmMedium = ServiceModel(
+    packageCode: 'umkm_medium',
     title: 'Ekspansi Cabang & Aman Pajak Bisnis',
     subtitle: 'Medium',
     categoryTag: 'UMKM Advisory • Medium',
@@ -134,6 +144,7 @@ class BookingServiceMockData {
   );
 
   static const ServiceModel umkmPremium = ServiceModel(
+    packageCode: 'umkm_premium',
     title: 'Perpanjang Runway & Siap Pendanaan Investor',
     subtitle: 'Premium',
     categoryTag: 'UMKM Advisory • Premium',
@@ -149,8 +160,9 @@ class BookingServiceMockData {
     ],
   );
 
-  // ── 4. Corporate Wellness & Advisory ──
+  // 4. Corporate Wellness & Advisory
   static const ServiceModel corporateBasic = ServiceModel(
+    packageCode: 'corporate_basic',
     title: 'Karyawan Produktif Bebas Jerat Pinjol',
     subtitle: 'Basic',
     categoryTag: 'Corporate Wellness • Basic',
@@ -167,6 +179,7 @@ class BookingServiceMockData {
   );
 
   static const ServiceModel corporateMedium = ServiceModel(
+    packageCode: 'corporate_medium',
     title: 'Klinik Finansial Privat & Retensi Talenta',
     subtitle: 'Medium',
     categoryTag: 'Corporate Wellness • Medium',
@@ -183,6 +196,7 @@ class BookingServiceMockData {
   );
 
   static const ServiceModel corporatePremium = ServiceModel(
+    packageCode: 'corporate_premium',
     title: 'Optimalisasi Kas Korporasi & Pajak Eksekutif',
     subtitle: 'Premium',
     categoryTag: 'Corporate Advisory • Premium',
@@ -198,14 +212,15 @@ class BookingServiceMockData {
     ],
   );
 
-  // ── 5. Financial Check-Up ──
+  // 5. Financial Check-Up
   static const ServiceModel checkUpBasic = ServiceModel(
+    packageCode: 'checkup_basic',
     title: 'Bongkar Bocor Halus & Skor Keuanganmu',
     subtitle: 'Basic',
     categoryTag: 'Financial Check-Up • Basic',
     shortDesc: 'Rapor skor 4 rasio keuangan utama & resep perbaikan 30 hari.',
     fullDesc: 'Sesi bedah kilat 45 menit bersama AWP®/QWP® untuk mendeteksi sumber kebocoran uang bulanan dan mendapatkan skor kesehatan finansial yang jelas beserta panduan aksi.',
-    basePricePerSession: 1490000.0 / 10, // Rp 149.000
+    basePricePerSession: 149000.0,
     offlinePricePerSession: 279000.0,
     features: [
       'Praktisi AWP® / QWP® (< 300 klien) + sesi bedah 45 menit',
@@ -216,6 +231,7 @@ class BookingServiceMockData {
   );
 
   static const ServiceModel checkUpMedium = ServiceModel(
+    packageCode: 'checkup_medium',
     title: 'Bedah Tuntas Portofolio & Polis Asuransi',
     subtitle: 'Medium',
     categoryTag: 'Financial Check-Up • Medium',
@@ -224,7 +240,7 @@ class BookingServiceMockData {
     basePricePerSession: 279000.0,
     offlinePricePerSession: 429000.0,
     features: [
-      'Praktisi CFP® independen (301–500 klien) + sesi 60 menit',
+      'Praktisi CFP® independen (301-500 klien) + sesi 60 menit',
       'Audit independen polis asuransi (premi vs manfaat perlindungan)',
       'Evaluasi portofolio reksa dana, saham, crypto, & emas',
       'Rekomendasi rebalancing aset tanpa bias penjualan produk',
@@ -232,6 +248,7 @@ class BookingServiceMockData {
   );
 
   static const ServiceModel checkUpPremium = ServiceModel(
+    packageCode: 'checkup_premium',
     title: 'Peta Jalan Kekayaan & Pensiun Dini (360°)',
     subtitle: 'Premium',
     categoryTag: 'Financial Check-Up • Premium',
@@ -247,6 +264,25 @@ class BookingServiceMockData {
     ],
   );
 
+  // All 15 canonical catalog packages
+  static const List<ServiceModel> allPackages = [
+    personalBasic,
+    personalMedium,
+    personalPremium,
+    couplePreMarriage,
+    coupleMarriage,
+    couplePremium,
+    umkmBasic,
+    umkmMedium,
+    umkmPremium,
+    corporateBasic,
+    corporateMedium,
+    corporatePremium,
+    checkUpBasic,
+    checkUpMedium,
+    checkUpPremium,
+  ];
+
   // Default Online & Offline fallback lists
   static const List<ServiceModel> onlineServices = [
     personalBasic,
@@ -260,27 +296,87 @@ class BookingServiceMockData {
     personalPremium,
   ];
 
+  /// Resolves the specific package by its canonical code or accepted alias
+  static ServiceModel? findPackageByCode(String code) {
+    final normalized = code.toLowerCase().trim();
+    for (final pkg in allPackages) {
+      if (pkg.packageCode.toLowerCase() == normalized) {
+        return pkg;
+      }
+    }
+    // Canonical aliases support
+    switch (normalized) {
+      case 'corporate_workshop':
+        return corporateBasic;
+      case 'corporate_employee_benefit':
+        return corporateMedium;
+      case 'corporate_consultation':
+      case 'corporate_financial_audit':
+        return corporatePremium;
+      default:
+        return null;
+    }
+  }
+
   /// Resolves the specific package list tailored to the consultant's category and tier
-  static List<ServiceModel> getServicesForConsultant(Consultant consultant, {bool isOnline = true}) {
+  static List<ServiceModel> getServicesForConsultant(
+    Consultant consultant, {
+    bool isOnline = true,
+    String? preferredPackageCode,
+  }) {
     final certs = consultant.credentials.toLowerCase();
     final specs = consultant.specializations.map((s) => s.toLowerCase()).join(' ');
 
-    if (specs.contains('pasangan') || specs.contains('keluarga') || specs.contains('nikah')) {
-      return [couplePreMarriage, coupleMarriage, couplePremium];
+    List<ServiceModel> list;
+    switch (consultant.id) {
+      case 'c1':
+        list = [personalMedium, couplePreMarriage, coupleMarriage, checkUpMedium];
+        break;
+      case 'c2':
+        list = [personalPremium, umkmMedium, umkmPremium, checkUpPremium];
+        break;
+      case 'c3':
+        list = [personalBasic, umkmBasic, checkUpBasic];
+        break;
+      case 'c4':
+        list = [personalPremium, umkmPremium, corporatePremium, checkUpPremium];
+        break;
+      case 'c5':
+        list = [
+          couplePreMarriage,
+          coupleMarriage,
+          couplePremium,
+          personalPremium,
+          checkUpMedium,
+          checkUpPremium,
+        ];
+        break;
+      case 'c6':
+        list = [umkmBasic, umkmMedium, corporateBasic, corporateMedium, personalMedium];
+        break;
+      default:
+        if (specs.contains('pasangan') || specs.contains('keluarga') || specs.contains('nikah')) {
+          list = [couplePreMarriage, coupleMarriage, couplePremium];
+        } else if (specs.contains('umkm') || specs.contains('bisnis') || specs.contains('usaha')) {
+          list = [umkmBasic, umkmMedium, umkmPremium];
+        } else if (specs.contains('pajak') || certs.contains('bkp') || certs.contains('cpa')) {
+          list = [personalMedium, umkmMedium, personalPremium];
+        } else if (certs.contains('cfa') || specs.contains('pensiun') || specs.contains('wealth')) {
+          list = [personalMedium, personalPremium, checkUpPremium];
+        } else {
+          list = [personalBasic, personalMedium, personalPremium];
+        }
     }
 
-    if (specs.contains('umkm') || specs.contains('bisnis') || specs.contains('usaha')) {
-      return [umkmBasic, umkmMedium, umkmPremium];
+    if (preferredPackageCode != null && preferredPackageCode.isNotEmpty) {
+      final preferred = findPackageByCode(preferredPackageCode);
+      if (preferred != null) {
+        final result = List<ServiceModel>.from(list);
+        result.removeWhere((s) => s.packageCode == preferred.packageCode);
+        result.insert(0, preferred);
+        return result;
+      }
     }
-
-    if (specs.contains('pajak') || certs.contains('bkp') || certs.contains('cpa')) {
-      return [personalMedium, umkmMedium, personalPremium];
-    }
-
-    if (certs.contains('cfa') || specs.contains('pensiun') || specs.contains('wealth')) {
-      return [personalMedium, personalPremium, checkUpPremium];
-    }
-
-    return [personalBasic, personalMedium, personalPremium];
+    return list;
   }
 }

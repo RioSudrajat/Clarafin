@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/neo_brutalism_decorations.dart';
 
 class ServiceModel {
+  final String packageCode;
   final String title;
   final String subtitle;
   final String categoryTag;
@@ -12,6 +13,7 @@ class ServiceModel {
   final double offlinePricePerSession;
 
   const ServiceModel({
+    this.packageCode = '',
     required this.title,
     required this.subtitle,
     this.categoryTag = '',
@@ -22,6 +24,8 @@ class ServiceModel {
     this.offlinePricePerSession = 0.0,
   });
 }
+
+typedef BookingServiceItem = ServiceModel;
 
 class BookingServiceTierCard extends StatefulWidget {
   final ServiceModel service;

@@ -71,28 +71,34 @@ void main() {
   });
 
   group('Consultant Package Pricing Calculation Tests', () {
-    test('Calculates Shopee-style min and max package pricing for consultant', () {
-      final consultant = ConsultantRepository.initialConsultants.first;
+    test('Calculates Shopee-style min and max package pricing across all 6 canonical consultants', () {
+      final consultants = ConsultantRepository.initialConsultants;
+      expect(consultants.length, equals(6));
 
-      final services = BookingServiceMockData.getServicesForConsultant(consultant);
-      expect(services.isNotEmpty, isTrue);
+      for (final consultant in consultants) {
+        final services = BookingServiceMockData.getServicesForConsultant(consultant);
+        expect(services.isNotEmpty, isTrue, reason: 'Consultant ${consultant.id} has no services');
 
-      double minPrice = services.first.basePricePerSession;
-      double maxPrice = services.first.offlinePricePerSession;
-      for (final s in services) {
-        if (s.basePricePerSession < minPrice) minPrice = s.basePricePerSession;
-        final highestTier = s.offlinePricePerSession > s.basePricePerSession
-            ? s.offlinePricePerSession
-            : s.basePricePerSession;
-        if (highestTier > maxPrice) maxPrice = highestTier;
+        double minPrice = services.first.basePricePerSession;
+        double maxPrice = services.first.offlinePricePerSession;
+        for (final s in services) {
+          if (s.basePricePerSession < minPrice) minPrice = s.basePricePerSession;
+          final highestTier = s.offlinePricePerSession > s.basePricePerSession
+              ? s.offlinePricePerSession
+              : s.basePricePerSession;
+          if (highestTier > maxPrice) maxPrice = highestTier;
+        }
+
+        final expectedMin = services.map((s) => s.basePricePerSession).reduce((a, b) => a < b ? a : b);
+        final expectedMax = services
+            .map((s) => s.offlinePricePerSession > s.basePricePerSession
+                ? s.offlinePricePerSession
+                : s.basePricePerSession)
+            .reduce((a, b) => a > b ? a : b);
+        expect(minPrice, equals(expectedMin));
+        expect(maxPrice, equals(expectedMax));
+        expect(maxPrice, greaterThan(minPrice));
       }
-
-      // Verifies that minimum price is indeed the minimum of base prices, and max price is higher (strikethrough)
-      final expectedMin = services.map((s) => s.basePricePerSession).reduce((a, b) => a < b ? a : b);
-      final expectedMax = services.map((s) => s.offlinePricePerSession > s.basePricePerSession ? s.offlinePricePerSession : s.basePricePerSession).reduce((a, b) => a > b ? a : b);
-      expect(minPrice, equals(expectedMin));
-      expect(maxPrice, equals(expectedMax));
-      expect(maxPrice, greaterThan(minPrice));
     });
   });
 }
