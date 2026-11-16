@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../../../../core/theme/neo_brutalism_decorations.dart';
 import '../../domain/models/consultant.dart';
 
@@ -77,43 +77,6 @@ class ConsultDetailAboutSection extends StatelessWidget {
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 16),
-
-          // Specializations
-          const Text(
-            'Spesialisasi & Keahlian',
-            style: TextStyle(
-              fontFamily: 'Plus Jakarta Sans',
-              fontSize: 14,
-              fontWeight: FontWeight.w800,
-              color: Colors.black,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: consultant.specializations.map((tag) {
-              return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(9999),
-                  border: NeoBrutalism.border(width: 1.5),
-                  boxShadow: NeoBrutalism.shadow(yOffset: 1.5),
-                ),
-                child: Text(
-                  tag,
-                  style: const TextStyle(
-                    fontFamily: 'Plus Jakarta Sans',
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: NeoBrutalism.dark,
-                  ),
-                ),
-              );
-            }).toList(),
           ),
         ],
       ),

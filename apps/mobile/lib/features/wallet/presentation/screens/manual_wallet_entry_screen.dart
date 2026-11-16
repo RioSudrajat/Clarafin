@@ -34,6 +34,18 @@ class _ManualWalletEntryScreenState extends ConsumerState<ManualWalletEntryScree
   final _returnController = TextEditingController();
   late String _selectedType;
   DateTime? _dividendDate;
+  String _selectedColorHex = '#0F758A';
+
+  static const List<String> colorSwatches = [
+    '#0F758A', // Teal
+    '#003B73', // Navy
+    '#D35400', // Tangerine
+    '#4C2A86', // Violet
+    '#1E5128', // Emerald
+    '#2C2510', // Dark Gold
+    '#0081A7', // Cyan
+    '#111827', // Midnight
+  ];
 
   bool get isInvestment =>
       ['Mutual Fund', 'Stock', 'Crypto', 'Bond', 'Deposit'].contains(_selectedType);
@@ -96,6 +108,7 @@ class _ManualWalletEntryScreenState extends ConsumerState<ManualWalletEntryScree
       dividendDropDate: _dividendDate,
       isVolatile: isVolatile,
       institutionId: widget.institutionId,
+      customColorHex: _selectedColorHex,
     );
 
     ref.read(walletsProvider.notifier).addWallet(newWallet);
@@ -175,6 +188,41 @@ class _ManualWalletEntryScreenState extends ConsumerState<ManualWalletEntryScree
               isVolatile: isVolatile,
               onPickDate: _pickDate,
             ),
+          const SizedBox(height: 16),
+
+          // Custom Color Swatch Picker
+          const WalletFieldLabel('Warna Kartu'),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: colorSwatches.map((hex) {
+              final color = Color(int.parse('FF${hex.replaceAll('#', '')}', radix: 16));
+              final isSelected = _selectedColorHex == hex;
+
+              return GestureDetector(
+                onTap: () => setState(() => _selectedColorHex = hex),
+                child: Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: color,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isSelected ? Colors.black : Colors.black26,
+                      width: isSelected ? 3.0 : 1.5,
+                    ),
+                    boxShadow: isSelected ? NeoBrutalism.shadow(yOffset: 2.0) : null,
+                  ),
+                  child: isSelected
+                      ? const Center(
+                          child: Icon(Icons.check_rounded, color: Colors.white, size: 20),
+                        )
+                      : null,
+                ),
+              );
+            }).toList(),
+          ),
           const SizedBox(height: 32),
           ManualWalletSubmitButton(onTap: _saveWallet),
         ],

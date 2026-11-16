@@ -116,6 +116,6 @@ Payout `scheduled` pada saat catatan masuk, jatuh tempo 48 jam kemudian. Pada ba
 
 Setelah `completed`, klien memberi satu nilai 1–5. Teks boleh kosong. Nilai masuk urutan rekomendasi. Belum ada ulasan ditampilkan sebagai belum ada ulasan, bukan nol.
 
-## Pro
+## Pro & Unlimited AI
 
-Order terpisah dari sesi. QRIS 15 menit. Lunas membuka 400 aksi selama 30 hari dari webhook. Tidak di-refund. Sisa aksi tidak dibawa. Periode habis tanpa perpanjangan mengembalikan kuota ke 40 aksi per bulan kalender.
+Order terpisah dari sesi. QRIS 15 menit. Lunas membuka kuota **Pro** (Rp49.000 = 400 aksi selama 30 hari) atau **Unlimited** (Rp99.000 = akses tanpa batas dengan *fair-use* rate limit `10 req/min/user_id`) dari webhook. Tidak di-refund. Sisa aksi Pro tidak dibawa. Periode habis tanpa perpanjangan mengembalikan kuota ke Free (40 aksi per bulan kalender). Kegagalan respons AI tidak memotong kuota karena sistem memakai reservasi atomik (`reserved -> success | failed`).

@@ -3,25 +3,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/neo_brutalism_decorations.dart';
+import '../../../../core/utils/currency_formatter.dart';
+import '../../../profile/presentation/providers/user_profile_provider.dart';
 import '../../../budget/presentation/providers/finance_providers.dart';
 
 class BudgetProgressCard extends ConsumerWidget {
   const BudgetProgressCard({super.key});
 
-  String _formatRupiah(num value) {
-    final str = value.toInt().toString();
-    final chars = str.split('').reversed.toList();
-    final result = <String>[];
-    for (var i = 0; i < chars.length; i++) {
-      if (i > 0 && i % 3 == 0) result.add('.');
-      result.add(chars[i]);
-    }
-    return 'Rp ${result.reversed.join()}';
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final summary = ref.watch(monthlyBudgetSummaryProvider);
+    final userProfile = ref.watch(userProfileProvider);
+    final currencyCode = userProfile.currency;
     final percent = (summary.progress * 100).toInt();
 
     return Padding(
@@ -154,14 +147,14 @@ class BudgetProgressCard extends ConsumerWidget {
                                 children: [
                                   const TextSpan(text: 'terpakai '),
                                   TextSpan(
-                                    text: _formatRupiah(summary.totalSpent),
+                                    text: CurrencyFormatter.format(summary.totalSpent, currencyCode: currencyCode),
                                     style: const TextStyle(
                                       fontWeight: FontWeight.w700,
                                       color: NeoBrutalism.dark,
                                     ),
                                   ),
                                   TextSpan(
-                                    text: ' / ${_formatRupiah(summary.totalBudget)}',
+                                    text: ' / ${CurrencyFormatter.format(summary.totalBudget, currencyCode: currencyCode)}',
                                   ),
                                 ],
                               ),

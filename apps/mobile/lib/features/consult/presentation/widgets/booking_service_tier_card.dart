@@ -1,32 +1,39 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import '../../../../core/theme/neo_brutalism_decorations.dart';
 
 class ServiceModel {
   final String title;
   final String subtitle;
+  final String categoryTag;
   final String shortDesc;
   final String fullDesc;
   final List<String> features;
   final double basePricePerSession;
+  final double offlinePricePerSession;
 
   const ServiceModel({
     required this.title,
     required this.subtitle,
+    this.categoryTag = '',
     required this.shortDesc,
     required this.fullDesc,
     required this.features,
     required this.basePricePerSession,
+    this.offlinePricePerSession = 0.0,
   });
 }
 
 class BookingServiceTierCard extends StatefulWidget {
   final ServiceModel service;
   final bool isSelected;
+  final bool isOffline;
   final VoidCallback onTap;
 
   const BookingServiceTierCard({
     super.key,
     required this.service,
     required this.isSelected,
+    this.isOffline = false,
     required this.onTap,
   });
 
@@ -41,6 +48,9 @@ class _BookingServiceTierCardState extends State<BookingServiceTierCard> {
   Widget build(BuildContext context) {
     final isSelected = widget.isSelected;
     final service = widget.service;
+    final displayTag = service.categoryTag.isNotEmpty
+        ? service.categoryTag
+        : service.subtitle;
 
     return GestureDetector(
       onTapDown: (_) => setState(() => _isPressed = true),
@@ -78,6 +88,7 @@ class _BookingServiceTierCardState extends State<BookingServiceTierCard> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
                     width: 44,
@@ -88,9 +99,11 @@ class _BookingServiceTierCardState extends State<BookingServiceTierCard> {
                       border: Border.all(color: Colors.black, width: 1.5),
                     ),
                     child: Icon(
-                      service.title.contains('Quick') || service.title.contains('Counseling')
+                      service.title.contains('Fondasi') || service.title.contains('Quick')
                           ? Icons.chat_bubble_outline_rounded
-                          : Icons.insights_rounded,
+                          : (service.title.contains('Menuju') || service.title.contains('Peta')
+                              ? Icons.workspace_premium_rounded
+                              : Icons.insights_rounded),
                       color: isSelected ? Colors.white : Colors.black,
                       size: 20,
                     ),
@@ -100,16 +113,26 @@ class _BookingServiceTierCardState extends State<BookingServiceTierCard> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          service.subtitle,
-                          style: TextStyle(
-                            fontFamily: 'Plus Jakarta Sans',
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: isSelected ? const Color(0xFF0F758A) : const Color(0xFF6B7280),
+                        // Category Tag • Tier Pill
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: isSelected ? NeoBrutalism.lime : const Color(0xFFF3F4F6),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: Colors.black, width: 1.0),
+                          ),
+                          child: Text(
+                            displayTag,
+                            style: const TextStyle(
+                              fontFamily: 'Plus Jakarta Sans',
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.black,
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 2),
+                        const SizedBox(height: 5),
+                        // Main Hook Title
                         Text(
                           service.title,
                           style: const TextStyle(
@@ -151,7 +174,7 @@ class _BookingServiceTierCardState extends State<BookingServiceTierCard> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   const Icon(
-                                    Icons.check_rounded,
+                                    Icons.check_circle_rounded,
                                     size: 15,
                                     color: Color(0xFF0F758A),
                                   ),

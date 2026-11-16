@@ -26,7 +26,7 @@ class AddWalletSearchHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const categories = ['Semua', 'Bank', 'E-Wallet', 'Investasi'];
+    const categories = ['Semua', 'Bank', 'E-Wallet', 'Kripto & Web3', 'Investasi'];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

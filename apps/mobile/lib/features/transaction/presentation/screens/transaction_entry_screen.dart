@@ -11,6 +11,9 @@ import '../../../../core/models/wallet_model.dart';
 import '../../../../core/providers/mock_providers.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../budget/presentation/providers/finance_providers.dart';
+import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/theme/neo_brutalism_decorations.dart';
+import '../../../session/presentation/screens/quick_action_sheets.dart';
 import '../widgets/category_picker_bottom_sheet.dart';
 
 class TransactionEntryScreen extends ConsumerStatefulWidget {
@@ -116,6 +119,133 @@ class _TransactionEntryScreenState extends ConsumerState<TransactionEntryScreen>
     _snapBackController.dispose();
     _cursorBlinkController.dispose();
     super.dispose();
+  }
+
+  void _showDuplicateTransactionSheet(BuildContext context) {
+    final transactions = ref.read(transactionsProvider);
+    final recent = transactions.take(5).toList();
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          border: Border(
+            top: BorderSide(color: Colors.black, width: 2.0),
+            left: BorderSide(color: Colors.black, width: 2.0),
+            right: BorderSide(color: Colors.black, width: 2.0),
+          ),
+        ),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 44,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.black26,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Duplikat Transaksi Lalu',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: Colors.black,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Pilih salah satu transaksi terakhir untuk menyalin nominal, kategori, dan dompet.',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 12,
+                color: NeoBrutalism.textMuted,
+              ),
+            ),
+            const SizedBox(height: 16),
+            if (recent.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                child: Center(
+                  child: Text(
+                    'Belum ada riwayat transaksi.',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: NeoBrutalism.textMuted,
+                    ),
+                  ),
+                ),
+              )
+            else
+              ...recent.map(
+                (tx) => Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  decoration: BoxDecoration(
+                    color: NeoBrutalism.surfaceWarm,
+                    borderRadius: BorderRadius.circular(14),
+                    border: NeoBrutalism.border(width: 1.8),
+                    boxShadow: NeoBrutalism.shadow(yOffset: 1.5),
+                  ),
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                    title: Text(
+                      tx.title,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.black,
+                      ),
+                    ),
+                    subtitle: Text(
+                      '${tx.category} • Rp ${tx.amount.toInt()}',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        color: NeoBrutalism.textMuted,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.black),
+                    onTap: () {
+                      setState(() {
+                        _amountController.text = tx.amount.toInt().toString();
+                        _category = tx.category;
+                        _notesController.text = tx.title;
+                        _selectedWalletId = tx.walletId;
+                        _type = tx.type == 'income'
+                            ? 'Pemasukan'
+                            : (tx.type == 'transfer' ? 'Transfer' : 'Pengeluaran');
+                      });
+                      Navigator.of(ctx).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Data transaksi "${tx.title}" berhasil disalin!',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontWeight: FontWeight.w800,
+                              color: Colors.black,
+                            ),
+                          ),
+                          backgroundColor: NeoBrutalism.primary,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 
   String get _displayAmount {
@@ -357,7 +487,7 @@ class _TransactionEntryScreenState extends ConsumerState<TransactionEntryScreen>
                   ),
                 ),
                 GestureDetector(
-                  onTap: () {},
+                  onTap: () => showOcrScanSheet(context, ref),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 14,
@@ -550,64 +680,68 @@ class _TransactionEntryScreenState extends ConsumerState<TransactionEntryScreen>
           const SizedBox(height: 12),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Colors.black, width: 2.0),
-                boxShadow: const [
-                  BoxShadow(color: Colors.black, offset: Offset(0, 2), blurRadius: 0),
-                ],
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Row(
-                      children: [
-                        const Flexible(
-                          child: Text(
-                            'Coba catat pakai AI, lebih praktis!',
-                            style: TextStyle(
-                              fontFamily: 'Plus Jakarta Sans',
-                              color: Colors.black,
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w700,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => showAiChatQuickSheet(context, ref),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.black, width: 2.0),
+                  boxShadow: const [
+                    BoxShadow(color: Colors.black, offset: Offset(0, 2), blurRadius: 0),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Row(
+                        children: [
+                          const Flexible(
+                            child: Text(
+                              'Coba catat pakai AI, lebih praktis!',
+                              style: TextStyle(
+                                fontFamily: 'Plus Jakarta Sans',
+                                color: Colors.black,
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w700,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                        const SizedBox(width: 6),
-                        Icon(
-                          Icons.flash_on,
-                          color: Colors.amber.shade700,
-                          size: 16,
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 5,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFCCFF00),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.black, width: 1.5),
-                    ),
-                    child: const Text(
-                      'Coba',
-                      style: TextStyle(
-                        fontFamily: 'Plus Jakarta Sans',
-                        fontSize: 11,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.black,
+                          const SizedBox(width: 6),
+                          Icon(
+                            Icons.flash_on,
+                            color: Colors.amber.shade700,
+                            size: 16,
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-                ],
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFCCFF00),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.black, width: 1.5),
+                      ),
+                      child: const Text(
+                        'Coba',
+                        style: TextStyle(
+                          fontFamily: 'Plus Jakarta Sans',
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -688,37 +822,41 @@ class _TransactionEntryScreenState extends ConsumerState<TransactionEntryScreen>
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 36),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.black, width: 2.0),
-                boxShadow: const [
-                  BoxShadow(color: Colors.black, offset: Offset(0, 2), blurRadius: 0),
-                ],
-              ),
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.copy, size: 15, color: Colors.black),
-                  SizedBox(width: 8),
-                  Flexible(
-                    child: Text(
-                      'Duplikat data transaksi yang lalu',
-                      style: TextStyle(
-                        fontFamily: 'Plus Jakarta Sans',
-                        fontSize: 12,
-                        color: Colors.black,
-                        fontWeight: FontWeight.w700,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => _showDuplicateTransactionSheet(context),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.black, width: 2.0),
+                  boxShadow: const [
+                    BoxShadow(color: Colors.black, offset: Offset(0, 2), blurRadius: 0),
+                  ],
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.copy, size: 15, color: Colors.black),
+                    SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        'Duplikat data transaksi yang lalu',
+                        style: TextStyle(
+                          fontFamily: 'Plus Jakarta Sans',
+                          fontSize: 12,
+                          color: Colors.black,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                  SizedBox(width: 4),
-                  Icon(Icons.chevron_right, size: 16, color: Colors.black),
-                ],
+                    SizedBox(width: 4),
+                    Icon(Icons.chevron_right, size: 16, color: Colors.black),
+                  ],
+                ),
               ),
             ),
           ),

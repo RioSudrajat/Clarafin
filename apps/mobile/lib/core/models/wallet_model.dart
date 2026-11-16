@@ -1,7 +1,7 @@
 class WalletModel {
   final String id;
   final String name;
-  final String type; // Bank, E-Wallet, Cash, Deposit, Mutual Fund, Bond, Stock, Crypto
+  final String type; // Bank, E-Wallet, Cash, Deposit, Mutual Fund, Bond, Stock, CEX, DEX, Web3 Wallet, Crypto
   final double balance;
   final bool isAutoSync;
   final double? returnPercentage;
@@ -9,6 +9,8 @@ class WalletModel {
   final bool isVolatile;
   final bool hasClaimedDividend;
   final String? institutionId;
+  final String? customColorHex;
+  final String? maskedCardNumber;
 
   WalletModel({
     required this.id,
@@ -21,6 +23,8 @@ class WalletModel {
     this.isVolatile = false,
     this.hasClaimedDividend = false,
     this.institutionId,
+    this.customColorHex,
+    this.maskedCardNumber,
   });
 
   WalletModel copyWith({
@@ -34,6 +38,8 @@ class WalletModel {
     bool? isVolatile,
     bool? hasClaimedDividend,
     String? institutionId,
+    String? customColorHex,
+    String? maskedCardNumber,
   }) {
     return WalletModel(
       id: id ?? this.id,
@@ -46,6 +52,8 @@ class WalletModel {
       isVolatile: isVolatile ?? this.isVolatile,
       hasClaimedDividend: hasClaimedDividend ?? this.hasClaimedDividend,
       institutionId: institutionId ?? this.institutionId,
+      customColorHex: customColorHex ?? this.customColorHex,
+      maskedCardNumber: maskedCardNumber ?? this.maskedCardNumber,
     );
   }
 
@@ -60,6 +68,8 @@ class WalletModel {
     'isVolatile': isVolatile,
     'hasClaimedDividend': hasClaimedDividend,
     'institutionId': institutionId,
+    'customColorHex': customColorHex,
+    'maskedCardNumber': maskedCardNumber,
   };
 
   factory WalletModel.fromJson(Map<String, dynamic> json) => WalletModel(
@@ -75,5 +85,7 @@ class WalletModel {
     isVolatile: json['isVolatile'] as bool? ?? false,
     hasClaimedDividend: json['hasClaimedDividend'] as bool? ?? false,
     institutionId: json['institutionId'] as String?,
+    customColorHex: json['customColorHex'] as String?,
+    maskedCardNumber: json['maskedCardNumber'] as String?,
   );
 }

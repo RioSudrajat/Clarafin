@@ -1,52 +1,69 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/providers/mock_providers.dart';
 import '../../../../core/theme/neo_brutalism_decorations.dart';
 import '../../../budget/presentation/providers/finance_providers.dart';
+import '../../../session/presentation/providers/consultation_session_provider.dart';
 
 class ProfileStatsBento extends ConsumerWidget {
   const ProfileStatsBento({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final wallets = ref.watch(walletsProvider);
+    final sessionState = ref.watch(consultationSessionProvider);
     final goals = ref.watch(goalsProvider);
+    final wallets = ref.watch(walletsProvider);
+
+    final completedSessionsCount = sessionState.pastSessions.length;
 
     return Row(
       children: [
-        // 1. Sesi Konsultasi
+        // 1. Sesi Konsultasi Selesai -> /session
         Expanded(
-          child: _buildBentoItem(
-            icon: Icons.support_agent_outlined,
-            title: 'Sesi',
-            value: '4',
-            subtitle: 'Selesai',
-            accentColor: const Color(0xFFFFB74D),
+          child: GestureDetector(
+            onTap: () => context.push('/session'),
+            child: _buildBentoItem(
+              icon: Icons.support_agent_rounded,
+              title: 'Sesi',
+              value: '$completedSessionsCount',
+              subtitle: 'Selesai',
+              backgroundColor: NeoBrutalism.mint,
+              iconBgColor: Colors.white,
+            ),
           ),
         ),
         const SizedBox(width: 10),
 
-        // 2. Target Aktif
+        // 2. Target / Goals Aktif -> /budget?tab=0
         Expanded(
-          child: _buildBentoItem(
-            icon: Icons.flag_outlined,
-            title: 'Target',
-            value: '${goals.length}',
-            subtitle: 'Aktif',
-            accentColor: NeoBrutalism.lime,
+          child: GestureDetector(
+            onTap: () => context.go('/budget?tab=0'),
+            child: _buildBentoItem(
+              icon: Icons.flag_rounded,
+              title: 'Target',
+              value: '${goals.length}',
+              subtitle: 'Aktif',
+              backgroundColor: NeoBrutalism.surfaceWarm,
+              iconBgColor: NeoBrutalism.primary,
+            ),
           ),
         ),
         const SizedBox(width: 10),
 
-        // 3. Akun Terhubung
+        // 3. Akun / Dompet Terhubung -> /wallet
         Expanded(
-          child: _buildBentoItem(
-            icon: Icons.account_balance_wallet_outlined,
-            title: 'Akun',
-            value: '${wallets.length}',
-            subtitle: 'Terhubung',
-            accentColor: const Color(0xFF4FC3F7),
+          child: GestureDetector(
+            onTap: () => context.go('/wallet'),
+            child: _buildBentoItem(
+              icon: Icons.account_balance_wallet_rounded,
+              title: 'Dompet',
+              value: '${wallets.length}',
+              subtitle: 'Terhubung',
+              backgroundColor: NeoBrutalism.primaryLight,
+              iconBgColor: Colors.white,
+            ),
           ),
         ),
       ],
@@ -58,30 +75,25 @@ class ProfileStatsBento extends ConsumerWidget {
     required String title,
     required String value,
     required String subtitle,
-    required Color accentColor,
+    required Color backgroundColor,
+    required Color iconBgColor,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: backgroundColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.black, width: 2.0),
-        boxShadow: const [
-          BoxShadow(
-            color: Colors.black,
-            offset: Offset(0, 2),
-            blurRadius: 0,
-          ),
-        ],
+        border: NeoBrutalism.border(width: 2.0),
+        boxShadow: NeoBrutalism.shadow(yOffset: 2.0),
       ),
       child: Column(
         children: [
           Container(
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: accentColor.withValues(alpha: 0.25),
+              color: iconBgColor,
               shape: BoxShape.circle,
-              border: Border.all(color: Colors.black, width: 1.5),
+              border: NeoBrutalism.border(width: 1.5),
             ),
             child: Icon(icon, size: 16, color: Colors.black),
           ),
@@ -90,7 +102,7 @@ class ProfileStatsBento extends ConsumerWidget {
             value,
             style: GoogleFonts.plusJakartaSans(
               fontSize: 18,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w900,
               color: Colors.black,
             ),
           ),
@@ -99,7 +111,7 @@ class ProfileStatsBento extends ConsumerWidget {
             style: GoogleFonts.plusJakartaSans(
               fontSize: 11,
               fontWeight: FontWeight.w600,
-              color: const Color(0xFF6B7280),
+              color: NeoBrutalism.textMuted,
             ),
           ),
         ],

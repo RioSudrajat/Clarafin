@@ -24,6 +24,7 @@ class _AddWalletInstitutionScreenState extends State<AddWalletInstitutionScreen>
 
   final List<InstitutionModel> _banks = InstitutionRegistry.popularBanks;
   final List<InstitutionModel> _ewallets = InstitutionRegistry.ewallets;
+  final List<InstitutionModel> _cryptoWeb3 = InstitutionRegistry.cryptoWeb3;
   final List<InstitutionModel> _investments = InstitutionRegistry.investments;
 
   @override
@@ -113,12 +114,14 @@ class _AddWalletInstitutionScreenState extends State<AddWalletInstitutionScreen>
   List<Widget> _buildInstitutionSections() {
     final showBank = _selectedCategory == 'Semua' || _selectedCategory == 'Bank';
     final showEWallet = _selectedCategory == 'Semua' || _selectedCategory == 'E-Wallet';
+    final showCrypto = _selectedCategory == 'Semua' || _selectedCategory == 'Kripto & Web3';
     final showInvest = _selectedCategory == 'Semua' || _selectedCategory == 'Investasi';
 
     final widgets = <Widget>[];
     if (showBank) widgets.addAll(_filterAndBuildGroup('Bank Populer', _banks));
     if (showEWallet) widgets.addAll(_filterAndBuildGroup('E-Wallet', _ewallets));
-    if (showInvest) widgets.addAll(_filterAndBuildGroup('Investasi & Aset', _investments));
+    if (showCrypto) widgets.addAll(_filterAndBuildGroup('Bursa Kripto & Web3', _cryptoWeb3));
+    if (showInvest) widgets.addAll(_filterAndBuildGroup('Investasi & Kas Tunai', _investments));
 
     if (widgets.isEmpty) {
       widgets.add(

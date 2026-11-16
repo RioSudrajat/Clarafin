@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/neo_brutalism_decorations.dart';
 import '../../domain/models/service_item.dart';
+
 import 'notion_doodle_icons.dart';
+import 'upcoming_feature_bottom_sheet.dart';
 
 class AllServicesBottomSheet extends StatefulWidget {
   const AllServicesBottomSheet({super.key});
@@ -30,71 +32,71 @@ class _AllServicesBottomSheetState extends State<AllServicesBottomSheet> {
       'title': 'Konsultasi Keuangan (E-Counseling)',
       'tag': 'KONSULTASI',
       'description': 'Sesi privat bersama Certified Financial Planner independen',
-      'tagColor': Color(0xFFD1FAE5),
+      'tagColor': const Color(0xFFD1FAE5),
       'items': [
-        ServiceItem(
+        const ServiceItem(
           id: 'individu',
           title: 'Individu',
           category: 'counseling',
           svgKey: 'individu',
           badgeColor: Color(0xFFD1FAE5),
-          route: '/consult',
+          route: '/consult?category=Individu',
           description: 'Konsultasi budgeting & karier pribadi',
         ),
-        ServiceItem(
+        const ServiceItem(
           id: 'pasangan',
           title: 'Pasangan',
           category: 'counseling',
           svgKey: 'pasangan',
           badgeColor: Color(0xFFFFE4E6),
-          route: '/consult',
+          route: '/consult?category=Pasangan',
           description: 'Perencanaan keuangan pranikah & pasutri',
         ),
-        ServiceItem(
+        const ServiceItem(
           id: 'keluarga',
           title: 'Keluarga',
           category: 'counseling',
           svgKey: 'keluarga',
           badgeColor: Color(0xFFE0F2FE),
-          route: '/consult',
+          route: '/consult?category=Keluarga',
           description: 'Dana pendidikan anak & proteksi keluarga',
         ),
-        ServiceItem(
+        const ServiceItem(
           id: 'umkm',
           title: 'UMKM & Bisnis',
           category: 'counseling',
           svgKey: 'umkm',
           badgeColor: Color(0xFFFFEDD5),
-          route: '/consult',
+          route: '/consult?category=Business',
           description: 'Pemisahan uang pribadi & pembukuan usaha',
         ),
-        ServiceItem(
+        const ServiceItem(
           id: 'corporate',
           title: 'Corporate',
           category: 'counseling',
           svgKey: 'corporate',
           badgeColor: Color(0xFFEDE9FE),
-          route: '/consult',
+          route: '/consult?category=Business',
           description: 'Program employee financial wellness B2B',
         ),
-        ServiceItem(
+        const ServiceItem(
           id: 'free_counseling',
           title: 'Konseling Bebas',
           category: 'counseling',
           svgKey: 'free_counseling',
           badgeColor: Color(0xFFFEF08A),
-          route: '/consult',
+          route: '/match-expert',
           isBadgeFree: true,
-          description: 'Sesi perkenalan 15 menit tanpa biaya',
+          description: 'Sesi perkenalan pencocokan CFP terpercaya',
         ),
-        ServiceItem(
+        const ServiceItem(
           id: 'audit_portofolio',
           title: 'Audit Polis',
           category: 'counseling',
           svgKey: 'audit_portofolio',
           badgeColor: Color(0xFFCCFBF1),
-          route: '/consult',
-          description: 'Review polis asuransi & portofolio investasi',
+          route: '/consult?category=Insurance',
+          description: 'Review polis asuransi & portofolio proteksi',
         ),
       ],
     },
@@ -104,7 +106,7 @@ class _AllServicesBottomSheetState extends State<AllServicesBottomSheet> {
       'description': 'Pencatatan mutasi otomatis & asisten AI',
       'tagColor': NeoBrutalism.lime,
       'items': [
-        ServiceItem(
+        const ServiceItem(
           id: 'ai_clarafin',
           title: 'AI Clarafin',
           category: 'tracker',
@@ -114,7 +116,7 @@ class _AllServicesBottomSheetState extends State<AllServicesBottomSheet> {
           isBadgeNew: true,
           description: 'Tanya jawab solusi keuangan bersama AI',
         ),
-        ServiceItem(
+        const ServiceItem(
           id: 'riwayat',
           title: 'Riwayat',
           category: 'tracker',
@@ -123,23 +125,32 @@ class _AllServicesBottomSheetState extends State<AllServicesBottomSheet> {
           route: '/transaction/history',
           description: 'Laporan dan riwayat transaksi lengkap',
         ),
-        ServiceItem(
+        const ServiceItem(
           id: 'goals',
           title: 'Target Tabungan',
           category: 'tracker',
           svgKey: 'goals',
           badgeColor: Color(0xFFFEF3C7),
-          route: '/goal/add',
+          route: '/budget?tab=0',
           description: 'Simulasi dan pemantauan impian finansial',
         ),
-        ServiceItem(
+        const ServiceItem(
           id: 'bills',
           title: 'Tagihan & Bills',
           category: 'tracker',
           svgKey: 'bills',
           badgeColor: Color(0xFFFFE4E6),
-          route: '/budget',
+          route: '/budget?tab=2',
           description: 'Pengingat tagihan rutin & langganan',
+        ),
+        const ServiceItem(
+          id: 'emergency_fund',
+          title: 'Dana Darurat',
+          category: 'tracker',
+          svgKey: 'goals',
+          badgeColor: Color(0xFFCCFBF1),
+          route: '/budget?tab=0',
+          description: 'Simulasi alokasi 3-6 bulan pengeluaran rutin',
         ),
       ],
     },
@@ -147,26 +158,28 @@ class _AllServicesBottomSheetState extends State<AllServicesBottomSheet> {
       'title': 'Cek Kesehatan Finansial & Tools',
       'tag': 'CHECK-UP & TOOLS',
       'description': 'Kuis diagnostik & kalkulator mandiri',
-      'tagColor': Color(0xFFEDE9FE),
+      'tagColor': const Color(0xFFEDE9FE),
       'items': [
-        ServiceItem(
+        const ServiceItem(
           id: 'tes_finansial',
           title: 'Tes Finansial',
           category: 'health_check',
           svgKey: 'tes_finansial',
           badgeColor: Color(0xFFDCFCE7),
           isBadgeNew: true,
+          route: '/financial-test',
           description: 'Check-up 3 menit rasio utang & dana darurat',
         ),
-        ServiceItem(
+        const ServiceItem(
           id: 'tes_kepribadian',
           title: 'Tipe Finansial',
           category: 'health_check',
           svgKey: 'tes_kepribadian',
           badgeColor: Color(0xFFFEF3C7),
+          route: '/match-expert',
           description: 'Cari tahu kepribadian uang: hemat vs impulsif',
         ),
-        ServiceItem(
+        const ServiceItem(
           id: 'score',
           title: 'ClaraScore',
           category: 'health_check',
@@ -175,20 +188,31 @@ class _AllServicesBottomSheetState extends State<AllServicesBottomSheet> {
           route: '/score',
           description: 'Skor kesehatan finansial neobrutalis',
         ),
-        ServiceItem(
+        const ServiceItem(
+          id: 'simulasi_kpr',
+          title: 'Simulasi KPR',
+          category: 'health_check',
+          svgKey: 'kalkulator',
+          badgeColor: Color(0xFFE0F2FE),
+          route: '/tools/kpr',
+          description: 'Simulasi cicilan KPR & rasio DSR penghasilan',
+        ),
+        const ServiceItem(
           id: 'kalkulator',
           title: 'Kalkulator',
           category: 'health_check',
           svgKey: 'kalkulator',
-          badgeColor: Color(0xFFE0F2FE),
-          description: 'Simulasi KPR, dana darurat, & dana pensiun',
+          badgeColor: Color(0xFFEDE9FE),
+          route: '/tools/calculator',
+          description: 'Simulasi anuitas pinjaman & cicilan bulanan',
         ),
-        ServiceItem(
+        const ServiceItem(
           id: 'bebas_hutang',
           title: 'Bebas Hutang',
           category: 'health_check',
           svgKey: 'bebas_hutang',
           badgeColor: Color(0xFFFFE4E6),
+          route: '/tools/debt-payoff',
           description: 'Strategi pelunasan utang Snowball vs Avalanche',
         ),
       ],
@@ -197,30 +221,33 @@ class _AllServicesBottomSheetState extends State<AllServicesBottomSheet> {
       'title': 'Kelas & Edukasi Finansial',
       'tag': 'EDUKASI',
       'description': 'Modul & webinar eksklusif perencana keuangan',
-      'tagColor': Color(0xFFFFEDD5),
+      'tagColor': const Color(0xFFFFEDD5),
       'items': [
-        ServiceItem(
+        const ServiceItem(
           id: 'kelas_online',
           title: 'Kelas Online',
           category: 'education',
           svgKey: 'kelas_online',
           badgeColor: Color(0xFFFEF08A),
+          isBadgeSoon: true,
           description: 'Video modul belajar kelola uang dari nol',
         ),
-        ServiceItem(
+        const ServiceItem(
           id: 'webinar_cfp',
           title: 'Webinar CFP',
           category: 'education',
           svgKey: 'webinar_cfp',
           badgeColor: Color(0xFFCCFBF1),
+          isBadgeSoon: true,
           description: 'Sesi webinar live interaktif bersama perencana',
         ),
-        ServiceItem(
+        const ServiceItem(
           id: 'ebook',
           title: 'E-Book Panduan',
           category: 'education',
           svgKey: 'ebook',
           badgeColor: Color(0xFFEDE9FE),
+          isBadgeSoon: true,
           description: 'Kumpulan e-book panduan investasi & pajak',
         ),
       ],
@@ -229,9 +256,9 @@ class _AllServicesBottomSheetState extends State<AllServicesBottomSheet> {
       'title': 'Promo & Rewards',
       'tag': 'HADIAH & PROMO',
       'description': 'Voucher diskon konseling & kado untuk teman',
-      'tagColor': Color(0xFFFEF3C7),
+      'tagColor': const Color(0xFFFEF3C7),
       'items': [
-        ServiceItem(
+        const ServiceItem(
           id: 'kupon',
           title: 'Kupon Promo',
           category: 'rewards',
@@ -240,20 +267,22 @@ class _AllServicesBottomSheetState extends State<AllServicesBottomSheet> {
           route: '/vouchers',
           description: 'Klaim diskon s.d. 50% untuk sesi konseling',
         ),
-        ServiceItem(
+        const ServiceItem(
           id: 'gift_card',
           title: 'Gift Card',
           category: 'rewards',
           svgKey: 'gift_card',
           badgeColor: Color(0xFFFFE4E6),
+          isBadgeSoon: true,
           description: 'Kado sesi konsultasi untuk teman/keluarga',
         ),
-        ServiceItem(
+        const ServiceItem(
           id: 'referral',
           title: 'Ajak Teman',
           category: 'rewards',
           svgKey: 'referral',
           badgeColor: Color(0xFFDCFCE7),
+          isBadgeSoon: true,
           description: 'Dapatkan saldo konsultasi gratis bersama teman',
         ),
       ],
@@ -267,14 +296,22 @@ class _AllServicesBottomSheetState extends State<AllServicesBottomSheet> {
   }
 
   void _handleServiceTap(BuildContext context, ServiceItem item) {
-    Navigator.of(context).pop(); // Close bottom sheet
-
     if (item.onTap != null) {
+      Navigator.of(context).pop();
       item.onTap!();
       return;
     }
 
+
+
+    if (item.isBadgeSoon) {
+      Navigator.of(context).pop();
+      UpcomingFeatureBottomSheet.show(context, item);
+      return;
+    }
+
     if (item.route != null) {
+      Navigator.of(context).pop();
       if (item.route!.startsWith('/consult') ||
           item.route!.startsWith('/home') ||
           item.route!.startsWith('/wallet') ||
@@ -286,7 +323,6 @@ class _AllServicesBottomSheetState extends State<AllServicesBottomSheet> {
       return;
     }
 
-    // Interactive feature modal for new services
     _showFeatureDetailDialog(context, item);
   }
 
@@ -656,7 +692,7 @@ class _AllServicesBottomSheetState extends State<AllServicesBottomSheet> {
                                           ),
                                         ),
 
-                                        // Free / New Badge
+                                        // Free / New / Soon Badge
                                         if (it.isBadgeFree)
                                           Positioned(
                                             top: -3,
@@ -697,6 +733,28 @@ class _AllServicesBottomSheetState extends State<AllServicesBottomSheet> {
                                                   fontSize: 8,
                                                   fontWeight: FontWeight.w900,
                                                   color: Colors.white,
+                                                ),
+                                              ),
+                                            ),
+                                          )
+                                        else if (it.isBadgeSoon)
+                                          Positioned(
+                                            top: -3,
+                                            right: -3,
+                                            child: Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                                              decoration: BoxDecoration(
+                                                color: NeoBrutalism.lavender,
+                                                borderRadius: BorderRadius.circular(9999),
+                                                border: Border.all(color: Colors.black, width: 1.5),
+                                              ),
+                                              child: const Text(
+                                                'SOON',
+                                                style: TextStyle(
+                                                  fontFamily: 'Plus Jakarta Sans',
+                                                  fontSize: 8,
+                                                  fontWeight: FontWeight.w900,
+                                                  color: Colors.black,
                                                 ),
                                               ),
                                             ),

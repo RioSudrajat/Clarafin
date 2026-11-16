@@ -7,6 +7,7 @@ import '../../features/budget/domain/models/goal_model.dart';
 import '../../features/budget/domain/models/budget_category_model.dart';
 import '../../features/budget/domain/models/bill_model.dart';
 import '../../features/profile/domain/models/user_profile_model.dart';
+import '../../features/notification/domain/models/notification_model.dart';
 
 final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
   throw UnimplementedError('sharedPreferencesProvider must be overridden in ProviderScope');
@@ -103,6 +104,20 @@ class LocalStorageService {
     await _prefs.setString(key, jsonEncode(profile.toJson()));
   }
 
+  // Notifications
+  List<NotificationItem> getNotifications(String userId) {
+    final key = 'clarafin_notifications_$userId';
+    final list = _prefs.getStringList(key);
+    if (list == null) return [];
+    return list.map((item) => NotificationItem.fromJson(jsonDecode(item) as Map<String, dynamic>)).toList();
+  }
+
+  Future<void> saveNotifications(String userId, List<NotificationItem> notifications) async {
+    final key = 'clarafin_notifications_$userId';
+    final list = notifications.map((n) => jsonEncode(n.toJson())).toList();
+    await _prefs.setStringList(key, list);
+  }
+
   // Total Budget
   double getTotalBudget(String userId) {
     final key = 'clarafin_total_budget_$userId';
@@ -112,5 +127,17 @@ class LocalStorageService {
   Future<void> saveTotalBudget(String userId, double amount) async {
     final key = 'clarafin_total_budget_$userId';
     await _prefs.setDouble(key, amount);
+  }
+
+  // Clear operations for Account Deletion
+  Future<void> clearUserData(String userId) async {
+    final keys = _prefs.getKeys().where((k) => k.contains(userId)).toList();
+    for (final k in keys) {
+      await _prefs.remove(k);
+    }
+  }
+
+  Future<void> clearAll() async {
+    await _prefs.clear();
   }
 }

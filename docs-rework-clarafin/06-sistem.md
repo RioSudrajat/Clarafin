@@ -80,7 +80,7 @@ Setiap irisan berhenti kalau kondisi di kolom kanan benar di sandbox.
 | 2 | Lamaran praktisi dan persetujuan | Sebelum disetujui tidak ada UI praktisi. Sesudah disetujui, slot bisa dibuka |
 | 3 | Hold, QRIS, webhook, sesi `confirmed`, Meet untuk virtual | Satu pembayaran mengubah slot menjadi `booked` dan muncul di kedua peran |
 | 4 | Hadir, catatan, payout, refund pada kasus di dokumen 03 | Kasus keduanya tidak Hadir menahan 20% dan mengembalikan 80% |
-| 5 | Cek: kuota, nota, Gmail, batas jawaban, urutan nama | Pertanyaan restrukturisasi tidak berisi langkah solusi |
+| 5 | Cek: kuota, nota, Gmail, batas jawaban, urutan nama | Pertanyaan restrukturisasi memberi *helpful hint* netral tanpa keputusan mengikat, lalu menawarkan 1–3 praktisi |
 | 6 | Dompet, transaksi, izin per sesi | Praktisi melihat dompet hanya saat izin aktif |
 | 7 | Couple | Tidak ada tagihan sebelum undangan diterima |
 | 8 | Komplain, ulasan, sematan, Pro | Komplain menahan payout. Pro menambah 400 aksi tanpa mengubah harga sesi |

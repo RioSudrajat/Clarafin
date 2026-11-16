@@ -3,48 +3,9 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/neo_brutalism_decorations.dart';
-import '../widgets/onboarding_carousel_slide.dart';
 
-class OnboardingWelcomeScreen extends StatefulWidget {
+class OnboardingWelcomeScreen extends StatelessWidget {
   const OnboardingWelcomeScreen({super.key});
-
-  @override
-  State<OnboardingWelcomeScreen> createState() => _OnboardingWelcomeScreenState();
-}
-
-class _OnboardingWelcomeScreenState extends State<OnboardingWelcomeScreen> {
-  final PageController _pageController = PageController();
-  int _currentPage = 0;
-
-  static const List<Map<String, dynamic>> _slides = [
-    {
-      'tag': 'CFP® CERTIFIED',
-      'title': 'Konsultasi Bareng Ahli',
-      'desc': 'Terhubung langsung dengan perencana keuangan berlisensi resmi untuk strategi finansialmu.',
-      'icon': Icons.verified_user_outlined,
-      'bg': NeoBrutalism.mint,
-    },
-    {
-      'tag': 'MULTI-WALLET TRACKING',
-      'title': 'Pantau Kas & Aset Seketika',
-      'desc': 'Catat mutasi bank, e-wallet, tagihan, dan budget bulanan dalam satu dasbor rapi.',
-      'icon': Icons.account_balance_wallet_outlined,
-      'bg': Color(0xFFEFF6FF),
-    },
-    {
-      'tag': 'MEASURABLE GOALS',
-      'title': 'Wujudkan Target Finansial',
-      'desc': 'Rancang target tabungan terukur dari dana darurat sampai impian masa depan.',
-      'icon': Icons.track_changes_outlined,
-      'bg': Color(0xFFF7FEE7),
-    },
-  ];
-
-  @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -56,29 +17,22 @@ class _OnboardingWelcomeScreenState extends State<OnboardingWelcomeScreen> {
           child: Column(
             children: [
               _buildBrandHeader(),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
               Expanded(
-                child: PageView.builder(
-                  controller: _pageController,
-                  itemCount: _slides.length,
-                  onPageChanged: (index) => setState(() => _currentPage = index),
-                  itemBuilder: (context, index) {
-                    final item = _slides[index];
-                    return OnboardingCarouselSlide(
-                      tag: item['tag'] as String,
-                      title: item['title'] as String,
-                      desc: item['desc'] as String,
-                      icon: item['icon'] as IconData,
-                      bg: item['bg'] as Color,
-                    );
-                  },
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  child: Column(
+                    children: [
+                      _buildVisualCollage(),
+                      const SizedBox(height: 24),
+                      _buildCopySection(),
+                    ],
+                  ),
                 ),
               ),
-              const SizedBox(height: 16),
-              _buildPageIndicators(),
-              const SizedBox(height: 24),
-              _buildPrimaryButton(context),
               const SizedBox(height: 12),
+              _buildPrimaryButton(context),
+              const SizedBox(height: 10),
               _buildLoginLink(context),
             ],
           ),
@@ -97,75 +51,259 @@ class _OnboardingWelcomeScreenState extends State<OnboardingWelcomeScreen> {
           color: NeoBrutalism.dark,
           colorBlendMode: BlendMode.srcIn,
           fit: BoxFit.contain,
-        ),
-        const SizedBox(width: 10),
-        Text(
-          'clarafin',
-          style: GoogleFonts.quicksand(
-            fontSize: 24,
-            fontWeight: FontWeight.w900,
+          errorBuilder: (context, error, stackTrace) => const Icon(
+            Icons.account_balance_wallet,
+            size: 28,
             color: NeoBrutalism.dark,
-            letterSpacing: -0.5,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          'CLARAFIN',
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 20,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1.5,
+            color: NeoBrutalism.dark,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildPageIndicators() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(_slides.length, (index) {
-        final isActive = index == _currentPage;
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          margin: const EdgeInsets.symmetric(horizontal: 4),
-          width: isActive ? 24 : 8,
-          height: 8,
-          decoration: BoxDecoration(
-            color: isActive ? NeoBrutalism.lime : Colors.white,
-            borderRadius: BorderRadius.circular(4),
-            border: NeoBrutalism.border(width: 1.5),
+  Widget _buildVisualCollage() {
+    return SizedBox(
+      height: 250,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Background Card: Mint Income Notification
+          Positioned(
+            top: 15,
+            left: 10,
+            child: Transform.rotate(
+              angle: -0.06,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: NeoBrutalism.mint,
+                  borderRadius: BorderRadius.circular(12),
+                  border: NeoBrutalism.border(width: 2.0),
+                  boxShadow: NeoBrutalism.shadow(yOffset: 3.0),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.arrow_downward_rounded, size: 16, color: NeoBrutalism.dark),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Gajian! +Rp 8.500.000',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: NeoBrutalism.dark,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
-        );
-      }),
+          // Yellow Sticky Note: Cash Expense
+          Positioned(
+            top: 60,
+            right: 15,
+            child: Transform.rotate(
+              angle: 0.08,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEF08A),
+                  borderRadius: BorderRadius.circular(10),
+                  border: NeoBrutalism.border(width: 2.0),
+                  boxShadow: NeoBrutalism.shadow(yOffset: 3.0),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.local_parking_rounded, size: 15, color: NeoBrutalism.dark),
+                    const SizedBox(width: 5),
+                    Text(
+                      'Parkir Rp 5.000',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: NeoBrutalism.dark,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          // Center Receipt Snippet: Coffee
+          Positioned(
+            top: 95,
+            left: 25,
+            child: Transform.rotate(
+              angle: 0.03,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: NeoBrutalism.border(width: 2.0),
+                  boxShadow: NeoBrutalism.shadow(yOffset: 3.0),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.coffee_rounded, size: 16, color: NeoBrutalism.dark),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Kopi Susu Rp 28.000 (Struk OCR)',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: NeoBrutalism.dark,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          // Main Pillar Teal Badge: Certified Advisors
+          Positioned(
+            bottom: 12,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: NeoBrutalism.teal,
+                borderRadius: BorderRadius.circular(14),
+                border: NeoBrutalism.border(width: 2.0),
+                boxShadow: NeoBrutalism.shadow(yOffset: 4.0),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(5),
+                    decoration: BoxDecoration(
+                      color: NeoBrutalism.lime,
+                      borderRadius: BorderRadius.circular(8),
+                      border: NeoBrutalism.border(width: 1.5),
+                    ),
+                    child: const Icon(Icons.verified_rounded, size: 16, color: NeoBrutalism.dark),
+                  ),
+                  const SizedBox(width: 10),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'KONSULTAN RESMI BERLISENSI',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.5,
+                          color: NeoBrutalism.lime,
+                        ),
+                      ),
+                      Text(
+                        'CFP® • CFA® • QWP® • AWP® • BKP',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCopySection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+          decoration: BoxDecoration(
+            color: NeoBrutalism.lime,
+            borderRadius: BorderRadius.circular(NeoBrutalism.radiusPill),
+            border: NeoBrutalism.border(width: 2.0),
+            boxShadow: NeoBrutalism.shadow(yOffset: 2.0),
+          ),
+          child: Text(
+            'TRACKER + FINANCIAL ADVISORY',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 11,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0.6,
+              color: NeoBrutalism.dark,
+            ),
+          ),
+        ),
+        const SizedBox(height: 14),
+        Text(
+          'Kopi, gajian, tagihan,\nsampai konsultasi ahli.',
+          textAlign: TextAlign.center,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 26,
+            fontWeight: FontWeight.w900,
+            letterSpacing: -0.6,
+            height: 1.2,
+            color: NeoBrutalism.dark,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'Ucapkan, foto struk, atau ketik pengeluaran harianmu. Butuh strategi lebih dalam? Diskusikan langsung bareng konsultan berlisensi resmi (CFP®, CFA®, QWP®, AWP®, CPA, & BKP).',
+          textAlign: TextAlign.center,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+            height: 1.5,
+            color: AppColors.textSecondary,
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildPrimaryButton(BuildContext context) {
     return SizedBox(
       width: double.infinity,
-      height: 52,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: NeoBrutalism.lime,
-          borderRadius: BorderRadius.circular(NeoBrutalism.radiusSm),
-          border: NeoBrutalism.border(width: 2.0),
-          boxShadow: NeoBrutalism.shadow(yOffset: 3.5),
-        ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(NeoBrutalism.radiusSm),
-            onTap: () => context.go('/onboarding/wallet-setup'),
-            child: Center(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Mulai Setup Sekarang',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w900,
-                      color: NeoBrutalism.dark,
-                      letterSpacing: 0.2,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  const Icon(Icons.arrow_forward, size: 18, color: NeoBrutalism.dark),
-                ],
+      child: GestureDetector(
+        onTap: () => context.go('/onboarding/history'),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          decoration: BoxDecoration(
+            color: NeoBrutalism.lime,
+            borderRadius: BorderRadius.circular(NeoBrutalism.radiusLg),
+            border: NeoBrutalism.border(width: 2.0),
+            boxShadow: NeoBrutalism.shadow(yOffset: 4.0),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                'Mulai Sekarang',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
+                  color: NeoBrutalism.dark,
+                ),
               ),
-            ),
+              const SizedBox(width: 8),
+              const Icon(Icons.arrow_forward_rounded, size: 20, color: NeoBrutalism.dark),
+            ],
           ),
         ),
       ),
@@ -176,28 +314,26 @@ class _OnboardingWelcomeScreenState extends State<OnboardingWelcomeScreen> {
     return GestureDetector(
       onTap: () => context.go('/login'),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              'Sudah punya akun? ',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textSecondary,
-              ),
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: RichText(
+          text: TextSpan(
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSecondary,
             ),
-            Text(
-              'Masuk di Sini',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 13,
-                fontWeight: FontWeight.w900,
-                color: NeoBrutalism.dark,
-                decoration: TextDecoration.underline,
+            children: [
+              const TextSpan(text: 'Sudah punya akun? '),
+              TextSpan(
+                text: 'Masuk di sini',
+                style: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.w900,
+                  color: NeoBrutalism.dark,
+                  decoration: TextDecoration.underline,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

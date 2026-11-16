@@ -36,7 +36,7 @@ class MatchExpertWelcomeView extends StatelessWidget {
                     style: TextStyle(
                       fontFamily: 'Plus Jakarta Sans',
                       color: Colors.white,
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.w600,
                       fontSize: 15,
                     ),
                   ),
@@ -46,34 +46,33 @@ class MatchExpertWelcomeView extends StatelessWidget {
           ),
         ),
 
-        // Scrollable content with pristine margins matching reference
+        // Scrollable content
         Expanded(
           child: SingleChildScrollView(
             physics: const ClampingScrollPhysics(),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                const SizedBox(height: 48),
+                const SizedBox(height: 36),
 
-                // 3D Glossy Celestial Crystal Pearl Orb matching reference
-                _buildGlowingOrb(),
+                // Authentic Clarafin Neo-Brutalism Badge Illustration (No generic AI glowing orb!)
+                _buildNeoBrutalismMatchBadge(),
 
-                const SizedBox(height: 32),
+                const SizedBox(height: 30),
 
                 // Title
                 RichText(
                   textAlign: TextAlign.center,
                   text: TextSpan(
-                    style: const TextStyle(
-                      fontFamily: 'Plus Jakarta Sans',
+                    style: GoogleFonts.plusJakartaSans(
                       fontSize: 22,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w800,
                       color: Colors.white,
                       height: 1.35,
                       letterSpacing: -0.3,
                     ),
-                    children: [
-                      const TextSpan(text: 'Hai, Selamat datang di\n'),
+                    children: const [
+                      TextSpan(text: 'Hai, Selamat datang di\n'),
                       TextSpan(
                         text: 'Match Expert.',
                         style: TextStyle(
@@ -84,46 +83,44 @@ class MatchExpertWelcomeView extends StatelessWidget {
                   ),
                 ),
 
-                const SizedBox(height: 22),
+                const SizedBox(height: 18),
 
-                // Body text: one cohesive, elegant paragraph matching reference (36px margin)
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 36),
+                // Body text
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
                   child: Text(
-                    'Setiap langkah finansialmu berharga, dan kamu nggak perlu jalan sendirian. Dengan Match Expert, kamu akan dipertemukan dengan konsultan keuangan yang siap menemani perjalanan finansialmu, di ruang yang aman, nyaman, dan ditangani secara profesional. Karena perjalanan ini milikmu, dan Clarafin selalu ada untuk mendampingimu.',
+                    'Setiap langkah finansialmu berharga, dan kamu tidak perlu melangkah sendirian. Melalui Match Expert, kamu akan dipasangkan dengan konsultan keuangan yang paling sesuai dengan tujuan dan gaya finansialmu, di ruang konsultasi yang aman dan profesional.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontFamily: 'Plus Jakarta Sans',
+                    style: GoogleFonts.plusJakartaSans(
                       fontSize: 13.5,
-                      fontWeight: FontWeight.w400,
-                      color: Color(0xFFE2E8F0),
+                      fontWeight: FontWeight.w500,
+                      color: const Color(0xFFE2E8F0),
                       height: 1.6,
                       letterSpacing: 0.1,
                     ),
                   ),
                 ),
 
-                const SizedBox(height: 24),
+                const SizedBox(height: 22),
 
-                // Bold closing callout on two centered lines matching reference
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 32),
+                // Bold callout
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
                   child: Text(
                     'Yuk, mulai perjalanan finansialmu\nbersama Clarafin.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontFamily: 'Plus Jakarta Sans',
+                    style: GoogleFonts.plusJakartaSans(
                       fontSize: 14.5,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w800,
                       color: Colors.white,
                       height: 1.45,
                     ),
                   ),
                 ),
 
-                const SizedBox(height: 36),
+                const SizedBox(height: 32),
 
-                // CTA Button with 24px horizontal padding
+                // CTA Button
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                   child: GestureDetector(
@@ -134,24 +131,23 @@ class MatchExpertWelcomeView extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: NeoBrutalism.lime,
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.black, width: 2),
-                        boxShadow: NeoBrutalism.shadow(yOffset: 3),
+                        border: NeoBrutalism.border(width: 2.5),
+                        boxShadow: NeoBrutalism.shadow(yOffset: 4),
                       ),
                       alignment: Alignment.center,
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
+                        children: [
                           Text(
-                            'Mulai',
-                            style: TextStyle(
-                              fontFamily: 'Plus Jakarta Sans',
+                            'Mulai Kuis Cocokkan',
+                            style: GoogleFonts.plusJakartaSans(
                               fontSize: 16,
                               fontWeight: FontWeight.w800,
                               color: NeoBrutalism.dark,
                             ),
                           ),
-                          SizedBox(width: 8),
-                          Icon(Icons.arrow_forward_rounded, color: NeoBrutalism.dark, size: 20),
+                          const SizedBox(width: 8),
+                          const Icon(Icons.arrow_forward_rounded, color: NeoBrutalism.dark, size: 20),
                         ],
                       ),
                     ),
@@ -160,17 +156,16 @@ class MatchExpertWelcomeView extends StatelessWidget {
 
                 const SizedBox(height: 32),
 
-                // Vertically stacked brand footer matching reference
+                // Vertically stacked brand footer
                 Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text(
+                    Text(
                       'Powered by',
-                      style: TextStyle(
-                        fontFamily: 'Plus Jakarta Sans',
+                      style: GoogleFonts.plusJakartaSans(
                         fontSize: 12,
-                        fontWeight: FontWeight.w400,
-                        color: Color(0xFF94A3B8),
+                        fontWeight: FontWeight.w500,
+                        color: const Color(0xFF94A3B8),
                         letterSpacing: 0.3,
                       ),
                     ),
@@ -208,70 +203,74 @@ class MatchExpertWelcomeView extends StatelessWidget {
     );
   }
 
-  /// 3D Glossy Crystal Pearl Orb matching the reference aesthetic
-  Widget _buildGlowingOrb() {
-    return Container(
-      width: 110,
-      height: 110,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF38BDF8).withValues(alpha: 0.35),
-            blurRadius: 40,
-            spreadRadius: 6,
-          ),
-          BoxShadow(
-            color: const Color(0xFF8B5CF6).withValues(alpha: 0.3),
-            blurRadius: 32,
-            spreadRadius: 2,
-          ),
-          BoxShadow(
-            color: Colors.white.withValues(alpha: 0.35),
-            blurRadius: 20,
-            spreadRadius: 0,
-          ),
-        ],
-      ),
+  /// Authentic Neo-Brutalism Clarafin Hero Badge (Lime + Mint + 2.5px solid border + hard shadow)
+  Widget _buildNeoBrutalismMatchBadge() {
+    return SizedBox(
+      width: 130,
+      height: 130,
       child: Stack(
+        alignment: Alignment.center,
         children: [
-          // Base 3D celestial sphere with rich multi-color iridescence
-          Container(
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: RadialGradient(
-                center: Alignment(-0.25, -0.28),
-                radius: 0.95,
-                colors: [
-                  Color(0xFFFFFFFF), // Specular light core
-                  Color(0xFFBAE6FD), // Soft ice cyan reflection
-                  Color(0xFF38BDF8), // Vivid celestial blue
-                  Color(0xFF3B82F6), // Deep electric blue
-                  Color(0xFF8B5CF6), // Royal purple swirl
-                  Color(0xFFD946EF), // Radiant magenta
-                  Color(0xFFF472B6), // Soft rose outer rim
-                ],
-                stops: [0.0, 0.18, 0.38, 0.58, 0.76, 0.88, 1.0],
+          // Background rotated accent card (Mint)
+          Transform.rotate(
+            angle: -0.08,
+            child: Container(
+              width: 104,
+              height: 104,
+              decoration: BoxDecoration(
+                color: NeoBrutalism.mint,
+                borderRadius: BorderRadius.circular(24),
+                border: NeoBrutalism.border(width: 2.5),
+                boxShadow: NeoBrutalism.shadow(yOffset: 4),
               ),
             ),
           ),
-          // Top-left specular highlight sheen
+
+          // Foreground main circular card (Lime Neon)
+          Container(
+            width: 100,
+            height: 100,
+            decoration: BoxDecoration(
+              color: NeoBrutalism.lime,
+              shape: BoxShape.circle,
+              border: NeoBrutalism.border(width: 2.5),
+              boxShadow: NeoBrutalism.shadow(yOffset: 3),
+            ),
+            child: const Center(
+              child: Icon(
+                Icons.psychology_rounded,
+                size: 52,
+                color: Colors.black,
+              ),
+            ),
+          ),
+
+          // Small micro tag chip at bottom right
           Positioned(
-            top: 13,
-            left: 19,
+            bottom: 4,
+            right: 0,
             child: Container(
-              width: 34,
-              height: 20,
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.white.withValues(alpha: 0.9),
-                    Colors.white.withValues(alpha: 0.0),
-                  ],
-                ),
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                border: NeoBrutalism.border(width: 1.8),
+                boxShadow: NeoBrutalism.shadow(yOffset: 1.5),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.handshake_rounded, size: 12, color: Colors.black),
+                  const SizedBox(width: 4),
+                  Text(
+                    'CFP® MATCH',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.black,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),

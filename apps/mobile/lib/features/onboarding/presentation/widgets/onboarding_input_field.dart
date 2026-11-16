@@ -6,6 +6,7 @@ import '../../../../core/theme/neo_brutalism_decorations.dart';
 class OnboardingInputField extends StatelessWidget {
   final String label;
   final TextEditingController controller;
+  final String? hintText;
   final IconData? prefixIcon;
   final String? prefixText;
   final TextInputType? keyboardType;
@@ -15,6 +16,7 @@ class OnboardingInputField extends StatelessWidget {
     super.key,
     required this.label,
     required this.controller,
+    this.hintText,
     this.prefixIcon,
     this.prefixText,
     this.keyboardType,
@@ -73,7 +75,13 @@ class OnboardingInputField extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                     color: NeoBrutalism.dark,
                   ),
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
+                    hintText: hintText,
+                    hintStyle: GoogleFonts.plusJakartaSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: const Color(0xFF94A3B8),
+                    ),
                     border: InputBorder.none,
                     isDense: true,
                     contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),

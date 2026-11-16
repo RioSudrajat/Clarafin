@@ -6,7 +6,7 @@ Sumber percakapan perancangan 5–6 Oktober 2026. Harga dan kombinasi paket yang
 
 Clarafin menjual sesi dengan manusia. Tracker uang gratis, dipakai untuk menarik pengguna dan menjadi bahan sesi. AI adalah asisten berkuota, bukan konsultan.
 
-Yang berbayar pada launch: sesi manusia, dan langganan Pro untuk menaikkan kuota AI. Pro tidak mendiskon harga sesi.
+Yang berbayar pada launch: sesi manusia, dan langganan AI berkuota (**Clarafin Pro / Unlimited**) untuk menaikkan kuota AI. Langganan AI tidak mendiskon harga sesi.
 
 Nama produk pada dokumen baru adalah Clarafin. Dokumen lama yang menulis HaloFin tidak diubah.
 
@@ -38,7 +38,7 @@ Default platform 20% dari harga yang benar-benar dibayar, praktisi 80%. Staf bol
 
 Bayar yang hidup pada launch: QRIS lewat Xendit, berlaku 15 menit, sama dengan tahan slot solo. Virtual account dan e-wallet ada di kode, tidak muncul di checkout sampai pembayaran ujung-ke-ujungnya selesai. Kartu dan perpanjangan Pro otomatis ditunda sampai keduanya hidup di produksi.
 
-Pro Rp49.000 untuk 400 aksi selama 30 hari. Diperpanjang manual lewat QRIS. Tidak ada potong otomatis. Tidak bisa di-refund setelah lunas. Aksi yang tersisa hangus di akhir periode. Tanpa Pro, kuota 40 aksi per bulan kalender.
+Tier AI berbayar mengikuti implementasi aplikasi: **Pro Rp49.000** (400 aksi selama 30 hari) dan **Unlimited Rp99.000** (akses tanpa batas kuota bulanan dengan *fair-use* rate limit Redis `10 req/min/user_id`). Diperpanjang manual lewat QRIS. Tidak ada potong otomatis. Tidak bisa di-refund setelah lunas. Sisa aksi Pro hangus di akhir periode. Tanpa langganan aktif, kuota kembali ke Free (40 aksi per bulan kalender). Kegagalan LLM tidak memotong kuota (*atomic reservation*).
 
 Pencairan praktisi 48 jam setelah catatan penutup terkirim, kalau tidak ada komplain. Detail mesinnya di [03-sesi-dan-uang.md](./03-sesi-dan-uang.md).
 

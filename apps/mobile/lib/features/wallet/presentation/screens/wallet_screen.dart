@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/providers/mock_providers.dart';
 import '../../../../core/theme/neo_brutalism_decorations.dart';
+import '../../../../core/utils/currency_formatter.dart';
 import '../../../../shared/widgets/interactive_donut_chart.dart';
+import '../../../profile/presentation/providers/user_profile_provider.dart';
 import '../widgets/wallet_filter_row.dart';
 import '../widgets/wallet_gradient_header.dart';
-import '../widgets/wallet_grid_card.dart';
+import '../widgets/wallet_stacked_deck.dart';
 
 /// Orchestrator screen for the Wallet feature.
-/// Features a Halofin brand gradient header with interactive donut chart card,
-/// followed by a Neo-Brutalist white canvas holding the user's wallet cards.
+/// Features a Clarafin brand gradient header with interactive donut chart card,
+/// followed by an Interactive Stacked ATM Deck on a Neo-Brutalist white canvas.
 class WalletScreen extends ConsumerStatefulWidget {
   const WalletScreen({super.key});
 
@@ -21,27 +23,37 @@ class WalletScreen extends ConsumerStatefulWidget {
 
 class _WalletScreenState extends ConsumerState<WalletScreen> {
   String _activeFilter = 'Semua';
-  final formatCurrency = NumberFormat.currency(
-    locale: 'id_ID',
-    symbol: 'Rp ',
-    decimalDigits: 0,
-  );
+  bool? _sortByValueAsc; // null: normal, false: highest first, true: lowest first
 
   String _mapTypeToFilter(String type) {
     if (type == 'Bank') return 'Bank';
     if (type == 'E-Wallet') return 'E-Wallet';
-    if (['Mutual Fund', 'Stock', 'Bond', 'Deposit', 'Crypto'].contains(type)) {
+    if (['Mutual Fund', 'Stock', 'Bond', 'Deposit', 'Crypto', 'CEX', 'DEX', 'Web3 Wallet'].contains(type)) {
       return 'Investasi';
     }
     return 'Lainnya';
+  }
+
+  void _toggleSort() {
+    setState(() {
+      if (_sortByValueAsc == null) {
+        _sortByValueAsc = false; // default first click: Tertinggi ke Terendah
+      } else if (_sortByValueAsc == false) {
+        _sortByValueAsc = true; // Terendah ke Tertinggi
+      } else {
+        _sortByValueAsc = null; // reset to original
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final topSafeArea = MediaQuery.of(context).padding.top;
     final wallets = ref.watch(walletsProvider);
+    final userProfile = ref.watch(userProfileProvider);
+    final currencyCode = userProfile.currency;
 
-    // Compute chart data (exact logic preserved)
+    // Compute chart data
     double totalBank = 0, totalEwallet = 0, totalInvest = 0, totalOther = 0;
     double totalBalance = 0;
     for (var w in wallets) {
@@ -83,6 +95,14 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
       return _mapTypeToFilter(w.type) == _activeFilter;
     }).toList();
 
+    if (_sortByValueAsc != null) {
+      if (_sortByValueAsc!) {
+        filteredWallets.sort((a, b) => a.balance.compareTo(b.balance));
+      } else {
+        filteredWallets.sort((a, b) => b.balance.compareTo(a.balance));
+      }
+    }
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: Container(
@@ -94,122 +114,50 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
             // 1. Top Gradient Header & Donut Chart (Pinned at top)
             WalletGradientHeader(
               topSafeArea: topSafeArea,
-              totalBalanceFormatted: formatCurrency.format(totalBalance),
+              totalBalanceFormatted: CurrencyFormatter.format(
+                totalBalance,
+                currencyCode: currencyCode,
+              ),
               chartData: chartData,
+              onAddTap: () => context.push('/wallet/add'),
+              onSortTap: _toggleSort,
+              sortByValueAsc: _sortByValueAsc,
             ),
 
-            // 2. White Canvas holding the user's wallet cards
+            // 2. White Canvas holding fixed category pills and scrollable card deck
             Expanded(
               child: Container(
                 color: Colors.white,
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.only(top: 8, bottom: 100),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Section Header: "Your Wallets" + Neo-Brutalist "Sort by Value" button
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              'Your Wallets',
-                              style: TextStyle(
-                                fontFamily: 'Plus Jakarta Sans',
-                                fontSize: 18,
-                                fontWeight: FontWeight.w800,
-                                color: Colors.black,
-                                letterSpacing: -0.3,
-                              ),
-                            ),
-                            // Neo-Brutalist Sort Pill Button
-                            GestureDetector(
-                              onTap: () {},
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 5,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF3F4F6),
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                    color: Colors.black,
-                                    width: 1.5,
-                                  ),
-                                  boxShadow: const [
-                                    BoxShadow(
-                                      color: Colors.black,
-                                      offset: Offset(0, 1.5),
-                                      blurRadius: 0,
-                                    ),
-                                  ],
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: const [
-                                    Icon(
-                                      Icons.swap_vert,
-                                      size: 14,
-                                      color: Colors.black,
-                                    ),
-                                    SizedBox(width: 4),
-                                    Text(
-                                      'Sort by Value',
-                                      style: TextStyle(
-                                        fontFamily: 'Plus Jakarta Sans',
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w800,
-                                        color: Colors.black,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-
-                      // Filter Pills
-                      WalletFilterRow(
+                child: Column(
+                  children: [
+                    // Fixed Category Filter Pills (Never scroll, stay on top)
+                    Container(
+                      color: Colors.white,
+                      padding: const EdgeInsets.only(top: 2, bottom: 6),
+                      child: WalletFilterRow(
                         activeFilter: _activeFilter,
                         onFilterSelected: (filter) =>
                             setState(() => _activeFilter = filter),
                       ),
-                      const SizedBox(height: 14),
+                    ),
 
-                      // Wallet Cards 2-Column Grid
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: GridView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            mainAxisSpacing: 14,
-                            crossAxisSpacing: 14,
-                            childAspectRatio: 1.12,
+                    // Scrollable Deck of ATM Cards (Scrolls under the filter row)
+                    Expanded(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.only(top: 6, bottom: 160),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: WalletStackedDeck(
+                            wallets: filteredWallets,
+                            formatAmount: (amt) => CurrencyFormatter.format(
+                              amt,
+                              currencyCode: currencyCode,
+                            ),
                           ),
-                          itemCount: filteredWallets.length + 1,
-                          itemBuilder: (context, index) {
-                            if (index == 0) {
-                              return const WalletAddCard();
-                            }
-                            final wallet = filteredWallets[index - 1];
-                            return WalletAccountCard(
-                              wallet: wallet,
-                              totalBalance: totalBalance,
-                              formatCurrency: formatCurrency,
-                            );
-                          },
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),

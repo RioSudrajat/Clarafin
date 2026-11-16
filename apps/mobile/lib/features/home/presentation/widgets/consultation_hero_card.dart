@@ -1,9 +1,11 @@
 import 'dart:ui' show lerpDouble;
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/neo_brutalism_decorations.dart';
+import '../../../profile/presentation/providers/user_profile_provider.dart';
 
-class ConsultationHeroCard extends StatelessWidget {
+class ConsultationHeroCard extends ConsumerWidget {
   final double progress;
   final String userName;
   final VoidCallback onEditName;
@@ -28,7 +30,36 @@ class ConsultationHeroCard extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final profile = ref.watch(userProfileProvider);
+    final focus = profile.advisoryFocus;
+
+    String badge = 'REKOMENDASI KONSULTAN';
+    String title = 'Atur uangmu\nbareng ahlinya.';
+    String subtitle = 'Cocokkan dengan konsultan\nyang paham tujuanmu.';
+
+    if (focus.contains('marriage_family')) {
+      badge = '#SIAP MENIKAH & KELUARGA';
+      title = 'Rencanakan masa depan\nbareng perencana keluarga.';
+      subtitle = 'Transparansi uang pranikah, pos rumah tangga, & dana anak.';
+    } else if (focus.contains('business_tax')) {
+      badge = '#OMZET & PAJAK USAHA';
+      title = 'Optimalkan omzet\n& pisahkan rekening bisnismu.';
+      subtitle = 'Hitung HPP, pisah rekening pribadi & usaha, serta pajak.';
+    } else if (focus.contains('cashflow_debt')) {
+      badge = '#FONDASI ARUS KAS & UTANG';
+      title = 'Bereskan cicilan\n& rapikan arus kasmu.';
+      subtitle = 'Kelola utang, atasi boncos, & bangun dana darurat kokoh.';
+    } else if (focus.contains('asset_protection')) {
+      badge = '#OPTIMALISASI ASET & PROTEKSI';
+      title = 'Susun portofolio\ninvestasi & proteksi asetmu.';
+      subtitle = 'Portofolio terarah, bedah asuransi, & simulasi KPR.';
+    } else if (focus.contains('fire_estate')) {
+      badge = '#KEBEBASAN FINANSIAL & WARIS';
+      title = 'Strategi FIRE menuju\nkebebasan finansial.';
+      subtitle = 'Perencanaan waris, passive income, & pensiun dini.';
+    }
+
     // ── 1. Curtain Animation (Delay 0.10, moves upward -32px and fades out by 0.52) ──
     final curtainProgress = _evaluateProgressInterval(progress, 0.10, 0.52, curve: Curves.easeIn);
     final curtainOpacity = (1.0 - curtainProgress).clamp(0.0, 1.0);
@@ -88,18 +119,36 @@ class ConsultationHeroCard extends StatelessWidget {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   mainAxisSize: MainAxisSize.min,
-                                  children: const [
-                                    SizedBox(height: 20),
-                                    SizedBox(height: 6),
+                                  children: [
+                                    const SizedBox(height: 20),
+                                    const SizedBox(height: 4),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: NeoBrutalism.lime,
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(color: Colors.black, width: 1.2),
+                                      ),
+                                      child: Text(
+                                        badge,
+                                        style: const TextStyle(
+                                          fontFamily: 'Plus Jakarta Sans',
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w900,
+                                          color: Colors.black,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
                                     Text(
-                                      'Atur uangmu\nbareng ahlinya.',
-                                      style: TextStyle(
+                                      title,
+                                      style: const TextStyle(
                                         fontFamily: 'Plus Jakarta Sans',
-                                        fontSize: 22,
+                                        fontSize: 20,
                                         fontWeight: FontWeight.w900,
                                         color: Colors.white,
                                         height: 1.15,
-                                        letterSpacing: -0.6,
+                                        letterSpacing: -0.5,
                                       ),
                                     ),
                                   ],
@@ -128,12 +177,12 @@ class ConsultationHeroCard extends StatelessWidget {
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
-                              const Expanded(
+                              Expanded(
                                 child: Text(
-                                  'Cocokkan dengan konsultan\nyang paham tujuanmu.',
-                                  style: TextStyle(
+                                  subtitle,
+                                  style: const TextStyle(
                                     fontFamily: 'Plus Jakarta Sans',
-                                    fontSize: 12,
+                                    fontSize: 11.5,
                                     fontWeight: FontWeight.w500,
                                     color: Colors.white,
                                     height: 1.25,
@@ -173,7 +222,7 @@ class ConsultationHeroCard extends StatelessWidget {
               ),
             ),
 
-          // ── Anchored Persistent Greeting: Hi, [userName] ──
+          // ── Anchored Persistent Greeting: "Halo, [Nama]" + Edit Icon ──
           Positioned(
             top: greetingTop,
             left: greetingLeft,
@@ -182,17 +231,16 @@ class ConsultationHeroCard extends StatelessWidget {
               onTap: onEditName,
               child: Row(
                 mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Flexible(
                     child: Text(
-                      'Hi, $userName',
+                      'Halo, $userName',
                       style: TextStyle(
                         fontFamily: 'Plus Jakarta Sans',
                         fontSize: greetingFontSize,
                         fontWeight: greetingFontWeight,
-                        color: Colors.white,
                         letterSpacing: greetingLetterSpacing,
+                        color: Colors.white,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),

@@ -1,21 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/models/wallet_model.dart';
+import '../../../../core/providers/mock_providers.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/neo_brutalism_decorations.dart';
 import '../widgets/onboarding_input_field.dart';
 import '../widgets/onboarding_step_header.dart';
 import '../widgets/onboarding_wallet_type_card.dart';
 
-class OnboardingWalletSetupScreen extends StatefulWidget {
+class OnboardingWalletSetupScreen extends ConsumerStatefulWidget {
   const OnboardingWalletSetupScreen({super.key});
 
   @override
-  State<OnboardingWalletSetupScreen> createState() => _OnboardingWalletSetupScreenState();
+  ConsumerState<OnboardingWalletSetupScreen> createState() => _OnboardingWalletSetupScreenState();
 }
 
-class _OnboardingWalletSetupScreenState extends State<OnboardingWalletSetupScreen> {
+class _OnboardingWalletSetupScreenState extends ConsumerState<OnboardingWalletSetupScreen> {
   String _selectedType = 'Bank';
   late final TextEditingController _nameController;
   late final TextEditingController _balanceController;
@@ -70,6 +73,24 @@ class _OnboardingWalletSetupScreenState extends State<OnboardingWalletSetupScree
       _selectedType = id;
       _nameController.text = defaultName;
     });
+  }
+
+  void _handleContinue() {
+    final name = _nameController.text.trim();
+    final balanceText = _balanceController.text.replaceAll('.', '').trim();
+    final balance = double.tryParse(balanceText) ?? 0.0;
+
+    if (name.isNotEmpty) {
+      final wallet = WalletModel(
+        id: 'w_init_${DateTime.now().millisecondsSinceEpoch}',
+        name: name,
+        type: _selectedType,
+        balance: balance,
+      );
+      ref.read(walletsProvider.notifier).addWallet(wallet);
+    }
+
+    context.go('/onboarding/goal');
   }
 
   @override
@@ -156,7 +177,7 @@ class _OnboardingWalletSetupScreenState extends State<OnboardingWalletSetupScree
           color: Colors.transparent,
           child: InkWell(
             borderRadius: BorderRadius.circular(NeoBrutalism.radiusSm),
-            onTap: () => context.go('/onboarding/goal'),
+            onTap: _handleContinue,
             child: Center(
               child: Row(
                 mainAxisSize: MainAxisSize.min,

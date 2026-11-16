@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 import 'mock_providers.dart';
+import '../utils/currency_formatter.dart';
+import '../../features/profile/presentation/providers/user_profile_provider.dart';
 
 class DailyPnlState {
   final double income;
@@ -37,6 +38,7 @@ class DailyPnlState {
 final dailyPnlProvider = Provider<DailyPnlState>((ref) {
   final transactions = ref.watch(transactionsProvider);
   final wallets = ref.watch(walletsProvider);
+  final userProfile = ref.watch(userProfileProvider);
 
   final totalBalance = wallets.fold<double>(0, (sum, w) => sum + w.balance);
   final now = DateTime.now();
@@ -60,13 +62,7 @@ final dailyPnlProvider = Provider<DailyPnlState>((ref) {
   final percentage = totalBalance > 0 ? (netPnl / totalBalance * 100) : 0.0;
   final isPositive = netPnl >= 0;
 
-  final currencyFormat = NumberFormat.currency(
-    locale: 'id_ID',
-    symbol: 'Rp ',
-    decimalDigits: 0,
-  );
-
-  final formattedPnl = '${isPositive ? "+" : ""}${currencyFormat.format(netPnl)}';
+  final formattedPnl = '${isPositive ? "+" : ""}${CurrencyFormatter.format(netPnl, currencyCode: userProfile.currency)}';
   final formattedPercentage = '${isPositive ? "+" : ""}${percentage.toStringAsFixed(1)}%';
 
   return DailyPnlState(

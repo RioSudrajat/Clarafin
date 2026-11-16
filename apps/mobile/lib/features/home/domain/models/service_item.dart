@@ -10,6 +10,7 @@ class ServiceItem {
   final String? description;
   final bool isBadgeNew;
   final bool isBadgeFree;
+  final bool isBadgeSoon;
   final VoidCallback? onTap;
 
   const ServiceItem({
@@ -22,6 +23,7 @@ class ServiceItem {
     this.description,
     this.isBadgeNew = false,
     this.isBadgeFree = false,
+    this.isBadgeSoon = false,
     this.onTap,
   });
 }

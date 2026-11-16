@@ -5,13 +5,14 @@ import 'consultant_filter_provider.dart';
 /// Categories available for filtering matching user reference image
 const List<String> consultCategories = [
   'All',
+  'Individu',
+  'Pasangan',
+  'Keluarga',
+  'Business',
   'Tax',
   'Investment',
   'Insurance',
   'Debt',
-  'Business',
-  'Keluarga',
-  'Pasangan',
 ];
 
 /// Search query notifier
@@ -108,13 +109,39 @@ final filteredConsultantsProvider = Provider<List<Consultant>>((ref) {
 });
 
 bool _matchesCategory(Consultant c, String category) {
-  final allText = '${c.title} ${c.specializations.join(" ")}'.toLowerCase();
-  switch (category) {
-    case 'Tax':
+  final allText =
+      '${c.title} ${c.bio} ${c.specializations.join(" ")}'.toLowerCase();
+  switch (category.toLowerCase()) {
+    case 'individu':
+      return allText.contains('individu') ||
+          allText.contains('budgeting') ||
+          allText.contains('cashflow') ||
+          allText.contains('profesional muda') ||
+          allText.contains('personal');
+    case 'pasangan':
+      return allText.contains('pasangan') ||
+          allText.contains('pranikah') ||
+          allText.contains('pasutri') ||
+          allText.contains('pernikahan');
+    case 'keluarga':
+      return allText.contains('keluarga') ||
+          allText.contains('pendidikan') ||
+          allText.contains('anak') ||
+          allText.contains('waris') ||
+          allText.contains('family');
+    case 'business':
+    case 'bisnis':
+      return allText.contains('business') ||
+          allText.contains('bisnis') ||
+          allText.contains('umkm') ||
+          allText.contains('korporat');
+    case 'tax':
+    case 'pajak':
       return allText.contains('tax') ||
           allText.contains('pajak') ||
           allText.contains('spt');
-    case 'Investment':
+    case 'investment':
+    case 'investasi':
       return allText.contains('investment') ||
           allText.contains('investasi') ||
           allText.contains('saham') ||
@@ -123,31 +150,20 @@ bool _matchesCategory(Consultant c, String category) {
           allText.contains('portfolio') ||
           allText.contains('fire') ||
           allText.contains('wealth');
-    case 'Insurance':
+    case 'insurance':
+    case 'asuransi':
       return allText.contains('insurance') ||
           allText.contains('asuransi') ||
-          allText.contains('dana darurat');
-    case 'Debt':
+          allText.contains('polis') ||
+          allText.contains('proteksi');
+    case 'debt':
+    case 'hutang':
       return allText.contains('debt') ||
           allText.contains('hutang') ||
+          allText.contains('utang') ||
           allText.contains('pinjol') ||
           allText.contains('restrukturisasi');
-    case 'Business':
-      return allText.contains('business') ||
-          allText.contains('bisnis') ||
-          allText.contains('umkm') ||
-          allText.contains('korporat');
-    case 'Keluarga':
-      return allText.contains('keluarga') ||
-          allText.contains('pendidikan') ||
-          allText.contains('anak') ||
-          allText.contains('waris') ||
-          allText.contains('family');
-    case 'Pasangan':
-      return allText.contains('pasangan') ||
-          allText.contains('pranikah') ||
-          allText.contains('pasutri') ||
-          allText.contains('pernikahan');
+    case 'all':
     default:
       return true;
   }

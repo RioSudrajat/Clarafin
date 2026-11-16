@@ -86,18 +86,90 @@ class UserProfileNotifier extends Notifier<UserProfile> {
     _persist();
   }
 
+  void setSubscriptionPlan(String plan) {
+    int quota = 40;
+    String tier = 'Clarafin Free Member';
+    if (plan == 'pro_monthly') {
+      quota = 400;
+      tier = 'Clarafin Pro Member';
+    } else if (plan == 'unlimited') {
+      quota = -1;
+      tier = 'Clarafin Unlimited Member';
+    }
+    state = state.copyWith(
+      subscriptionPlan: plan,
+      aiQuotaRemaining: quota,
+      tier: tier,
+    );
+    _persist();
+  }
+
+  void setAiQuotaRemaining(int quota) {
+    state = state.copyWith(aiQuotaRemaining: quota);
+    _persist();
+  }
+
+  void decrementAiQuota([int amount = 1]) {
+    if (state.aiQuotaRemaining > 0) {
+      state = state.copyWith(aiQuotaRemaining: state.aiQuotaRemaining - amount);
+      _persist();
+    }
+  }
+
+  void setGmailConnected(bool connected) {
+    state = state.copyWith(isGmailConnected: connected);
+    _persist();
+  }
+
+  void toggleGmailConnection([bool? connected]) {
+    setGmailConnected(connected ?? !state.isGmailConnected);
+  }
+
+  void setTrackingHistorySource(String source) {
+    state = state.copyWith(trackingHistorySource: source);
+    _persist();
+  }
+
+  void setTrackerFocuses(List<String> focuses) {
+    state = state.copyWith(trackerFocuses: focuses);
+    _persist();
+  }
+
+  void setAdvisoryFocus(String focus) {
+    state = state.copyWith(advisoryFocus: focus);
+    _persist();
+  }
+
+  void setDailyReminder(bool enabled, String time) {
+    state = state.copyWith(
+      dailyReminderEnabled: enabled,
+      dailyReminderTime: time,
+    );
+    _persist();
+  }
+
   void toggleBiometrics() {
     state = state.copyWith(biometricsEnabled: !state.biometricsEnabled);
     _persist();
   }
 
-  void toggleNotifications() {
-    state = state.copyWith(notificationsEnabled: !state.notificationsEnabled);
+  void toggleNotifications([bool? value]) {
+    state = state.copyWith(notificationsEnabled: value ?? !state.notificationsEnabled);
     _persist();
   }
 
-  void togglePromoAlerts() {
-    state = state.copyWith(promoAlertsEnabled: !state.promoAlertsEnabled);
+  void toggleSessionReminders([bool? value]) {
+    state = state.copyWith(sessionRemindersEnabled: value ?? !state.sessionRemindersEnabled);
+    _persist();
+  }
+
+  void toggleBillReminders([bool? value]) {
+    state = state.copyWith(billRemindersEnabled: value ?? !state.billRemindersEnabled);
+    _persist();
+  }
+
+  void togglePromoAlerts([bool? value]) {
+    state = state.copyWith(promoAlertsEnabled: value ?? !state.promoAlertsEnabled);
     _persist();
   }
 

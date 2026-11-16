@@ -97,4 +97,29 @@ class NotificationItem {
       actionLabel: actionLabel ?? this.actionLabel,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'title': title,
+    'message': message,
+    'timestamp': timestamp.toIso8601String(),
+    'category': category.name,
+    'isRead': isRead,
+    'actionRoute': actionRoute,
+    'actionLabel': actionLabel,
+  };
+
+  factory NotificationItem.fromJson(Map<String, dynamic> json) => NotificationItem(
+    id: json['id'] as String,
+    title: json['title'] as String,
+    message: json['message'] as String,
+    timestamp: DateTime.parse(json['timestamp'] as String),
+    category: NotificationCategory.values.firstWhere(
+      (c) => c.name == (json['category'] as String),
+      orElse: () => NotificationCategory.sistem,
+    ),
+    isRead: json['isRead'] as bool? ?? false,
+    actionRoute: json['actionRoute'] as String?,
+    actionLabel: json['actionLabel'] as String?,
+  );
 }

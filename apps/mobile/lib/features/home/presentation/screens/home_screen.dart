@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/providers/mock_providers.dart';
+import '../../../../core/theme/neo_brutalism_decorations.dart';
+import '../../../profile/presentation/providers/user_profile_provider.dart';
 import '../widgets/budget_progress_card.dart';
 import '../widgets/consultation_hero_card.dart';
 import '../widgets/edit_user_name_dialog.dart';
 import '../widgets/expert_help_banner_carousel.dart';
+import '../widgets/gmail_drafts_prompt_sheet.dart';
 import '../widgets/home_hero_header_delegate.dart';
 import '../widgets/home_top_app_bar.dart';
 import '../widgets/recent_activity_section.dart';
@@ -25,6 +29,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   bool _obscureBalance = false;
   int _heroPage = 0;
   late final PageController _heroController = PageController();
+  bool _gmailPromptShown = false;
+  bool _showMigrationBanner = true;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_gmailPromptShown && mounted) {
+        _gmailPromptShown = true;
+        final isGmail = ref.read(userProfileProvider).isGmailConnected;
+        if (isGmail) {
+          GmailDraftsPromptSheet.show(context);
+        }
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -32,9 +52,104 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     super.dispose();
   }
 
+  Widget _buildMigrationBanner(BuildContext context, String source) {
+    final sourceName = source == 'spreadsheet' ? 'Excel / Spreadsheet' : 'Aplikasi Lain';
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: const Color(0xFFEFFCC7),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.black, width: 2.0),
+          boxShadow: NeoBrutalism.shadow(yOffset: 3),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: NeoBrutalism.lime,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: Colors.black, width: 1.2),
+                  ),
+                  child: const Text(
+                    'MIGRASI DATA ONBOARDING',
+                    style: TextStyle(
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.black,
+                    ),
+                  ),
+                ),
+                const Spacer(),
+                GestureDetector(
+                  onTap: () => setState(() => _showMigrationBanner = false),
+                  child: const Icon(Icons.close_rounded, size: 18, color: Colors.black54),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Impor Riwayat Catatan dari $sourceName',
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w900,
+                color: Colors.black,
+              ),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Pindahkan file CSV / transaksi lamamu agar grafik analitik dan budget langsung sinkron!',
+              style: TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w500,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 10),
+            GestureDetector(
+              onTap: () => context.push('/export'),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.black, width: 1.8),
+                  boxShadow: NeoBrutalism.shadow(yOffset: 2),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.file_upload_outlined, size: 16, color: Colors.black),
+                    SizedBox(width: 6),
+                    Text(
+                      'Buka Menu Impor CSV / Excel ➔',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.black,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final userName = ref.watch(userNameProvider);
+    final profile = ref.watch(userProfileProvider);
+    final hasMigration = profile.trackingHistorySource == 'other_app' ||
+        profile.trackingHistorySource == 'spreadsheet';
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -85,28 +200,32 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             child: Container(
               color: Colors.white,
               padding: const EdgeInsets.only(top: 16),
-              child: const Column(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Layanan Section (Grid 2 Baris x 4 Kolom, Notion Style)
-                  ServicesGridWidget(),
+                  // Migration Alert Banner (If user selected other_app or spreadsheet during Onboarding)
+                  if (_showMigrationBanner && hasMigration)
+                    _buildMigrationBanner(context, profile.trackingHistorySource),
 
-                  SizedBox(height: 24),
+                  // Layanan Section (Grid 2 Baris x 4 Kolom, Notion Style)
+                  const ServicesGridWidget(),
+
+                  const SizedBox(height: 24),
 
                   // Section: Expert Help Banner Carousel
-                  ExpertHelpBannerCarousel(),
+                  const ExpertHelpBannerCarousel(),
 
-                  SizedBox(height: 24),
+                  const SizedBox(height: 24),
 
                   // Section: Keuangan Bulan Ini
-                  BudgetProgressCard(),
+                  const BudgetProgressCard(),
 
-                  SizedBox(height: 24),
+                  const SizedBox(height: 24),
 
                   // Section: Recent Activity
-                  RecentActivitySection(),
+                  const RecentActivitySection(),
 
-                  SizedBox(height: 120), // Generous padding above floating bottom nav bar
+                  const SizedBox(height: 120), // Generous padding above floating bottom nav bar
                 ],
               ),
             ),

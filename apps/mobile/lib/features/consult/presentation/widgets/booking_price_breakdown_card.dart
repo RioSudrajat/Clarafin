@@ -28,7 +28,7 @@ class BookingPriceBreakdownCard extends StatelessWidget {
     );
 
     final displayTitle = packageTitle.isNotEmpty
-        ? '1 Sesi $packageTitle'
+        ? packageTitle
         : '1 Sesi Konsultasi';
 
     return Container(
@@ -108,20 +108,19 @@ class BookingPriceBreakdownCard extends StatelessWidget {
             label,
             style: const TextStyle(
               fontFamily: 'Plus Jakarta Sans',
+              fontSize: 13,
               fontWeight: FontWeight.w500,
-              fontSize: 13.5,
-              color: Color(0xFF6B7280),
+              color: Color(0xFF4B5563),
             ),
           ),
         ),
-        const SizedBox(width: 8),
         Text(
           value,
           style: TextStyle(
             fontFamily: 'Plus Jakarta Sans',
-            fontWeight: FontWeight.w600,
-            fontSize: 13.5,
-            color: valueColor ?? const Color(0xFF374151),
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: valueColor ?? const Color(0xFF111827),
           ),
         ),
       ],

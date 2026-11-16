@@ -18,7 +18,7 @@ class ServicesGridWidget extends StatelessWidget {
         category: 'counseling',
         svgKey: 'individu',
         badgeColor: const Color(0xFFD1FAE5), // Mint
-        onTap: () => context.go('/consult?category=All'),
+        onTap: () => context.go('/consult?category=Individu'),
       ),
       ServiceItem(
         id: 'pasangan',

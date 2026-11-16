@@ -49,7 +49,7 @@ class _AuthRegisterScreenState extends ConsumerState<AuthRegisterScreen> {
       if (!mounted) return;
 
       if (success) {
-        context.go('/home');
+        context.go('/onboarding');
       } else {
         final error = ref.read(authProvider).errorMessage ?? 'Pendaftaran gagal';
         _showErrorSnackBar(error);
@@ -73,7 +73,7 @@ class _AuthRegisterScreenState extends ConsumerState<AuthRegisterScreen> {
         password: 'google_oauth_pass',
       );
     }
-    if (mounted) context.go('/home');
+    if (mounted) context.go('/onboarding');
   }
 
   void _showErrorSnackBar(String message) {

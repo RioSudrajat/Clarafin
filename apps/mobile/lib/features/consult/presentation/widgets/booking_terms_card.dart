@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 class BookingServicePlaceholder extends StatelessWidget {
   const BookingServicePlaceholder({super.key});
@@ -40,13 +40,14 @@ class BookingTermsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: const Color(0xFFE5E7EB), width: 1.5),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Checkbox(
             value: agreed,
@@ -55,24 +56,31 @@ class BookingTermsCard extends StatelessWidget {
             onChanged: onChanged,
           ),
           const Expanded(
-            child: Text.rich(
-              TextSpan(
-                style: TextStyle(
-                  fontFamily: 'Plus Jakarta Sans',
-                  fontSize: 11.5,
-                  color: Color(0xFF374151),
-                ),
-                children: [
-                  TextSpan(text: 'Saya memahami aturan '),
-                  TextSpan(
-                    text: 'Syarat & Ketentuan Layanan',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      decoration: TextDecoration.underline,
-                      color: Color(0xFF0F758A),
-                    ),
+            child: Padding(
+              padding: EdgeInsets.only(top: 8),
+              child: Text.rich(
+                TextSpan(
+                  style: TextStyle(
+                    fontFamily: 'Plus Jakarta Sans',
+                    fontSize: 11.5,
+                    color: Color(0xFF374151),
+                    height: 1.35,
                   ),
-                ],
+                  children: [
+                    TextSpan(text: 'Saya menyetujui '),
+                    TextSpan(
+                      text: 'Syarat & Ketentuan Layanan',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        decoration: TextDecoration.underline,
+                        color: Color(0xFF0F758A),
+                      ),
+                    ),
+                    TextSpan(
+                      text: ' serta memberikan izin akses ringkasan profil finansial selama sesi konsultasi berlangsung.',
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

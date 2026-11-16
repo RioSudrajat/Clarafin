@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/neo_brutalism_decorations.dart';
 import '../../domain/models/consultant.dart';
+import 'booking_service_mock_data.dart';
 
 class ConsultDetailBottomBar extends StatelessWidget {
   final Consultant consultant;
@@ -20,6 +21,15 @@ class ConsultDetailBottomBar extends StatelessWidget {
       decimalDigits: 0,
     );
 
+    final services = BookingServiceMockData.getServicesForConsultant(consultant);
+    double minPrice = services.first.basePricePerSession;
+    double maxPrice = services.first.offlinePricePerSession;
+    for (final s in services) {
+      if (s.basePricePerSession < minPrice) minPrice = s.basePricePerSession;
+      final highestTier = s.offlinePricePerSession > s.basePricePerSession ? s.offlinePricePerSession : s.basePricePerSession;
+      if (highestTier > maxPrice) maxPrice = highestTier;
+    }
+
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -32,20 +42,34 @@ class ConsultDetailBottomBar extends StatelessWidget {
         top: false,
         child: Row(
           children: [
-            // Left: Fee per session
+            // Left: Fee per session (Shopee style strikethrough)
             Expanded(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Biaya Sesi',
-                    style: TextStyle(
-                      fontFamily: 'Plus Jakarta Sans',
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: NeoBrutalism.textMuted,
-                    ),
+                  Row(
+                    children: [
+                      const Text(
+                        'Mulai ',
+                        style: TextStyle(
+                          fontFamily: 'Plus Jakarta Sans',
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: NeoBrutalism.textMuted,
+                        ),
+                      ),
+                      Text(
+                        currencyFormat.format(maxPrice),
+                        style: TextStyle(
+                          fontFamily: 'Plus Jakarta Sans',
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey.shade500,
+                          decoration: TextDecoration.lineThrough,
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 2),
                   Row(
@@ -53,7 +77,7 @@ class ConsultDetailBottomBar extends StatelessWidget {
                     textBaseline: TextBaseline.alphabetic,
                     children: [
                       Text(
-                        currencyFormat.format(consultant.feePerSession),
+                        currencyFormat.format(minPrice),
                         style: const TextStyle(
                           fontFamily: 'Plus Jakarta Sans',
                           fontSize: 18,

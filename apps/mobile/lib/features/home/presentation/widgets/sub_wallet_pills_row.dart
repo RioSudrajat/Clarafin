@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
+
 import '../../../../core/institutions/institution_logo_widget.dart';
 import '../../../../core/providers/mock_providers.dart';
 import '../../../../core/theme/neo_brutalism_decorations.dart';
+import '../../../../core/utils/currency_formatter.dart';
+import '../../../profile/presentation/providers/user_profile_provider.dart';
 
 class SubWalletPillsRow extends ConsumerWidget {
   const SubWalletPillsRow({super.key});
@@ -12,7 +14,7 @@ class SubWalletPillsRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final wallets = ref.watch(walletsProvider);
-    final currencyFormat = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
+    final userProfile = ref.watch(userProfileProvider);
 
     return SizedBox(
       width: double.infinity,
@@ -66,7 +68,7 @@ class SubWalletPillsRow extends ConsumerWidget {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              currencyFormat.format(w.balance),
+                              CurrencyFormatter.format(w.balance, currencyCode: userProfile.currency),
                               style: const TextStyle(
                                 fontFamily: 'Plus Jakarta Sans',
                                 fontSize: 12,

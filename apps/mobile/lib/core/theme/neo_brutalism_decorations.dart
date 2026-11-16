@@ -3,6 +3,11 @@ import 'package:flutter/material.dart';
 class NeoBrutalism {
   // Colors from Figma design & Brand Guide
   static const Color lime = Color(0xFFCCFF00); // Clarafin Brand Lime (Global Neon Lime Button Color)
+  static const Color primary = Color(0xFFCCFF00);
+  static const Color primaryLight = Color(0xFFEFFCC7);
+  static const Color secondary = Color(0xFF0F758A);
+  static const Color lavender = Color(0xFFE8DEF8);
+  static const Color yellow = Color(0xFFFFF4B8);
   static const Color limeNeon = Color(0xFFCCFF00); // Neon Accent Lime
   static const Color darkTeal = Color(0xFF0E6976); // Hero deep teal
   static const Color teal = Color(0xFF0F758A); // Deep teal primary

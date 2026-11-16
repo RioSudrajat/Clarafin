@@ -16,61 +16,66 @@ class ProfileUserCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: NeoBrutalism.surfaceWarm,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.black, width: 2.0),
-        boxShadow: const [
-          BoxShadow(
-            color: Colors.black,
-            offset: Offset(0, 3),
-            blurRadius: 0,
-          ),
-        ],
+        border: NeoBrutalism.border(width: 2.0),
+        boxShadow: NeoBrutalism.shadow(yOffset: 3.5),
       ),
-      child: Row(
+      child: Column(
         children: [
-          // Avatar with 2px border
-          Stack(
-            children: [
-              UserAvatar(
-                avatarUrl: profile.avatarUrl,
-                size: 64,
-                borderWidth: 2.0,
+          // Top Accent Banner Strip
+          Container(
+            height: 12,
+            decoration: const BoxDecoration(
+              gradient: NeoBrutalism.brandGradient,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+              border: Border(
+                bottom: BorderSide(color: Colors.black, width: 2.0),
               ),
-              Positioned(
-                bottom: 0,
-                right: 0,
-                child: Container(
-                  width: 20,
-                  height: 20,
-                  decoration: BoxDecoration(
-                    color: NeoBrutalism.lime,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.black, width: 1.5),
-                  ),
-                  child: const Icon(
-                    Icons.verified_user,
-                    size: 11,
-                    color: Colors.black,
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
-          const SizedBox(width: 14),
-
-          // User info
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
               children: [
-                Row(
+                // Avatar with 2px border and badge
+                Stack(
                   children: [
-                    Flexible(
-                      child: Text(
-                        profile.name,
+                    UserAvatar(
+                      avatarUrl: profile.avatarUrl,
+                      size: 64,
+                      borderWidth: 2.0,
+                    ),
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: Container(
+                        width: 22,
+                        height: 22,
+                        decoration: BoxDecoration(
+                          color: NeoBrutalism.primary,
+                          shape: BoxShape.circle,
+                          border: NeoBrutalism.border(width: 1.5),
+                        ),
+                        child: const Icon(
+                          Icons.verified_user_rounded,
+                          size: 12,
+                          color: Colors.black,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 14),
+
+                // User info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        profile.name.isEmpty ? 'Pengguna Clarafin' : profile.name,
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 16,
                           fontWeight: FontWeight.w800,
@@ -79,57 +84,61 @@ class ProfileUserCard extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
+                      const SizedBox(height: 2),
+                      Text(
+                        profile.email.isEmpty ? 'Belum terhubung ke email' : profile.email,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: NeoBrutalism.textMuted,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: NeoBrutalism.primary,
+                          borderRadius: BorderRadius.circular(8),
+                          border: NeoBrutalism.border(width: 1.5),
+                          boxShadow: NeoBrutalism.shadow(yOffset: 1.5),
+                        ),
+                        child: Text(
+                          profile.tier,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.black,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Edit Profile Action Button
+                GestureDetector(
+                  onTap: () => context.push('/profile/edit'),
+                  child: Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      border: NeoBrutalism.border(width: 1.8),
+                      boxShadow: NeoBrutalism.shadow(yOffset: 2.0),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  profile.email,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: const Color(0xFF6B7280),
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: NeoBrutalism.lime,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.black, width: 1.5),
-                  ),
-                  child: Text(
-                    profile.tier,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.black,
+                    child: const Center(
+                      child: Icon(
+                        Icons.edit_outlined,
+                        size: 18,
+                        color: Colors.black,
+                      ),
                     ),
                   ),
                 ),
               ],
-            ),
-          ),
-
-          // Edit Profile Action Button
-          GestureDetector(
-            onTap: () => context.push('/profile/edit'),
-            child: Container(
-              width: 36,
-              height: 36,
-              decoration: NeoBrutalism.circleDecoration(
-                backgroundColor: const Color(0xFFF3F4F6),
-                shadowOffset: 1.5,
-                borderWidth: 1.5,
-              ),
-              child: const Icon(
-                Icons.edit_outlined,
-                size: 17,
-                color: Colors.black,
-              ),
             ),
           ),
         ],

@@ -1,19 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/neo_brutalism_decorations.dart';
+import '../../../budget/presentation/providers/finance_providers.dart';
 import '../widgets/onboarding_goal_card.dart';
 import '../widgets/onboarding_step_header.dart';
 
-class OnboardingSetGoalScreen extends StatefulWidget {
+class OnboardingSetGoalScreen extends ConsumerStatefulWidget {
   const OnboardingSetGoalScreen({super.key});
 
   @override
-  State<OnboardingSetGoalScreen> createState() => _OnboardingSetGoalScreenState();
+  ConsumerState<OnboardingSetGoalScreen> createState() => _OnboardingSetGoalScreenState();
 }
 
-class _OnboardingSetGoalScreenState extends State<OnboardingSetGoalScreen> {
+class _OnboardingSetGoalScreenState extends ConsumerState<OnboardingSetGoalScreen> {
   String _selectedGoalId = 'emergency_fund';
 
   static const List<Map<String, dynamic>> _goals = [
@@ -28,7 +30,7 @@ class _OnboardingSetGoalScreenState extends State<OnboardingSetGoalScreen> {
     {
       'id': 'vacation',
       'title': 'Liburan Akhir Tahun',
-      'desc': 'Healing & travelling tanpa beban pikiran utang',
+      'desc': 'Travelling tanpa beban pikiran utang',
       'target': 'Rp 15.000.000',
       'badge': 'POPULER',
       'icon': Icons.flight_takeoff_outlined,
@@ -42,12 +44,38 @@ class _OnboardingSetGoalScreenState extends State<OnboardingSetGoalScreen> {
     },
     {
       'id': 'custom',
-      'title': 'Target Kustom Pribadi',
+      'title': 'Target Tabungan Bebas',
       'desc': 'Tentukan nama impian dan nominalmu sendiri',
       'target': 'Rp 10.000.000',
       'icon': Icons.edit_note_outlined,
     },
   ];
+
+  void _handleFinish() {
+    final selected = _goals.firstWhere(
+      (g) => g['id'] == _selectedGoalId,
+      orElse: () => _goals.first,
+    );
+
+    final targetText = (selected['target'] as String).replaceAll(RegExp(r'[^0-9]'), '');
+    final targetAmount = double.tryParse(targetText) ?? 10000000.0;
+
+    final newGoal = GoalModel(
+      id: 'g_init_${DateTime.now().millisecondsSinceEpoch}',
+      name: selected['title'] as String,
+      targetAmount: targetAmount,
+      savedAmount: 0.0,
+      targetDate: DateTime.now().add(const Duration(days: 180)),
+      icon: selected['icon'] as IconData,
+      tagColor: NeoBrutalism.mint,
+      tagTextColor: Colors.black,
+      priority: selected['badge'] == 'REKOMENDASI' ? 'Urgent' : 'Needs',
+      sourceAsset: 'Dompet Utama',
+    );
+
+    ref.read(goalsProvider.notifier).addGoal(newGoal);
+    context.go('/home');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -118,13 +146,13 @@ class _OnboardingSetGoalScreenState extends State<OnboardingSetGoalScreen> {
           color: Colors.transparent,
           child: InkWell(
             borderRadius: BorderRadius.circular(NeoBrutalism.radiusSm),
-            onTap: () => context.go('/home'),
+            onTap: _handleFinish,
             child: Center(
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'Selesai & Masuk Dashboard',
+                    'Selesai & Masuk ke Beranda',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 14,
                       fontWeight: FontWeight.w900,

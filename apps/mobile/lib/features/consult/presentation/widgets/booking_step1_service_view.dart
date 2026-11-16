@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/models/consultant.dart';
 import '../providers/booking_provider.dart';
@@ -28,7 +28,7 @@ class _BookingStep1ServiceViewState extends ConsumerState<BookingStep1ServiceVie
   int _selectedSessions = 1;
   bool _agreedToTerms = true;
   final ScrollController _scrollController = ScrollController();
-  final List<GlobalKey> _cardKeys = [GlobalKey(), GlobalKey()];
+  final List<GlobalKey> _cardKeys = [GlobalKey(), GlobalKey(), GlobalKey(), GlobalKey()];
 
   @override
   void initState() {
@@ -46,12 +46,12 @@ class _BookingStep1ServiceViewState extends ConsumerState<BookingStep1ServiceVie
   }
 
   double _calculatePrice(int sessions, double basePrice) {
-    if (sessions == 3) return basePrice == 399000.0 ? 1119000.0 : (basePrice * 3 * 0.93);
-    if (sessions == 8) return basePrice * 8 * 0.88;
-    return basePrice * (sessions > 0 ? sessions : 1);
+    if (sessions == 3) return (basePrice * 3 * 0.93).roundToDouble();
+    if (sessions == 8) return (basePrice * 8 * 0.88).roundToDouble();
+    return (basePrice * (sessions > 0 ? sessions : 1)).roundToDouble();
   }
 
-  void _onSelectTier(int index, List<ServiceModel> services) {
+  void _onSelectTier(int index, List<ServiceModel> services, bool isOnline) {
     setState(() {
       if (_selectedServiceIndex == index) {
         _selectedServiceIndex = -1;
@@ -60,8 +60,14 @@ class _BookingStep1ServiceViewState extends ConsumerState<BookingStep1ServiceVie
       } else {
         _selectedServiceIndex = index;
         final service = services[index];
-        final total = _calculatePrice(_selectedSessions, service.basePricePerSession);
-        ref.read(bookingProvider.notifier).updateSelectedTier('${service.title} ${service.subtitle} ($_selectedSessions Sesi)', total);
+        final unitPrice = isOnline
+            ? service.basePricePerSession
+            : (service.offlinePricePerSession > 0 ? service.offlinePricePerSession : service.basePricePerSession * 1.5);
+        final total = _calculatePrice(_selectedSessions, unitPrice);
+        ref.read(bookingProvider.notifier).updateSelectedTier(
+          '${service.title} (${service.subtitle}) • $_selectedSessions Sesi',
+          total,
+        );
         widget.onValidationChanged(_agreedToTerms);
         _scrollToCard(index);
       }
@@ -71,20 +77,32 @@ class _BookingStep1ServiceViewState extends ConsumerState<BookingStep1ServiceVie
   void _scrollToCard(int index) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      if (index >= _cardKeys.length) return;
       final cardCtx = _cardKeys[index].currentContext;
       if (cardCtx != null && cardCtx.mounted) {
-        Scrollable.ensureVisible(cardCtx, duration: const Duration(milliseconds: 380), curve: Curves.easeInOutCubic, alignment: 0.1);
+        Scrollable.ensureVisible(
+          cardCtx,
+          duration: const Duration(milliseconds: 380),
+          curve: Curves.easeInOutCubic,
+          alignment: 0.1,
+        );
       }
     });
   }
 
-  void _onSelectSessions(int count, List<ServiceModel> services) {
+  void _onSelectSessions(int count, List<ServiceModel> services, bool isOnline) {
     setState(() {
       _selectedSessions = count;
-      if (_selectedServiceIndex != -1) {
+      if (_selectedServiceIndex != -1 && _selectedServiceIndex < services.length) {
         final service = services[_selectedServiceIndex];
-        final price = _calculatePrice(count, service.basePricePerSession);
-        ref.read(bookingProvider.notifier).updateSelectedTier('${service.title} ${service.subtitle} ($count Sesi)', price);
+        final unitPrice = isOnline
+            ? service.basePricePerSession
+            : (service.offlinePricePerSession > 0 ? service.offlinePricePerSession : service.basePricePerSession * 1.5);
+        final price = _calculatePrice(count, unitPrice);
+        ref.read(bookingProvider.notifier).updateSelectedTier(
+          '${service.title} (${service.subtitle}) • $count Sesi',
+          price,
+        );
         widget.onValidationChanged(_agreedToTerms);
       }
     });
@@ -110,7 +128,7 @@ class _BookingStep1ServiceViewState extends ConsumerState<BookingStep1ServiceVie
     final location = consultant.location.split(',').first.trim();
     final hasOffline = consultant.methods.contains('Tatap Muka') && !consultant.isFullyBooked;
     final isOnline = bookingState.serviceType == 'Online';
-    final services = isOnline ? BookingServiceMockData.onlineServices : BookingServiceMockData.offlineServices;
+    final services = BookingServiceMockData.getServicesForConsultant(consultant, isOnline: isOnline);
 
     return SingleChildScrollView(
       controller: _scrollController,
@@ -135,11 +153,12 @@ class _BookingStep1ServiceViewState extends ConsumerState<BookingStep1ServiceVie
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 12),
                     child: BookingServiceTierCard(
-                      key: _cardKeys[index],
+                      key: index < _cardKeys.length ? _cardKeys[index] : null,
                       service: services[index],
                       isSelected: _selectedServiceIndex == index,
+                      isOffline: !isOnline,
                       onTap: (isOnline || hasOffline)
-                          ? () => _onSelectTier(index, services)
+                          ? () => _onSelectTier(index, services, isOnline)
                           : () {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
@@ -154,7 +173,12 @@ class _BookingStep1ServiceViewState extends ConsumerState<BookingStep1ServiceVie
                 const SizedBox(height: 4),
                 const Text(
                   'Pilih Paket',
-                  style: TextStyle(fontFamily: 'Plus Jakarta Sans', fontSize: 14, fontWeight: FontWeight.w900, color: Colors.black),
+                  style: TextStyle(
+                    fontFamily: 'Plus Jakarta Sans',
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.black,
+                  ),
                 ),
                 const SizedBox(height: 10),
                 if (_selectedServiceIndex == -1)
@@ -162,7 +186,7 @@ class _BookingStep1ServiceViewState extends ConsumerState<BookingStep1ServiceVie
                 else ...[
                   BookingSessionCountSelector(
                     selectedSessions: _selectedSessions,
-                    onSelectSessions: (count) => _onSelectSessions(count, services),
+                    onSelectSessions: (count) => _onSelectSessions(count, services, isOnline),
                   ),
                   const SizedBox(height: 14),
                   BookingTermsCard(

@@ -43,8 +43,8 @@ class _BookingPaymentScreenState extends ConsumerState<BookingPaymentScreen> {
 
     final subtotal = booking.totalPrice > 0 ? booking.totalPrice : 180000.0;
     const platformFee = 15000.0;
-    final transactionFee = (subtotal * 0.025).roundToDouble();
-    final totalPayable = (subtotal + platformFee + transactionFee - _discount).clamp(0.0, double.infinity);
+    // Transaction fee removed per pricing spec
+    final totalPayable = (subtotal + platformFee - _discount).clamp(0.0, double.infinity);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -103,7 +103,7 @@ class _BookingPaymentScreenState extends ConsumerState<BookingPaymentScreen> {
                       packageTitle: booking.selectedTier,
                       subtotal: subtotal,
                       platformFee: platformFee,
-                      transactionFee: transactionFee,
+                      transactionFee: 0.0,
                       discount: _discount,
                       totalPayable: totalPayable,
                     ),

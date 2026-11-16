@@ -10,14 +10,35 @@ import '../widgets/goals_tab_content.dart';
 /// Features a Halofin brand gradient header with month selector and Neo-Brutalist tab pills,
 /// followed by a white canvas holding the active tab content.
 class BudgetScreen extends ConsumerStatefulWidget {
-  const BudgetScreen({super.key});
+  final int initialTab;
+
+  const BudgetScreen({
+    super.key,
+    this.initialTab = 1,
+  });
 
   @override
   ConsumerState<BudgetScreen> createState() => _BudgetScreenState();
 }
 
 class _BudgetScreenState extends ConsumerState<BudgetScreen> {
-  int _selectedTab = 1; // 0 = Goals, 1 = Budget, 2 = Bills
+  late int _selectedTab; // 0 = Goals, 1 = Budget, 2 = Bills
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedTab = widget.initialTab;
+  }
+
+  @override
+  void didUpdateWidget(covariant BudgetScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialTab != widget.initialTab) {
+      setState(() {
+        _selectedTab = widget.initialTab;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

@@ -2,11 +2,196 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/models/wallet_model.dart';
+import '../../../../core/providers/ai_quota_provider.dart';
 import '../../../../core/providers/mock_providers.dart';
 import '../../../../core/models/transaction_model.dart';
 import '../../../home/presentation/widgets/notion_doodle_icons.dart';
+import '../../../../core/utils/currency_formatter.dart';
+import '../../../profile/presentation/providers/user_profile_provider.dart';
 
 // ─── Data Models ─────────────────────────────────────────────────────────────
+
+class _ResolvedWallet {
+  final String id;
+  final String name;
+  const _ResolvedWallet({required this.id, required this.name});
+}
+
+_ResolvedWallet _resolveWalletFromText(String text, List<WalletModel> wallets) {
+  final lower = text.toLowerCase();
+  for (final w in wallets) {
+    if (lower.contains(w.name.toLowerCase())) {
+      return _ResolvedWallet(id: w.id, name: w.name);
+    }
+  }
+  final keywords = {
+    'bni': 'BNI',
+    'bca': 'BCA',
+    'mandiri': 'Mandiri',
+    'bri': 'BRI',
+    'jago': 'Bank Jago',
+    'jenius': 'Jenius',
+    'gopay': 'GoPay',
+    'ovo': 'OVO',
+    'dana': 'DANA',
+    'shopeepay': 'ShopeePay',
+    'tunai': 'Tunai',
+    'cash': 'Tunai',
+    'bibit': 'Bibit',
+  };
+  for (final entry in keywords.entries) {
+    if (lower.contains(entry.key)) {
+      final match = wallets.firstWhere(
+        (w) => w.name.toLowerCase().contains(entry.key) || w.type.toLowerCase().contains(entry.key),
+        orElse: () => WalletModel(id: 'w_${entry.key}', name: entry.value, type: 'Bank', balance: 0.0),
+      );
+      return _ResolvedWallet(id: match.id, name: match.name);
+    }
+  }
+  if (wallets.isNotEmpty) {
+    return _ResolvedWallet(id: wallets.first.id, name: wallets.first.name);
+  }
+  return const _ResolvedWallet(id: 'w1', name: 'BCA Utama');
+}
+
+double _parseAmountFromText(String text) {
+  final lower = text.toLowerCase();
+
+  // 1. Check for number + million (jt, juta)
+  final jutaRegex = RegExp(r'(\d+(?:[.,]\d+)?)\s*(?:jt|juta)\b');
+  final jutaMatch = jutaRegex.firstMatch(lower);
+  if (jutaMatch != null) {
+    final numStr = jutaMatch.group(1)!.replaceAll(',', '.');
+    final val = double.tryParse(numStr);
+    if (val != null) return val * 1000000.0;
+  }
+
+  // 2. Check for number + thousand (k, rb, ribu) with strict boundaries!
+  // Note: Only words like "300k", "300 k", "300rb", "300 ribu", NOT "tiket" or "kreta"!
+  final ribuRegex = RegExp(r'(\d+(?:[.,]\d+)?)\s*(?:k|rb|ribu)\b');
+  final ribuMatch = ribuRegex.firstMatch(lower);
+  if (ribuMatch != null) {
+    final numStr = ribuMatch.group(1)!.replaceAll(',', '.');
+    final val = double.tryParse(numStr);
+    if (val != null) {
+      return val < 10000 ? val * 1000.0 : val;
+    }
+  }
+
+  // 3. Plain or formatted number (e.g. 300000, 300.000, 300,000)
+  final numberRegex = RegExp(r'\b\d{1,3}(?:[.,]\d{3})+\b|\b\d{4,}\b|\b\d+\b');
+  final numberMatch = numberRegex.firstMatch(lower);
+  if (numberMatch != null) {
+    final raw = numberMatch.group(0)!;
+    final clean = raw.replaceAll('.', '').replaceAll(',', '');
+    final val = double.tryParse(clean);
+    if (val != null) return val;
+  }
+
+  return 50000.0;
+}
+
+String _resolveCategoryFromText(String text) {
+  final lower = text.toLowerCase();
+
+  // Transportasi
+  if (RegExp(r'\b(tiket|kreta|kereta|kai|pesawat|flight|bensin|bbm|pertalite|pertamax|solar|spbu|ojol|gojek|goride|gocar|grab|grabcar|grabbike|maxim|indrive|parkir|tol|mrt|lrt|krl|commuter|transjakarta|tj|bus|angkot|taksi|taxi)\b').hasMatch(lower)) {
+    return 'Transportasi';
+  }
+
+  // Makanan & Minuman
+  if (RegExp(r'\b(makan|makanan|minum|minuman|kopi|coffee|starbucks|janji jiwa|kulo|fore|chatime|cafe|kafe|resto|restoran|warung|warkop|mie|gacoan|bakso|sate|nasi|padang|ayam|geprek|pizza|burger|mcd|kfc|hokben|gofood|grabfood|shopeefood)\b').hasMatch(lower)) {
+    return 'Makanan';
+  }
+
+  // Tagihan & Utilitas
+  if (RegExp(r'\b(tagihan|listrik|pln|token|air|pdam|wifi|indihome|biznet|firstmedia|myrepublic|pulsa|kuota|paket data|telkomsel|indosat|xl|tri|smartfren|bpjs|sewa|kontrakan|kos|kost|ipl|pbb)\b').hasMatch(lower)) {
+    return 'Tagihan';
+  }
+
+  // Belanja & Kebutuhan
+  if (RegExp(r'\b(belanja|tokopedia|shopee|lazada|tiktok shop|supermarket|minimarket|indomaret|alfamart|hypermart|superindo|transmart|baju|celana|sepatu|tas|skincare|makeup|elektronik|laptop|hp|gadget)\b').hasMatch(lower)) {
+    return 'Belanja';
+  }
+
+  // Hiburan
+  if (RegExp(r'\b(hiburan|nonton|bioskop|cinema|xxi|cgv|netflix|spotify|youtube|disney|game|steam|playstation|karaoke|liburan|hotel|staycation)\b').hasMatch(lower)) {
+    return 'Hiburan';
+  }
+
+  // Kesehatan
+  if (RegExp(r'\b(kesehatan|obat|apotek|dokter|klinik|rumah sakit|rs|vitamin|halodoc|alodokter|periksa|rontgen|lab)\b').hasMatch(lower)) {
+    return 'Kesehatan';
+  }
+
+  // Pendidikan
+  if (RegExp(r'\b(pendidikan|sekolah|kuliah|spp|buku|kursus|les|seminar|workshop|ujian|skripsi)\b').hasMatch(lower)) {
+    return 'Pendidikan';
+  }
+
+  // Gaji / Pemasukan
+  if (RegExp(r'\b(gaji|salary|upah|honor|bonus|thr|dividen|cashback|bunga|cuan|profit|transfer masuk|terima)\b').hasMatch(lower)) {
+    return 'Gaji';
+  }
+
+  // Investasi
+  if (RegExp(r'\b(investasi|saham|reksadana|crypto|bitcoin|sbn|deposito|bibit|bareksa|ajaib|pluang)\b').hasMatch(lower)) {
+    return 'Investasi';
+  }
+
+  return 'Lainnya';
+}
+
+String _resolveTitleFromText(String text, String category) {
+  final lower = text.toLowerCase();
+  if (lower.contains('tiket') && (lower.contains('kreta') || lower.contains('kereta'))) {
+    return 'Tiket Kereta';
+  }
+  if (lower.contains('tiket') && lower.contains('pesawat')) {
+    return 'Tiket Pesawat';
+  }
+  if (lower.contains('kopi') || lower.contains('starbucks')) {
+    return 'Kopi Starbucks';
+  }
+  if (lower.contains('bensin') || lower.contains('pertalite') || lower.contains('pertamax')) {
+    return 'Bensin Kendaraan';
+  }
+  if (lower.contains('listrik') || lower.contains('pln')) {
+    return 'Tagihan Listrik';
+  }
+  if (lower.contains('wifi') || lower.contains('indihome')) {
+    return 'Tagihan WiFi';
+  }
+  if (lower.contains('pulsa') || lower.contains('kuota')) {
+    return 'Pulsa / Paket Data';
+  }
+  if (lower.contains('gaji')) {
+    return 'Gaji Bulanan';
+  }
+  if (lower.contains('padang')) {
+    return 'Nasi Padang';
+  }
+  if (lower.contains('pizza')) {
+    return 'Pizza';
+  }
+  if (lower.contains('burger')) {
+    return 'Burger';
+  }
+  if (lower.contains('mie')) {
+    return 'Mie';
+  }
+
+  // Clean conversational filler words
+  String cleaned = text
+      .replaceAll(RegExp(r'\b(abis|udah|tadi|baru|beli|bayar|buat|transaksi|catat|pake|pakai|lewat|dari|ke|sebesar|rp|bca|bni|bri|mandiri|gopay|ovo|dana|shopeepay|cash|tunai)\b', caseSensitive: false), '')
+      .replaceAll(RegExp(r'\b\d+(?:[.,]\d+)?\s*(?:k|rb|ribu|jt|juta)?\b', caseSensitive: false), '')
+      .trim();
+  if (cleaned.length >= 3) {
+    return cleaned.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).map((w) => '${w[0].toUpperCase()}${w.substring(1)}').join(' ');
+  }
+  return category;
+}
 
 class _DraftTransaction {
   String title;
@@ -42,6 +227,14 @@ class _QuickChatMessage {
 
 // ─── Entry Point function ───────────────────────────────────────────────────
 
+void showAiChatQuickSheet(BuildContext context, WidgetRef parentRef) {
+  _showAiChatQuickSheet(context, parentRef);
+}
+
+void showOcrScanSheet(BuildContext context, WidgetRef parentRef) {
+  _showOcrScanSheet(context, parentRef);
+}
+
 void showQuickActionMenuSheet(BuildContext context, WidgetRef ref) {
   showModalBottomSheet(
     context: context,
@@ -64,6 +257,8 @@ class _QuickActionMenuSheet extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final limits = ref.watch(quickActionLimitProvider);
+    final aiQuota = ref.watch(aiQuotaProvider);
+    final isAiExhausted = !aiQuota.isUnlimited && aiQuota.quotaRemaining <= 0;
 
     return SafeArea(
       child: Padding(
@@ -117,11 +312,11 @@ class _QuickActionMenuSheet extends ConsumerWidget {
                   svgString: NotionDoodleIcons.aiChat,
                   title: 'AI Chat Action',
                   subtitle: 'Ketik lewat asisten AI',
-                  limitText: 'Quota: ${limits.aiChatCount}/10',
-                  isLimited: limits.aiChatCount >= 10,
+                  limitText: 'AI Kuota: ${aiQuota.displayQuotaBadge}',
+                  isLimited: isAiExhausted || limits.aiChatCount >= 10,
                   onTap: () {
                     Navigator.pop(context);
-                    if (limits.aiChatCount >= 10) {
+                    if (isAiExhausted || limits.aiChatCount >= 10) {
                       _showPremiumUpgradeSheet(context, 'AI Chat Quick Action');
                     } else {
                       _showAiChatQuickSheet(context, parentRef);
@@ -134,11 +329,11 @@ class _QuickActionMenuSheet extends ConsumerWidget {
                   svgString: NotionDoodleIcons.voiceAi,
                   title: 'Voice AI Action',
                   subtitle: 'Ucapkan ke asisten AI',
-                  limitText: 'Quota: ${limits.voiceAiCount}/5',
-                  isLimited: limits.voiceAiCount >= 5,
+                  limitText: 'AI Kuota: ${aiQuota.displayQuotaBadge}',
+                  isLimited: isAiExhausted || limits.voiceAiCount >= 5,
                   onTap: () {
                     Navigator.pop(context);
-                    if (limits.voiceAiCount >= 5) {
+                    if (isAiExhausted || limits.voiceAiCount >= 5) {
                       _showPremiumUpgradeSheet(context, 'Voice AI Action');
                     } else {
                       _showVoiceAiSheet(context, parentRef);
@@ -151,11 +346,11 @@ class _QuickActionMenuSheet extends ConsumerWidget {
                   svgString: NotionDoodleIcons.ocrScan,
                   title: 'Scan Action (OCR)',
                   subtitle: 'Foto struk belanja untuk scan',
-                  limitText: 'Quota: ${limits.scanCount}/8',
-                  isLimited: limits.scanCount >= 8,
+                  limitText: 'AI Kuota: ${aiQuota.displayQuotaBadge}',
+                  isLimited: isAiExhausted || limits.scanCount >= 8,
                   onTap: () {
                     Navigator.pop(context);
-                    if (limits.scanCount >= 8) {
+                    if (isAiExhausted || limits.scanCount >= 8) {
                       _showPremiumUpgradeSheet(context, 'Scan Action (OCR)');
                     } else {
                       _showOcrScanSheet(context, parentRef);
@@ -561,58 +756,24 @@ class _AiQuickChatModalState extends State<_AiQuickChatModal> {
           ));
         });
       } else {
-        // Assume extraction request
-        String title = 'Makan Pizza';
-        String category = 'Makanan';
-        double amount = 200000;
-        String type = 'expense';
-        String walletId = 'w1'; // BCA
-        String walletName = 'BCA Utama';
-
-        if (lowerText.contains('kopi') || lowerText.contains('starbucks')) {
-          title = 'Kopi Starbucks';
-          category = 'Makanan';
-          amount = 50000;
-          walletId = 'w4';
-          walletName = 'Dompet Tunai';
-        } else if (lowerText.contains('gaji')) {
-          title = 'Gaji Bulanan';
-          category = 'Gaji';
-          amount = 15000000;
-          type = 'income';
-          walletId = 'w1';
-          walletName = 'BCA Utama';
-        } else if (lowerText.contains('listrik')) {
-          title = 'Tagihan Listrik';
-          category = 'Tagihan';
-          amount = 300000;
-          walletId = 'w1';
-          walletName = 'BCA Utama';
-        } else {
-          // generic fallback numbers
-          final numberMatch = RegExp(r'\d+').firstMatch(lowerText);
-          if (numberMatch != null) {
-            final digits = numberMatch.group(0)!;
-            double multiplier = 1.0;
-            if (lowerText.contains('k') || lowerText.contains('rb') || lowerText.contains('ribu')) {
-              multiplier = 1000.0;
-            } else if (lowerText.contains('mas mas') || lowerText.contains('jt') || lowerText.contains('juta')) {
-              multiplier = 1000000.0;
-            }
-            amount = double.tryParse(digits)! * multiplier;
-          }
-          title = text.length > 20 ? '${text.substring(0, 20)}...' : text;
-          if (lowerText.contains('masuk') || lowerText.contains('gaji')) {
-            type = 'income';
-          }
-        }
+        // Intelligent Natural Language Transaction Parser
+        final userWallets = widget.parentRef.read(walletsProvider);
+        final resolved = _resolveWalletFromText(lowerText, userWallets);
+        final category = _resolveCategoryFromText(text);
+        final title = _resolveTitleFromText(text, category);
+        final amount = _parseAmountFromText(text);
+        final isIncome = category == 'Gaji' ||
+            lowerText.contains('masuk') ||
+            lowerText.contains('dapat gaji') ||
+            lowerText.contains('terima');
+        final type = isIncome ? 'income' : 'expense';
 
         final draft = _DraftTransaction(
           title: title,
           amount: amount,
           category: category,
-          walletId: walletId,
-          walletName: walletName,
+          walletId: resolved.id,
+          walletName: resolved.name,
           type: type,
         );
 
@@ -643,6 +804,7 @@ class _AiQuickChatModalState extends State<_AiQuickChatModal> {
 
     widget.parentRef.read(transactionsProvider.notifier).addTransaction(tx);
     widget.parentRef.read(quickActionLimitProvider.notifier).incrementAiChat();
+    widget.parentRef.read(aiQuotaProvider.notifier).useQuota();
 
     setState(() {
       msg.isConfirmed = true;
@@ -653,7 +815,7 @@ class _AiQuickChatModalState extends State<_AiQuickChatModal> {
       if (!mounted) return;
       setState(() {
         _messages.add(_QuickChatMessage(
-          text: 'Transaksi "${draft.title}" sebesar Rp ${draft.amount.toInt()} berhasil disimpan secara riil ke ${draft.walletName}! 🎉',
+          text: 'Transaksi "${draft.title}" sebesar ${CurrencyFormatter.format(draft.amount, currencyCode: widget.parentRef.read(userProfileProvider).currency)} berhasil disimpan secara riil ke ${draft.walletName}! 🎉',
           isUser: false,
         ));
       });
@@ -1226,7 +1388,7 @@ class _AiQuickChatModalState extends State<_AiQuickChatModal> {
           
           // Details rows
           _buildDraftDetailRow('Transaksi', draft.title),
-          _buildDraftDetailRow('Nominal', 'Rp ${draft.amount.toInt()}'),
+          _buildDraftDetailRow('Nominal', CurrencyFormatter.format(draft.amount, currencyCode: widget.parentRef.watch(userProfileProvider).currency)),
           _buildDraftDetailRow('Kategori', draft.category),
           _buildDraftDetailRow('Metode', draft.walletName),
           _buildDraftDetailRow('Tipe', draft.type == 'income' ? 'Pemasukan' : 'Pengeluaran'),
@@ -1443,6 +1605,7 @@ class _VoiceAiModalState extends State<_VoiceAiModal> {
 
     widget.parentRef.read(transactionsProvider.notifier).addTransaction(tx);
     widget.parentRef.read(quickActionLimitProvider.notifier).incrementVoiceAi();
+    widget.parentRef.read(aiQuotaProvider.notifier).useQuota();
 
     setState(() {
       _isConfirmed = true;
@@ -1629,7 +1792,7 @@ class _VoiceAiModalState extends State<_VoiceAiModal> {
           ),
           const SizedBox(height: 14),
           _buildRow('Detail', _voiceDraft!.title),
-          _buildRow('Nominal', 'Rp ${_voiceDraft!.amount.toInt()}'),
+          _buildRow('Nominal', CurrencyFormatter.format(_voiceDraft!.amount, currencyCode: widget.parentRef.watch(userProfileProvider).currency)),
           _buildRow('Kategori', _voiceDraft!.category),
           _buildRow('Metode', _voiceDraft!.walletName),
           const SizedBox(height: 18),
@@ -1873,6 +2036,7 @@ class _OcrScanModalState extends State<_OcrScanModal> {
 
     widget.parentRef.read(transactionsProvider.notifier).addTransaction(tx);
     widget.parentRef.read(quickActionLimitProvider.notifier).incrementScan();
+    widget.parentRef.read(aiQuotaProvider.notifier).useQuota();
 
     setState(() {
       _isConfirmed = true;
@@ -2183,7 +2347,7 @@ class _OcrScanModalState extends State<_OcrScanModal> {
           ),
           const SizedBox(height: 14),
           _buildRow('Detail', _ocrDraft!.title),
-          _buildRow('Nominal', 'Rp ${_ocrDraft!.amount.toInt()}'),
+          _buildRow('Nominal', CurrencyFormatter.format(_ocrDraft!.amount, currencyCode: widget.parentRef.watch(userProfileProvider).currency)),
           _buildRow('Kategori', _ocrDraft!.category),
           _buildRow('Metode', _ocrDraft!.walletName),
           const SizedBox(height: 18),

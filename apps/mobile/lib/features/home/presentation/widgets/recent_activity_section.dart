@@ -5,6 +5,8 @@ import 'package:intl/intl.dart';
 import '../../../../core/models/transaction_category_model.dart';
 import '../../../../core/providers/mock_providers.dart';
 import '../../../../core/theme/neo_brutalism_decorations.dart';
+import '../../../../core/utils/currency_formatter.dart';
+import '../../../profile/presentation/providers/user_profile_provider.dart';
 import 'recent_activity_empty_card.dart';
 
 class RecentActivitySection extends ConsumerWidget {
@@ -13,7 +15,7 @@ class RecentActivitySection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final transactions = ref.watch(transactionsProvider);
-    final currencyFormat = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
+    final userProfile = ref.watch(userProfileProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -66,7 +68,7 @@ class RecentActivitySection extends ConsumerWidget {
             itemBuilder: (context, index) {
               final tx = transactions[index];
               final isExpense = tx.type == 'expense' || tx.type == 'transfer';
-              final amountText = '${isExpense ? "- " : "+ "}${currencyFormat.format(tx.amount)}';
+              final amountText = '${isExpense ? "- " : "+ "}${CurrencyFormatter.format(tx.amount, currencyCode: userProfile.currency)}';
 
               final display = TransactionCategories.getCategoryDisplay(
                 tx.category.isNotEmpty ? tx.category : tx.title,

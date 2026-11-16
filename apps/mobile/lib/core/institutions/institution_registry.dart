@@ -109,7 +109,121 @@ class InstitutionRegistry {
       isSvg: false,
     ),
 
-    // ── Investments & Crypto & Cash ──
+    // ── CEX (Centralized Exchange) ──
+    InstitutionModel(
+      id: 'binance',
+      name: 'Binance',
+      shortName: 'Binance',
+      type: 'CEX',
+      logoAsset: 'assets/icons/institutions/binance.png',
+      brandColor: Color(0xFFF3BA2F),
+      fallbackIcon: Icons.currency_exchange_rounded,
+      isSvg: false,
+      supportsAutoSync: false,
+    ),
+    InstitutionModel(
+      id: 'bitget',
+      name: 'Bitget',
+      shortName: 'Bitget',
+      type: 'CEX',
+      logoAsset: 'assets/icons/institutions/bitget.png',
+      brandColor: Color(0xFF00F0FF),
+      fallbackIcon: Icons.currency_exchange_rounded,
+      isSvg: false,
+      supportsAutoSync: false,
+    ),
+    InstitutionModel(
+      id: 'floq',
+      name: 'Floq',
+      shortName: 'Floq',
+      type: 'CEX',
+      logoAsset: 'assets/icons/institutions/floq.png',
+      brandColor: Color(0xFF6C5CE7),
+      fallbackIcon: Icons.currency_exchange_rounded,
+      isSvg: false,
+      supportsAutoSync: false,
+    ),
+    InstitutionModel(
+      id: 'indodax',
+      name: 'Indodax',
+      shortName: 'Indodax',
+      type: 'CEX',
+      logoAsset: 'assets/icons/institutions/indodax.png',
+      brandColor: Color(0xFF1D71B8),
+      fallbackIcon: Icons.currency_exchange_rounded,
+      isSvg: false,
+      supportsAutoSync: false,
+    ),
+    InstitutionModel(
+      id: 'pintu',
+      name: 'Pintu',
+      shortName: 'Pintu',
+      type: 'CEX',
+      logoAsset: 'assets/icons/institutions/pintu.png',
+      brandColor: Color(0xFF0A1172),
+      fallbackIcon: Icons.currency_exchange_rounded,
+      isSvg: false,
+      supportsAutoSync: false,
+    ),
+    InstitutionModel(
+      id: 'tokocrypto',
+      name: 'Tokocrypto',
+      shortName: 'Tokocrypto',
+      type: 'CEX',
+      logoAsset: 'assets/icons/institutions/tokocrypto.png',
+      brandColor: Color(0xFF24A148),
+      fallbackIcon: Icons.currency_exchange_rounded,
+      isSvg: false,
+      supportsAutoSync: false,
+    ),
+
+    // ── DEX & Web3 Wallet ──
+    InstitutionModel(
+      id: 'uniswap',
+      name: 'Uniswap',
+      shortName: 'Uniswap',
+      type: 'DEX',
+      logoAsset: 'assets/icons/institutions/uniswap.png',
+      brandColor: Color(0xFFFF007A),
+      fallbackIcon: Icons.swap_horiz_rounded,
+      isSvg: false,
+      supportsAutoSync: false,
+    ),
+    InstitutionModel(
+      id: 'phantom',
+      name: 'Phantom Wallet',
+      shortName: 'Phantom',
+      type: 'Web3 Wallet',
+      logoAsset: 'assets/icons/institutions/phantom.png',
+      brandColor: Color(0xFFAB9FF2),
+      fallbackIcon: Icons.account_balance_wallet_rounded,
+      isSvg: false,
+      supportsAutoSync: false,
+    ),
+    InstitutionModel(
+      id: 'metamask',
+      name: 'MetaMask',
+      shortName: 'MetaMask',
+      type: 'Web3 Wallet',
+      logoAsset: 'assets/icons/institutions/metamask.png',
+      brandColor: Color(0xFFF6851B),
+      fallbackIcon: Icons.shield_rounded,
+      isSvg: false,
+      supportsAutoSync: false,
+    ),
+    InstitutionModel(
+      id: 'trustwallet',
+      name: 'Trust Wallet',
+      shortName: 'Trust Wallet',
+      type: 'Web3 Wallet',
+      logoAsset: 'assets/icons/institutions/trustwallet.png',
+      brandColor: Color(0xFF0500FF),
+      fallbackIcon: Icons.security_rounded,
+      isSvg: false,
+      supportsAutoSync: false,
+    ),
+
+    // ── Investments & Cash ──
     InstitutionModel(
       id: 'bibit',
       name: 'Bibit Reksadana',
@@ -129,17 +243,6 @@ class InstitutionRegistry {
       logoAsset: 'assets/icons/institutions/stockbit.svg',
       brandColor: Color(0xFF0F766E),
       fallbackIcon: Icons.show_chart,
-      isSvg: true,
-      supportsAutoSync: false,
-    ),
-    InstitutionModel(
-      id: 'bitcoin',
-      name: 'Bitcoin Crypto',
-      shortName: 'Bitcoin',
-      type: 'Crypto',
-      logoAsset: 'assets/icons/institutions/bitcoin.svg',
-      brandColor: Color(0xFFF7931A),
-      fallbackIcon: Icons.currency_bitcoin,
       isSvg: true,
       supportsAutoSync: false,
     ),
@@ -184,17 +287,26 @@ class InstitutionRegistry {
     if (lower.contains('ovo')) return findById('ovo')!;
     if (lower.contains('shopee')) return findById('shopeepay')!;
     if (lower.contains('linkaja')) return findById('linkaja')!;
+    if (lower.contains('binance')) return findById('binance')!;
+    if (lower.contains('bitget')) return findById('bitget')!;
+    if (lower.contains('floq')) return findById('floq')!;
+    if (lower.contains('indodax')) return findById('indodax')!;
+    if (lower.contains('pintu')) return findById('pintu')!;
+    if (lower.contains('tokocrypto')) return findById('tokocrypto')!;
+    if (lower.contains('uniswap')) return findById('uniswap')!;
+    if (lower.contains('phantom')) return findById('phantom')!;
+    if (lower.contains('metamask')) return findById('metamask')!;
+    if (lower.contains('trust')) return findById('trustwallet')!;
     if (lower.contains('bibit')) return findById('bibit')!;
     if (lower.contains('stockbit')) return findById('stockbit')!;
-    if (lower.contains('bitcoin') || lower.contains('crypto')) return findById('bitcoin')!;
     if (lower.contains('tunai') || lower.contains('cash')) return findById('cash')!;
 
     // 2. Type based fallbacks
     if (type == 'Bank') return findById('bca')!;
     if (type == 'E-Wallet') return findById('gopay')!;
+    if (['CEX', 'DEX', 'Web3 Wallet', 'Crypto'].contains(type)) return findById('binance')!;
     if (type == 'Mutual Fund') return findById('bibit')!;
     if (type == 'Stock') return findById('stockbit')!;
-    if (type == 'Crypto') return findById('bitcoin')!;
     return findById('cash')!;
   }
 
@@ -204,6 +316,9 @@ class InstitutionRegistry {
   static List<InstitutionModel> get ewallets =>
       all.where((i) => i.type == 'E-Wallet').toList();
 
+  static List<InstitutionModel> get cryptoWeb3 =>
+      all.where((i) => ['CEX', 'DEX', 'Web3 Wallet'].contains(i.type)).toList();
+
   static List<InstitutionModel> get investments =>
-      all.where((i) => ['Mutual Fund', 'Stock', 'Crypto', 'Cash'].contains(i.type)).toList();
+      all.where((i) => ['Mutual Fund', 'Stock', 'Cash'].contains(i.type)).toList();
 }

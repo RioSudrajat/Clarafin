@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../domain/models/consultant.dart';
+import '../providers/booking_provider.dart';
+import '../providers/consult_list_provider.dart';
 import 'booking_document_uploader.dart';
 import 'booking_intake_description_box.dart';
 import 'booking_intake_topics_grid.dart';
@@ -26,7 +29,7 @@ class BookingStep3IntakeView extends ConsumerStatefulWidget {
 }
 
 class _BookingStep3IntakeViewState extends ConsumerState<BookingStep3IntakeView> {
-  final List<String> _selectedTopics = ['Review Investasi'];
+  final List<String> _selectedTopics = ['Review Portofolio Investasi'];
   String? _uploadedFileName;
   String? _uploadedFileSize;
   bool _agreed = true;
@@ -58,6 +61,13 @@ class _BookingStep3IntakeViewState extends ConsumerState<BookingStep3IntakeView>
 
   @override
   Widget build(BuildContext context) {
+    final consultants = ref.watch(consultantsListProvider);
+    final consultant = consultants.cast<Consultant?>().firstWhere(
+      (c) => c?.id == widget.consultantId,
+      orElse: () => consultants.isNotEmpty ? consultants.first : null,
+    );
+    final selectedTier = ref.watch(bookingProvider).selectedTier;
+
     return SingleChildScrollView(
       physics: const ClampingScrollPhysics(),
       child: Column(
@@ -72,6 +82,8 @@ class _BookingStep3IntakeViewState extends ConsumerState<BookingStep3IntakeView>
                 BookingIntakeTopicsGrid(
                   selectedTopics: _selectedTopics,
                   onToggleTopic: _onToggleTopic,
+                  consultant: consultant,
+                  selectedTier: selectedTier,
                 ),
                 const SizedBox(height: 24),
                 BookingIntakeDescriptionBox(
@@ -102,7 +114,6 @@ class _BookingStep3IntakeViewState extends ConsumerState<BookingStep3IntakeView>
                     _notifyValidation();
                   },
                 ),
-                const SizedBox(height: 16),
               ],
             ),
           ),

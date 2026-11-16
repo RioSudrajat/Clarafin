@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/neo_brutalism_decorations.dart';
 import '../../domain/models/consultant.dart';
+import 'booking_service_mock_data.dart';
 
 class ConsultantCard extends StatelessWidget {
   final Consultant consultant;
@@ -19,6 +20,15 @@ class ConsultantCard extends StatelessWidget {
       symbol: 'Rp ',
       decimalDigits: 0,
     );
+
+    final services = BookingServiceMockData.getServicesForConsultant(consultant);
+    double minPrice = services.first.basePricePerSession;
+    double maxPrice = services.first.offlinePricePerSession;
+    for (final s in services) {
+      if (s.basePricePerSession < minPrice) minPrice = s.basePricePerSession;
+      final highestTier = s.offlinePricePerSession > s.basePricePerSession ? s.offlinePricePerSession : s.basePricePerSession;
+      if (highestTier > maxPrice) maxPrice = highestTier;
+    }
 
     return GestureDetector(
       onTap: consultant.isFullyBooked
@@ -206,7 +216,8 @@ class ConsultantCard extends StatelessWidget {
             Wrap(
               spacing: 6,
               runSpacing: 6,
-              children: consultant.specializations.map((tag) {
+              children: [
+                ...consultant.specializations.take(3).map((tag) {
                 return Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
@@ -224,7 +235,26 @@ class ConsultantCard extends StatelessWidget {
                     ),
                   ),
                 );
-              }).toList(),
+                }),
+                if (consultant.specializations.length > 3)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: NeoBrutalism.lime,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.black, width: 1.2),
+                    ),
+                    child: Text(
+                      '+${consultant.specializations.length - 3}',
+                      style: const TextStyle(
+                        fontFamily: 'Plus Jakarta Sans',
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.black,
+                      ),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(height: 12),
 
@@ -242,14 +272,28 @@ class ConsultantCard extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Mulai dari',
-                      style: TextStyle(
-                        fontFamily: 'Plus Jakarta Sans',
-                        fontSize: 10,
-                        fontWeight: FontWeight.w500,
-                        color: NeoBrutalism.textMuted,
-                      ),
+                    Row(
+                      children: [
+                        const Text(
+                          'Mulai ',
+                          style: TextStyle(
+                            fontFamily: 'Plus Jakarta Sans',
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: NeoBrutalism.textMuted,
+                          ),
+                        ),
+                        Text(
+                          currencyFormat.format(maxPrice),
+                          style: TextStyle(
+                            fontFamily: 'Plus Jakarta Sans',
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey.shade500,
+                            decoration: TextDecoration.lineThrough,
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 1),
                     Row(
@@ -257,7 +301,7 @@ class ConsultantCard extends StatelessWidget {
                       textBaseline: TextBaseline.alphabetic,
                       children: [
                         Text(
-                          currencyFormat.format(consultant.feePerSession),
+                          currencyFormat.format(minPrice),
                           style: TextStyle(
                             fontFamily: 'Plus Jakarta Sans',
                             fontSize: 15,

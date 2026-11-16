@@ -76,7 +76,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             color: Colors.black,
           ),
         ),
-        backgroundColor: NeoBrutalism.lime,
+        backgroundColor: NeoBrutalism.primary,
       ),
     );
 
@@ -102,7 +102,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           children: [
             Text(
               'Masukkan tautan gambar atau gunakan contoh foto.',
-              style: GoogleFonts.plusJakartaSans(fontSize: 12, color: const Color(0xFF6B7280)),
+              style: GoogleFonts.plusJakartaSans(fontSize: 12, color: NeoBrutalism.textMuted),
             ),
             const SizedBox(height: 12),
             TextField(
@@ -125,7 +125,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: NeoBrutalism.lime,
+              backgroundColor: NeoBrutalism.primary,
               foregroundColor: Colors.black,
               elevation: 0,
               shape: RoundedRectangleBorder(
@@ -153,152 +153,167 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
-      body: SafeArea(
+      backgroundColor: const Color(0xFF0F758A),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: NeoBrutalism.brandGradient,
+        ),
         child: Column(
           children: [
-            // Pinned Header
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                border: Border(
-                  bottom: BorderSide(color: Colors.black, width: 2.0),
-                ),
-              ),
-              child: Row(
-                children: [
-                  GestureDetector(
-                    onTap: () => context.pop(),
-                    child: Container(
-                      width: 38,
-                      height: 38,
-                      decoration: NeoBrutalism.circleDecoration(
-                        backgroundColor: Colors.white,
-                        shadowOffset: 2,
-                        borderWidth: 2,
-                      ),
-                      child: const Icon(Icons.arrow_back, size: 20, color: Colors.black),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    'Edit Profil',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.black,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Form Body
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
+            // Pinned Neo-Brutalist Header
+            SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                child: Row(
                   children: [
-                    // Active Avatar Preview
-                    Center(
-                      child: Stack(
-                        children: [
-                          UserAvatar(
-                            avatarUrl: _avatarUrl,
-                            size: 88,
-                            borderWidth: 2.5,
-                          ),
-                          Positioned(
-                            bottom: 0,
-                            right: 0,
-                            child: Container(
-                              width: 28,
-                              height: 28,
-                              decoration: BoxDecoration(
-                                color: NeoBrutalism.lime,
-                                shape: BoxShape.circle,
-                                border: Border.all(color: Colors.black, width: 2.0),
-                              ),
-                              child: const Icon(Icons.check, size: 16, color: Colors.black),
-                            ),
-                          ),
-                        ],
+                    GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => context.pop(),
+                      child: Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          border: NeoBrutalism.border(width: 2.0),
+                          boxShadow: NeoBrutalism.shadow(yOffset: 2.0),
+                        ),
+                        child: const Center(
+                          child: Icon(Icons.arrow_back_rounded, size: 22, color: NeoBrutalism.dark),
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 18),
-
-                    // Avatar Picker Section (6 Notion Avatars)
-                    AvatarPickerSection(
-                      selectedIndex: _selectedAvatarIndex,
-                      onSelectPreset: (index) {
-                        setState(() {
-                          _selectedAvatarIndex = index;
-                          _avatarUrl = UserProfile.notionAvatars[index - 1];
-                        });
-                      },
-                      onCustomPhoto: _showCustomPhotoDialog,
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Field 1: Nama Lengkap
-                    _buildInputField(
-                      label: 'Nama Lengkap',
-                      controller: _nameController,
-                      icon: Icons.person_outline,
-                      keyboardType: TextInputType.name,
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Field 2: Email
-                    _buildInputField(
-                      label: 'Alamat Email',
-                      controller: _emailController,
-                      icon: Icons.email_outlined,
-                      keyboardType: TextInputType.emailAddress,
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Field 3: Nomor Telepon
-                    _buildInputField(
-                      label: 'Nomor Telepon',
-                      controller: _phoneController,
-                      icon: Icons.phone_outlined,
-                      keyboardType: TextInputType.phone,
-                    ),
-                    const SizedBox(height: 28),
-
-                    // Save Button
-                    GestureDetector(
-                      onTap: _saveProfile,
-                      child: Container(
-                        width: double.infinity,
-                        height: 50,
-                        decoration: BoxDecoration(
-                          color: NeoBrutalism.lime,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: Colors.black, width: 2.0),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Colors.black,
-                              offset: Offset(0, 3),
-                              blurRadius: 0,
-                            ),
-                          ],
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          'Simpan Perubahan',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.black,
-                          ),
-                        ),
+                    const SizedBox(width: 14),
+                    Text(
+                      'Edit Profil',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
                       ),
                     ),
                   ],
+                ),
+              ),
+            ),
+
+            // Main White Container with Curvature
+            Expanded(
+              child: Container(
+                width: double.infinity,
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                  border: Border(
+                    top: BorderSide(color: Colors.black, width: 2.0),
+                    left: BorderSide(color: Colors.black, width: 2.0),
+                    right: BorderSide(color: Colors.black, width: 2.0),
+                  ),
+                ),
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                    physics: const ClampingScrollPhysics(),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        // Active Avatar Preview
+                        Center(
+                          child: Stack(
+                            children: [
+                              UserAvatar(
+                                avatarUrl: _avatarUrl,
+                                size: 88,
+                                borderWidth: 2.5,
+                              ),
+                              Positioned(
+                                bottom: 0,
+                                right: 0,
+                                child: Container(
+                                  width: 28,
+                                  height: 28,
+                                  decoration: BoxDecoration(
+                                    color: NeoBrutalism.primary,
+                                    shape: BoxShape.circle,
+                                    border: NeoBrutalism.border(width: 2.0),
+                                  ),
+                                  child: const Icon(Icons.check, size: 16, color: Colors.black),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+
+                        // Avatar Picker Section
+                        AvatarPickerSection(
+                          selectedIndex: _selectedAvatarIndex,
+                          onSelectPreset: (index) {
+                            setState(() {
+                              _selectedAvatarIndex = index;
+                              _avatarUrl = UserProfile.notionAvatars[index - 1];
+                            });
+                          },
+                          onCustomPhoto: _showCustomPhotoDialog,
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Field 1: Nama Lengkap
+                        _buildInputField(
+                          label: 'Nama Lengkap',
+                          controller: _nameController,
+                          icon: Icons.person_outline_rounded,
+                          keyboardType: TextInputType.name,
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Field 2: Email
+                        _buildInputField(
+                          label: 'Alamat Email',
+                          controller: _emailController,
+                          icon: Icons.email_outlined,
+                          keyboardType: TextInputType.emailAddress,
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Field 3: Nomor Telepon
+                        _buildInputField(
+                          label: 'Nomor Telepon',
+                          controller: _phoneController,
+                          icon: Icons.phone_outlined,
+                          keyboardType: TextInputType.phone,
+                        ),
+                        const SizedBox(height: 28),
+
+                        // Save Button
+                        GestureDetector(
+                          onTap: _saveProfile,
+                          child: Container(
+                            width: double.infinity,
+                            height: 50,
+                            decoration: BoxDecoration(
+                              color: NeoBrutalism.primary,
+                              borderRadius: BorderRadius.circular(14),
+                              border: NeoBrutalism.border(width: 2.0),
+                              boxShadow: NeoBrutalism.shadow(yOffset: 3.0),
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              'Simpan Perubahan',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.black,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -330,14 +345,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.black, width: 2.0),
-            boxShadow: const [
-              BoxShadow(
-                color: Colors.black,
-                offset: Offset(0, 2),
-                blurRadius: 0,
-              ),
-            ],
+            border: NeoBrutalism.border(width: 2.0),
+            boxShadow: NeoBrutalism.shadow(yOffset: 2.0),
           ),
           child: TextField(
             controller: controller,

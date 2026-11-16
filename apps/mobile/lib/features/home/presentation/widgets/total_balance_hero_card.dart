@@ -2,11 +2,13 @@ import 'dart:ui' show lerpDouble;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
+
 import '../../../../core/providers/daily_pnl_provider.dart';
 import '../../../../core/providers/mock_providers.dart';
 import '../../../../core/theme/neo_brutalism_decorations.dart';
 import 'sub_wallet_pills_row.dart';
+import '../../../../core/utils/currency_formatter.dart';
+import '../../../profile/presentation/providers/user_profile_provider.dart';
 
 class TotalBalanceHeroCard extends ConsumerWidget {
   final double progress;
@@ -36,7 +38,9 @@ class TotalBalanceHeroCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final wallets = ref.watch(walletsProvider);
     final dailyPnl = ref.watch(dailyPnlProvider);
-    final currencyFormat = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
+    final userProfile = ref.watch(userProfileProvider);
+    final currencyCode = userProfile.currency;
+    final currencySymbol = CurrencyFormatter.getSymbol(currencyCode);
     final totalBalance = wallets.fold<double>(0, (sum, w) => sum + w.balance);
 
     // ── 1. Curtain Animation (Delay 0.10, moves upward -32px and fades out by 0.52) ──
@@ -59,7 +63,7 @@ class TotalBalanceHeroCard extends ConsumerWidget {
 
     final formattedAmount = obscureBalance
         ? '••••••••'
-        : currencyFormat.format(totalBalance).replaceAll('Rp ', '');
+        : CurrencyFormatter.formatWithoutSymbol(totalBalance, currencyCode: currencyCode);
 
     return Stack(
       clipBehavior: Clip.none,
@@ -189,7 +193,7 @@ class TotalBalanceHeroCard extends ConsumerWidget {
                     textBaseline: TextBaseline.alphabetic,
                     children: [
                       Text(
-                        'Rp ',
+                        currencySymbol,
                         style: TextStyle(
                           fontFamily: 'Plus Jakarta Sans',
                           fontSize: rpFontSize,

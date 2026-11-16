@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/theme/neo_brutalism_decorations.dart';
 import '../../../../shared/widgets/interactive_donut_chart.dart';
 
@@ -9,15 +10,21 @@ class WalletGradientHeader extends StatelessWidget {
   final double topSafeArea;
   final String totalBalanceFormatted;
   final List<ChartData> chartData;
+  final VoidCallback? onAddTap;
+  final VoidCallback? onSortTap;
+  final bool? sortByValueAsc;
 
   const WalletGradientHeader({
     super.key,
     required this.topSafeArea,
     required this.totalBalanceFormatted,
     required this.chartData,
+    this.onAddTap,
+    this.onSortTap,
+    this.sortByValueAsc,
   });
 
-  static const double _curveRadius = 28.0;
+  static const double _curveRadius = 18.0;
 
   @override
   Widget build(BuildContext context) {
@@ -30,17 +37,89 @@ class WalletGradientHeader extends StatelessWidget {
         children: [
           SizedBox(height: topSafeArea + 10),
 
-          // Screen Title
-          const Center(
-            child: Text(
-              'Wallet Finansialmu',
-              style: TextStyle(
-                fontFamily: 'Plus Jakarta Sans',
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                color: Colors.white,
-                letterSpacing: -0.3,
-              ),
+          // Header Bar: [+ Tambah] (Kiri)  --  [Wallet Finansialmu] (Tengah)  --  [Sort] (Kanan)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Left: "+ Tambah" button
+                GestureDetector(
+                  onTap: onAddTap,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: NeoBrutalism.lime,
+                      borderRadius: BorderRadius.circular(10),
+                      border: NeoBrutalism.border(width: 1.8),
+                      boxShadow: NeoBrutalism.shadow(yOffset: 2.0),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.add_rounded, size: 16, color: Colors.black),
+                        const SizedBox(width: 3),
+                        Text(
+                          'Tambah',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.black,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Center: Title
+                Text(
+                  'Wallet Finansialmu',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                    letterSpacing: -0.3,
+                  ),
+                ),
+
+                // Right: "Sort" button
+                GestureDetector(
+                  onTap: onSortTap,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: sortByValueAsc != null ? NeoBrutalism.lime : Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                      border: NeoBrutalism.border(width: 1.8),
+                      boxShadow: NeoBrutalism.shadow(yOffset: 2.0),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          sortByValueAsc == null
+                              ? Icons.swap_vert_rounded
+                              : (sortByValueAsc! ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded),
+                          size: 15,
+                          color: Colors.black,
+                        ),
+                        const SizedBox(width: 3),
+                        Text(
+                          sortByValueAsc == null
+                              ? 'Sort'
+                              : (sortByValueAsc! ? 'Terendah' : 'Tertinggi'),
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.black,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 14),
@@ -67,7 +146,7 @@ class WalletGradientHeader extends StatelessWidget {
               data: chartData,
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 6),
 
           // Curved White Sheet Boundary at Bottom
           SizedBox(
@@ -100,7 +179,7 @@ class WalletGradientHeader extends StatelessWidget {
 
 /// Custom painter for the 2px black line along the top curved edge of the white sheet.
 class _WhiteSheetCurvePainter extends CustomPainter {
-  static const double cornerRadius = 28.0;
+  static const double cornerRadius = 18.0;
 
   const _WhiteSheetCurvePainter();
 

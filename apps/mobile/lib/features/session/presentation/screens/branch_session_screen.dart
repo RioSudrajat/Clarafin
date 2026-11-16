@@ -20,9 +20,26 @@ class BranchSessionScreen extends ConsumerStatefulWidget {
 }
 
 class _BranchSessionScreenState extends ConsumerState<BranchSessionScreen> {
+  bool _isSortNewest = true;
+  bool _filterOnlyPaket = false;
+
   @override
   Widget build(BuildContext context) {
     final sessionState = ref.watch(consultationSessionProvider);
+
+    var pastList = [...sessionState.pastSessions];
+    if (_filterOnlyPaket) {
+      pastList = pastList
+          .where((s) =>
+              s.sessionTitle.toLowerCase().contains('paket') ||
+              s.sessionMethod.toLowerCase().contains('paket'))
+          .toList();
+    }
+    if (_isSortNewest) {
+      pastList.sort((a, b) => b.scheduleTime.compareTo(a.scheduleTime));
+    } else {
+      pastList.sort((a, b) => a.scheduleTime.compareTo(b.scheduleTime));
+    }
 
     return PopScope(
       canPop: false,
@@ -90,13 +107,33 @@ class _BranchSessionScreenState extends ConsumerState<BranchSessionScreen> {
                           const SizedBox(height: 24),
                           _buildPastHeader(),
                           const SizedBox(height: 12),
-                          ...sessionState.pastSessions.map(
-                            (item) => SessionPastCard(
-                              session: item,
-                              onTapDetail: () => SessionSheets.showDetail(context, item),
-                              onTapRebook: () => context.go('/consult'),
+                          if (pastList.isEmpty)
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: NeoBrutalism.surfaceWarm,
+                                borderRadius: BorderRadius.circular(14),
+                                border: NeoBrutalism.border(width: 1.8),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  'Tidak ada sesi berlalu untuk filter ini.',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 12,
+                                    color: NeoBrutalism.textMuted,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            )
+                          else
+                            ...pastList.map(
+                              (item) => SessionPastCard(
+                                session: item,
+                                onTapDetail: () => SessionSheets.showDetail(context, item),
+                                onTapRebook: () => context.go('/consult'),
+                              ),
                             ),
-                          ),
                           const SizedBox(height: 32),
                         ],
                       ),
@@ -159,22 +196,41 @@ class _BranchSessionScreenState extends ConsumerState<BranchSessionScreen> {
         ),
         Row(
           children: [
-            _buildFilterPill('Terbaru', true),
+            GestureDetector(
+              onTap: () {
+                setState(() => _isSortNewest = !_isSortNewest);
+              },
+              child: _buildFilterPill(
+                _isSortNewest ? 'Terbaru' : 'Terlama',
+                true,
+                icon: _isSortNewest ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded,
+              ),
+            ),
             const SizedBox(width: 6),
-            _buildFilterPill('Semua Jadwal', false),
+            GestureDetector(
+              onTap: () {
+                setState(() => _filterOnlyPaket = !_filterOnlyPaket);
+              },
+              child: _buildFilterPill(
+                _filterOnlyPaket ? 'Paket Sesi' : 'Semua Jadwal',
+                _filterOnlyPaket,
+                icon: Icons.filter_alt_outlined,
+              ),
+            ),
           ],
         ),
       ],
     );
   }
 
-  Widget _buildFilterPill(String label, bool isSelected) {
+  Widget _buildFilterPill(String label, bool isSelected, {IconData icon = Icons.keyboard_arrow_down_rounded}) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
         color: isSelected ? NeoBrutalism.mint : Colors.white,
         borderRadius: BorderRadius.circular(NeoBrutalism.radiusPill),
         border: NeoBrutalism.border(width: 1.5),
+        boxShadow: isSelected ? NeoBrutalism.shadow(yOffset: 1.5) : null,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -188,7 +244,7 @@ class _BranchSessionScreenState extends ConsumerState<BranchSessionScreen> {
             ),
           ),
           const SizedBox(width: 3),
-          const Icon(Icons.keyboard_arrow_down_rounded, size: 13, color: NeoBrutalism.dark),
+          Icon(icon, size: 13, color: NeoBrutalism.dark),
         ],
       ),
     );

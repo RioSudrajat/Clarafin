@@ -48,6 +48,34 @@ class HomeTopAppBar extends ConsumerWidget {
         // Notification Bell & Profile Avatar
         Row(
           children: [
+            // Daily Ritual Chip (from Onboarding Step 6)
+            if (profile.dailyReminderEnabled)
+              Container(
+                margin: const EdgeInsets.only(right: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: NeoBrutalism.lime,
+                  borderRadius: BorderRadius.circular(9999),
+                  border: Border.all(color: Colors.black, width: 1.5),
+                  boxShadow: NeoBrutalism.shadow(yOffset: 1.5),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.nightlight_round, size: 12, color: Colors.black),
+                    const SizedBox(width: 3),
+                    Text(
+                      profile.dailyReminderTime,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.black,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
             // Notification Bell
             GestureDetector(
               onTap: () => context.push('/notifications'),

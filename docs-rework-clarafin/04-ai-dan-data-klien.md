@@ -23,36 +23,36 @@ Satu aksi adalah satu permintaan yang memanggil model atau sapuan Gmail.
 | Mengonfirmasi draf | 0 |
 | Sapaan, dan konfirmasi bahwa catatan sudah tersimpan | 0 |
 
-Gratis: 40 aksi per bulan kalender. Pro: 400 aksi per 30 hari sejak lunas. Kuota habis menolak aksi baru dan menawarkan Pro. Tidak ada paket tanpa batas.
+Gratis: 40 aksi per bulan kalender. Pro: 400 aksi per 30 hari sejak lunas (Rp49.000). Unlimited: tanpa batas aksi per 30 hari (Rp99.000). Kuota habis menolak aksi baru dan menawarkan upgrade ke Pro atau Unlimited.
 
 ## Yang boleh dijawab
 
 AI boleh menghitung dan menggambarkan angka milik klien: cicilan dibanding gaji, sisa setelah tagihan, nota yang masuk ke kategori, pola 30–90 hari dari transaksi yang sudah dikonfirmasi.
 
-AI boleh mencatat pengeluaran dari kalimat dan dari foto nota.
+AI boleh mencatat pengeluaran dari kalimat dan dari foto nota (memakai kategori kanonis `categories` / `TransactionCategories`).
 
 AI boleh menyapu Gmail dengan aturan di bawah.
 
-AI boleh menyebut satu sampai tiga praktisi.
+AI boleh memberi **helpful hint edukatif secara netral, seimbang, dan tidak berlebihan** (misal menjelaskan gambaran umum konsep seperti perbedaan *Snowball vs Avalanche* atau kerangka pertimbangan umum tanpa mendikte pilihan/tindakan mengikat dan tanpa menyebut produk spesifik), agar klien terbantu memahami kompleksitasnya dan terdorong memilih konsultasi dengan praktisi.
+
+AI boleh menyebut satu sampai tiga praktisi (disertai rekomendasi card paket & konsultan).
 
 ## Yang tidak boleh dijawab
 
-AI berhenti, tanpa menyisipkan langkah solusi, lalu menawarkan praktisi, kalau pertanyaan masuk ke salah satu ini:
+AI dilarang memberikan keputusan/instruksi final yang mengikat atau merekomendasikan produk spesifik, dan wajib menutup dengan *soft boundary* + **1–3 card praktisi** saat pertanyaan menyentuh:
 
-- Restrukturisasi utang, urutan pelunasan, atau negosiasi kreditur
-- Rancangan runway
-- Rekomendasi produk investasi, asuransi, atau instrumen lain
-- Rencana keuangan yang memilih tindakan untuk klien
+- Penetapan strategi restrukturisasi utang, urutan pelunasan yang harus diambil, atau negosiasi kreditur
+- Rancangan runway final yang mengikat
+- Rekomendasi produk investasi, asuransi, atau instrumen keuangan spesifik
+- Rencana keuangan yang memilihkan tindakan mengikat untuk klien
 
-Kalimat umum seperti "biasanya utang bunga tertinggi didahulukan" termasuk saran, jadi ikut berhenti.
+Contoh yang tepat: *"Cicilanmu 62% dari gaji bulan ini, dengan sisa setelah tagihan Rp1.200.000. Secara umum ada pendekatan Snowball (fokus saldo terkecil lebih dulu) maupun Avalanche (fokus bunga tertinggi), masing-masing punya trade-off arus kas dan beban bunga. Untuk menentukan urutan pelunasan yang aman sesuai kontrak cicilanmu, diskusikan langsung bersama perencana keuangan berlisensi di bawah."* lalu tampilkan paket + 1–3 card praktisi.
 
-Contoh yang masih boleh: "Cicilanmu 62% dari gaji bulan ini. Sisa setelah tagihan Rp1.200.000." Lalu tawaran praktisi.
-
-Contoh yang berhenti: "Lunasi utang A dulu, lalu ajukan restrukturisasi ke bank." Diganti satu kalimat batas, lalu satu sampai tiga praktisi.
+Contoh yang tetap dilarang: *"Lunasi utang A dulu, lalu pindahkan danamu ke reksa dana X."* Diganti hint netral yang tidak berlebihan + *soft boundary* + satu sampai tiga card praktisi.
 
 ## Kapan tawaran praktisi muncul
 
-Muncul di akhir jawaban analisa, dan menjadi seluruh penutup saat pertanyaan menyeberang batas.
+Muncul setelah *helpful hint* netral + *soft boundary* di akhir jawaban analisa atau pertanyaan finansial mendalam.
 
 Tidak muncul setelah sapaan. Tidak muncul setelah "catat 20 ribu kopi" yang berhasil menjadi draf atau transaksi.
 

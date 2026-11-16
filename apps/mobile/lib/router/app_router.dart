@@ -7,6 +7,11 @@ import '../features/splash/presentation/screens/splash_screen.dart';
 import '../features/auth/presentation/screens/auth_login_screen.dart';
 import '../features/auth/presentation/screens/auth_register_screen.dart';
 import '../features/onboarding/presentation/screens/onboarding_welcome_screen.dart';
+import '../features/onboarding/presentation/screens/onboarding_history_screen.dart';
+import '../features/onboarding/presentation/screens/onboarding_tracker_focus_screen.dart';
+import '../features/onboarding/presentation/screens/onboarding_advisory_focus_screen.dart';
+import '../features/onboarding/presentation/screens/onboarding_wallet_goal_screen.dart';
+import '../features/onboarding/presentation/screens/onboarding_daily_ritual_screen.dart';
 import '../features/onboarding/presentation/screens/onboarding_wallet_setup_screen.dart';
 import '../features/onboarding/presentation/screens/onboarding_set_goal_screen.dart';
 import '../features/home/presentation/screens/home_screen.dart';
@@ -39,6 +44,10 @@ import '../features/transaction/presentation/screens/transaction_success_screen.
 import '../features/match_expert/presentation/screens/match_expert_screen.dart';
 import '../features/notification/presentation/screens/notification_screen.dart';
 import '../features/services/presentation/screens/financial_health_screen.dart';
+import '../features/services/presentation/screens/financial_test_catalog_screen.dart';
+import '../features/services/presentation/screens/kpr_simulation_screen.dart';
+import '../features/services/presentation/screens/financial_calculator_screen.dart';
+import '../features/services/presentation/screens/debt_payoff_strategy_screen.dart';
 import '../features/services/presentation/screens/voucher_screen.dart';
 import '../features/export/presentation/screens/export_data_screen.dart';
 import '../features/auth/presentation/providers/auth_provider.dart';
@@ -125,6 +134,31 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const OnboardingWelcomeScreen(),
         routes: [
           GoRoute(
+            path: 'history',
+            parentNavigatorKey: _rootNavigatorKey,
+            builder: (context, state) => const OnboardingHistoryScreen(),
+          ),
+          GoRoute(
+            path: 'tracker-focus',
+            parentNavigatorKey: _rootNavigatorKey,
+            builder: (context, state) => const OnboardingTrackerFocusScreen(),
+          ),
+          GoRoute(
+            path: 'advisory-focus',
+            parentNavigatorKey: _rootNavigatorKey,
+            builder: (context, state) => const OnboardingAdvisoryFocusScreen(),
+          ),
+          GoRoute(
+            path: 'wallet-goal',
+            parentNavigatorKey: _rootNavigatorKey,
+            builder: (context, state) => const OnboardingWalletGoalScreen(),
+          ),
+          GoRoute(
+            path: 'daily-ritual',
+            parentNavigatorKey: _rootNavigatorKey,
+            builder: (context, state) => const OnboardingDailyRitualScreen(),
+          ),
+          GoRoute(
             path: 'wallet-setup',
             parentNavigatorKey: _rootNavigatorKey,
             builder: (context, state) => const OnboardingWalletSetupScreen(),
@@ -181,7 +215,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/budget',
-                builder: (context, state) => const BudgetScreen(),
+                builder: (context, state) {
+                  final tabParam = int.tryParse(state.uri.queryParameters['tab'] ?? '') ?? 1;
+                  return BudgetScreen(initialTab: tabParam);
+                },
               ),
             ],
           ),
@@ -333,6 +370,26 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: '/score',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const FinancialHealthScreen(),
+      ),
+      GoRoute(
+        path: '/financial-test',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const FinancialTestCatalogScreen(),
+      ),
+      GoRoute(
+        path: '/tools/kpr',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const KprSimulationScreen(),
+      ),
+      GoRoute(
+        path: '/tools/calculator',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const FinancialCalculatorScreen(),
+      ),
+      GoRoute(
+        path: '/tools/debt-payoff',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const DebtPayoffStrategyScreen(),
       ),
       GoRoute(
         path: '/vouchers',
