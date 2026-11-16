@@ -4,16 +4,19 @@
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- Compatibility guard for non-Supabase PostgreSQL instances (local Docker & CI).
-CREATE SCHEMA IF NOT EXISTS auth;
-
-CREATE TABLE IF NOT EXISTS auth.users (
-  id UUID PRIMARY KEY,
-  email TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
+-- Guard schema and table creation inside DO so hosted Supabase roles without CREATE on auth do not fail.
 DO $$
 BEGIN
+  IF to_regclass('auth.users') IS NULL THEN
+    CREATE SCHEMA IF NOT EXISTS auth;
+
+    CREATE TABLE auth.users (
+      id UUID PRIMARY KEY,
+      email TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+  END IF;
+
   IF to_regprocedure('auth.uid()') IS NULL THEN
     EXECUTE $fn$
       CREATE FUNCTION auth.uid()

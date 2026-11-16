@@ -5,10 +5,12 @@ DROP POLICY IF EXISTS audit_events_deny_all_client ON audit_events;
 DROP POLICY IF EXISTS platform_settings_deny_all_client ON platform_settings;
 DROP POLICY IF EXISTS payouts_deny_all_client ON payouts;
 
+REVOKE ALL ON practitioner_profiles FROM PUBLIC;
 REVOKE ALL ON gmail_connections FROM PUBLIC;
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+    EXECUTE 'REVOKE ALL ON practitioner_profiles FROM authenticated';
     EXECUTE 'REVOKE ALL ON gmail_connections FROM authenticated';
   END IF;
 END

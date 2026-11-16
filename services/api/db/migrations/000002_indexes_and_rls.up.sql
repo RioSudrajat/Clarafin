@@ -166,9 +166,50 @@ CREATE POLICY practitioner_profiles_owner_update ON practitioner_profiles
   USING (user_id = auth.uid())
   WITH CHECK (user_id = auth.uid());
 
+-- Restrict client SELECT/UPDATE on practitioner_profiles to non-sensitive public/editable columns.
+-- KYC files, bank details, commission rates, violation counts, and verification status are backend/Staff CMS only.
+REVOKE ALL ON practitioner_profiles FROM PUBLIC;
+GRANT SELECT (
+  user_id, display_name, title_headline, bio, city, practitioner_tier,
+  clients_handled_count, certifications, specializations, languages,
+  supported_methods, gender, birth_year, consulting_style,
+  years_of_experience, is_fully_booked, status, rating_avg,
+  review_count, total_sessions_completed, verified_at, created_at, updated_at
+) ON practitioner_profiles TO PUBLIC;
+GRANT UPDATE (
+  display_name, title_headline, bio, city, specializations, languages,
+  supported_methods, gender, birth_year, consulting_style, is_fully_booked, updated_at
+) ON practitioner_profiles TO PUBLIC;
+
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+    EXECUTE 'REVOKE ALL ON practitioner_profiles FROM authenticated';
+    EXECUTE 'GRANT SELECT (user_id, display_name, title_headline, bio, city, practitioner_tier, clients_handled_count, certifications, specializations, languages, supported_methods, gender, birth_year, consulting_style, years_of_experience, is_fully_booked, status, rating_avg, review_count, total_sessions_completed, verified_at, created_at, updated_at) ON practitioner_profiles TO authenticated';
+    EXECUTE 'GRANT UPDATE (display_name, title_headline, bio, city, specializations, languages, supported_methods, gender, birth_year, consulting_style, is_fully_booked, updated_at) ON practitioner_profiles TO authenticated';
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+    EXECUTE 'REVOKE ALL ON practitioner_profiles FROM anon';
+  END IF;
+END
+$$;
+
 CREATE POLICY practitioner_packages_select ON practitioner_packages
   FOR SELECT
-  USING (auth.uid() IS NOT NULL AND (is_active = TRUE OR practitioner_id = auth.uid()));
+  USING (
+    auth.uid() IS NOT NULL
+    AND (
+      practitioner_id = auth.uid()
+      OR (
+        is_active = TRUE
+        AND EXISTS (
+          SELECT 1 FROM practitioner_profiles pp
+          WHERE pp.user_id = practitioner_packages.practitioner_id
+            AND pp.status = 'verified'
+        )
+      )
+    )
+  );
 
 CREATE POLICY practitioner_packages_owner_insert ON practitioner_packages
   FOR INSERT
@@ -185,7 +226,20 @@ CREATE POLICY practitioner_packages_owner_delete ON practitioner_packages
 
 CREATE POLICY practitioner_availability_select ON practitioner_availability
   FOR SELECT
-  USING (auth.uid() IS NOT NULL AND (is_active = TRUE OR practitioner_id = auth.uid()));
+  USING (
+    auth.uid() IS NOT NULL
+    AND (
+      practitioner_id = auth.uid()
+      OR (
+        is_active = TRUE
+        AND EXISTS (
+          SELECT 1 FROM practitioner_profiles pp
+          WHERE pp.user_id = practitioner_availability.practitioner_id
+            AND pp.status = 'verified'
+        )
+      )
+    )
+  );
 
 CREATE POLICY practitioner_availability_owner_insert ON practitioner_availability
   FOR INSERT
@@ -375,12 +429,20 @@ CREATE POLICY consents_owner_and_active_practitioner_select ON consents
 
 CREATE POLICY consents_owner_insert ON consents
   FOR INSERT
-  WITH CHECK (user_id = auth.uid());
+  WITH CHECK (
+    user_id = auth.uid()
+    AND status = 'active'
+    AND EXISTS (
+      SELECT 1 FROM sessions s
+      WHERE s.id = consents.session_id
+        AND (s.client_user_id = auth.uid() OR s.partner_user_id = auth.uid())
+    )
+  );
 
 CREATE POLICY consents_owner_revoke_update ON consents
   FOR UPDATE
-  USING (user_id = auth.uid())
-  WITH CHECK (user_id = auth.uid() AND status IN ('active', 'revoked'));
+  USING (user_id = auth.uid() AND status = 'active')
+  WITH CHECK (user_id = auth.uid() AND status = 'revoked');
 
 -- 31: Gmail connections (owner SELECT only; encrypted_refresh_token blocked from client roles)
 CREATE POLICY gmail_connections_owner_select ON gmail_connections
