@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -12,12 +11,14 @@ import (
 	"time"
 	_ "time/tzdata"
 
-	"github.com/go-chi/chi/v5"
-	chimiddleware "github.com/go-chi/chi/v5/middleware"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
 	"github.com/clarafin/api/internal/config"
+	"github.com/clarafin/api/internal/repository"
+	"github.com/clarafin/api/internal/server"
 )
 
 func main() {
@@ -41,9 +42,47 @@ func main() {
 		logger.Fatal("failed to load Asia/Jakarta timezone", zap.Error(err))
 	}
 
+	startupCtx, startupCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	pool, err := pgxpool.New(startupCtx, cfg.DatabaseURL)
+	if err != nil {
+		startupCancel()
+		logger.Fatal("failed to initialize postgres pool", zap.Error(err))
+	}
+	defer pool.Close()
+
+	if err := pool.Ping(startupCtx); err != nil {
+		startupCancel()
+		logger.Fatal("failed to ping postgres", zap.Error(err))
+	}
+
+	redisOpts, err := redis.ParseURL(cfg.RedisURL)
+	if err != nil {
+		startupCancel()
+		logger.Fatal("failed to parse redis url", zap.Error(err))
+	}
+	rdb := redis.NewClient(redisOpts)
+	defer func() {
+		_ = rdb.Close()
+	}()
+
+	if err := rdb.Ping(startupCtx).Err(); err != nil {
+		startupCancel()
+		logger.Fatal("failed to ping redis", zap.Error(err))
+	}
+	startupCancel()
+
+	store := repository.NewStore(pool)
+	router := server.NewRouter(server.Dependencies{
+		Config:     cfg,
+		Logger:     logger,
+		Store:      store,
+		Redis:      rdb,
+		JakartaLoc: jakartaLoc,
+	})
+
 	srv := &http.Server{
 		Addr:              ":" + cfg.HTTPPort,
-		Handler:           newRouter(cfg, jakartaLoc),
+		Handler:           router,
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       30 * time.Second,
 		WriteTimeout:      60 * time.Second,
@@ -60,6 +99,7 @@ func main() {
 			zap.String("addr", srv.Addr),
 			zap.String("env", cfg.AppEnv),
 			zap.String("gemini_model", cfg.GeminiModel),
+			zap.Bool("dev_auth_enabled", cfg.EnableDevAuth && cfg.AppEnv == "development"),
 		)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			errCh <- err
@@ -101,24 +141,4 @@ func newLogger(appEnv, level string) (*zap.Logger, error) {
 	}
 	zapCfg.Level = zap.NewAtomicLevelAt(parsedLevel)
 	return zapCfg.Build()
-}
-
-func newRouter(cfg *config.Config, jakartaLoc *time.Location) http.Handler {
-	r := chi.NewRouter()
-	r.Use(chimiddleware.RequestID)
-	r.Use(chimiddleware.RealIP)
-	r.Use(chimiddleware.Recoverer)
-
-	r.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		_ = json.NewEncoder(w).Encode(map[string]string{
-			"status":    "ok",
-			"service":   "clarafin-api",
-			"env":       cfg.AppEnv,
-			"timestamp": time.Now().In(jakartaLoc).Format(time.RFC3339),
-		})
-	})
-
-	return r
 }
