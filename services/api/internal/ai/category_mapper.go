@@ -52,7 +52,7 @@ func NormalizeCanonicalCategory(rawCategory string, txType string, contextHint s
 		}
 	}
 
-	if normType == "" && isTransferPhrase(rawTrimmed) {
+	if isTransferPhrase(rawTrimmed) {
 		return CanonicalCategoryResult{
 			CanonicalCategory:     "Transfer",
 			CanonicalMainCategory: "Transfer",
@@ -61,11 +61,14 @@ func NormalizeCanonicalCategory(rawCategory string, txType string, contextHint s
 	}
 
 	// Step 1: Match explicit category input first, prioritizing requested txType.
-	if rawTrimmed != "" {
+	// Generic "Others" inputs under an explicit income type bypass expense "Others" matching
+	// so they stay strictly within income inference and fallback.
+	if rawTrimmed != "" && !(normType == "income" && isGenericOthersInput(rawTrimmed)) {
 		if def, matched := resolveTextToCategory(rawTrimmed, normType, true); matched {
 			if isGenericOthers(def) && hintTrimmed != "" {
-				// "Others" / "General Uncategorized" paired with contextHint can upgrade into a specific category.
-				if hintDef, ok := resolveTextToCategory(hintTrimmed, normType, true); ok {
+				// "Others" / "General Uncategorized" paired with contextHint can upgrade into a specific category
+				// within the requested type (never leaking across income/expense).
+				if hintDef, ok := resolveTextToCategory(hintTrimmed, normType, false); ok {
 					return resultFromDef(hintDef, false)
 				}
 			}
@@ -88,8 +91,9 @@ func NormalizeCanonicalCategory(rawCategory string, txType string, contextHint s
 	}
 
 	// Step 2: Infer category from contextHint when rawCategory was empty or unknown.
+	// Never cross-leak between income and expense when normType is explicitly constrained.
 	if hintTrimmed != "" {
-		if def, matched := resolveTextToCategory(hintTrimmed, normType, true); matched {
+		if def, matched := resolveTextToCategory(hintTrimmed, normType, false); matched {
 			return resultFromDef(def, false)
 		}
 	}
@@ -128,6 +132,22 @@ func normalizeTxType(raw string) string {
 
 func isGenericOthers(def categoryDefinition) bool {
 	return def.mainName == "Others"
+}
+
+func isGenericOthersInput(raw string) bool {
+	mainPart, subPart := splitCategoryParts(raw)
+	if strings.EqualFold(mainPart, "Others") && (subPart == "" || strings.EqualFold(subPart, "General Uncategorized")) {
+		return true
+	}
+	tokens := tokenizeForMatch(raw)
+	if len(tokens) == 1 {
+		switch tokens[0] {
+		case "other", "others", "uncategorized", "lainnya", "umum":
+			return true
+		}
+	}
+	joined := strings.Join(tokens, " ")
+	return joined == "general uncategorized" || joined == "lain lain"
 }
 
 func isTransportasiOnly(raw string) bool {
@@ -428,7 +448,7 @@ func buildCanonicalCatalog() []categoryDefinition {
 		subDef("income", "Investment", "Capital Gains", "capital gain", "capital gains", "profit saham", "cuan", "profit investasi"),
 		subDef("income", "Investment", "Bank Interest", "bunga bank", "bank interest", "bunga deposito", "bunga tabungan", "kupon sbn", "kupon obligasi"),
 
-		parentDef("income", "Gift", "hadiah masuk", "pemberian"),
+		parentDef("income", "Gift", "hadiah", "kado", "hadiah masuk", "pemberian"),
 		subDef("income", "Gift", "From Family", "hadiah keluarga", "from family", "angpao", "thr keluarga"),
 		subDef("income", "Gift", "Rewards / Cashback", "cashback", "reward", "rewards", "promo cashback"),
 

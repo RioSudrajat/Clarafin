@@ -123,6 +123,42 @@ func TestActionTools_CheckAndPrepareTransaction_MissingWalletDoesNotSubstitute(t
 		zeroRes.WalletCreationDraft.InstitutionID != "cash" {
 		t.Fatalf("unexpected zero-wallets result: %+v", zeroRes)
 	}
+
+	// Wallet tagged with another institution_code (e.g. "blu" named "blu by BCA Digital")
+	// must NOT match when requesting "BCA"; it must trigger missing_wallet for BCA.
+	bluUser := createTempAIUser(t, ctx, store, "blu-vs-bca")
+	if _, err := store.CreateWallet(ctx, repository.CreateWalletParams{
+		UserID: bluUser.ID, Name: "blu by BCA Digital", Type: "bank", InstitutionCode: aiStrPtr("blu"), Balance: 3500000,
+	}); err != nil {
+		t.Fatalf("CreateWallet blu: %v", err)
+	}
+	bluVsBCARes, err := actions.CheckAndPrepareTransaction(ctx, bluUser.ID, ai.PrepareTransactionInput{
+		Items: []ai.PrepareTransactionItemInput{
+			{Title: "Makan Siang", AmountIDR: 45000, Type: "expense", RawCategory: "Makanan", WalletHint: "BCA"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CheckAndPrepareTransaction(blu vs BCA): %v", err)
+	}
+	if bluVsBCARes.Status != "missing_wallet" || bluVsBCARes.TransactionDraft != nil ||
+		bluVsBCARes.WalletCreationDraft == nil || bluVsBCARes.WalletCreationDraft.InstitutionID != "bca" {
+		t.Fatalf("requesting BCA when only blu by BCA Digital exists must return missing_wallet for bca, got %+v", bluVsBCARes)
+	}
+	if len(bluVsBCARes.WalletCreationDraft.ExistingWallets) != 1 || bluVsBCARes.WalletCreationDraft.ExistingWallets[0].Name != "blu by BCA Digital" {
+		t.Fatalf("expected existing blu chip, got %+v", bluVsBCARes.WalletCreationDraft.ExistingWallets)
+	}
+	bluMatchRes, err := actions.CheckAndPrepareTransaction(ctx, bluUser.ID, ai.PrepareTransactionInput{
+		Items: []ai.PrepareTransactionItemInput{
+			{Title: "Makan Siang", AmountIDR: 45000, Type: "expense", RawCategory: "Makanan", WalletHint: "blu"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CheckAndPrepareTransaction(blu direct): %v", err)
+	}
+	if bluMatchRes.Status != "ready" || bluMatchRes.TransactionDraft == nil || len(bluMatchRes.TransactionDraft.Items) != 1 ||
+		bluMatchRes.TransactionDraft.Items[0].WalletName != "blu by BCA Digital" {
+		t.Fatalf("expected ready draft on blu wallet, got %+v", bluMatchRes)
+	}
 }
 
 func TestActionTools_CheckAndPrepareTransaction_MultiItemAndAliasesReady(t *testing.T) {
@@ -229,6 +265,17 @@ func TestActionTools_CheckAndPrepareTransaction_MultiItemAndAliasesReady(t *test
 		Items: []ai.PrepareTransactionItemInput{{Title: "Kopi", AmountIDR: 0, Type: "expense"}},
 	}); !errors.Is(err, ai.ErrInvalidActionToolInput) {
 		t.Fatalf("expected ErrInvalidActionToolInput for zero amount, got %v", err)
+	}
+	// Incompatible explicit Type paired with opposite-type or transfer Category must reject cleanly.
+	if _, err := actions.CheckAndPrepareTransaction(ctx, user.ID, ai.PrepareTransactionInput{
+		Items: []ai.PrepareTransactionItemInput{{Title: "Gaji", AmountIDR: 5000000, Type: "expense", RawCategory: "Gaji", WalletHint: "gopay"}},
+	}); !errors.Is(err, ai.ErrInvalidActionToolInput) {
+		t.Fatalf("expected ErrInvalidActionToolInput for expense type paired with income category Gaji, got %v", err)
+	}
+	if _, err := actions.CheckAndPrepareTransaction(ctx, user.ID, ai.PrepareTransactionInput{
+		Items: []ai.PrepareTransactionItemInput{{Title: "Pindah", AmountIDR: 100000, Type: "expense", RawCategory: "Transfer", WalletHint: "gopay"}},
+	}); !errors.Is(err, ai.ErrInvalidActionToolInput) {
+		t.Fatalf("expected ErrInvalidActionToolInput for expense type paired with Transfer category, got %v", err)
 	}
 }
 
@@ -390,7 +437,7 @@ func TestActionTools_ProposeBudgetDraft_NormalizesAndQueriesRealSpend(t *testing
 		t.Fatalf("LimitAmountIDR = %d, want 1200000", draft.LimitAmountIDR)
 	}
 
-	// Reject non-positive limit and income categories.
+	// Reject non-positive limit, income categories, and Transfer category.
 	if _, err := actions.ProposeBudgetDraft(ctx, userA.ID, ai.BudgetDraftInput{
 		Category: "Makanan", LimitAmountIDR: 0,
 	}); !errors.Is(err, ai.ErrInvalidActionToolInput) {
@@ -400,6 +447,11 @@ func TestActionTools_ProposeBudgetDraft_NormalizesAndQueriesRealSpend(t *testing
 		Category: "Gaji", LimitAmountIDR: 1000000,
 	}); !errors.Is(err, ai.ErrInvalidActionToolInput) {
 		t.Fatalf("expected ErrInvalidActionToolInput for income category budget, got %v", err)
+	}
+	if _, err := actions.ProposeBudgetDraft(ctx, userA.ID, ai.BudgetDraftInput{
+		Category: "Transfer", LimitAmountIDR: 1000000,
+	}); !errors.Is(err, ai.ErrInvalidActionToolInput) {
+		t.Fatalf("expected ErrInvalidActionToolInput for Transfer category budget, got %v", err)
 	}
 
 	// Zero DB mutations check.
@@ -488,13 +540,15 @@ func TestActionTools_ProposeBillDraft_ValidatesAndComputesWIBDueDate(t *testing.
 		t.Fatalf("weekly bill = %+v, err=%v", bWeekly, err)
 	}
 
-	// Invalid due_day, amount, frequency, userID must reject cleanly.
+	// Invalid due_day, amount, frequency, non-expense category, userID must reject cleanly.
 	for _, invalid := range []ai.BillDraftInput{
 		{Title: "", AmountIDR: 10000, DueDay: 5, Frequency: "monthly"},
 		{Title: "PLN", AmountIDR: 0, DueDay: 5, Frequency: "monthly"},
 		{Title: "PLN", AmountIDR: 10000, DueDay: 0, Frequency: "monthly"},
 		{Title: "PLN", AmountIDR: 10000, DueDay: 32, Frequency: "monthly"},
 		{Title: "PLN", AmountIDR: 10000, DueDay: 5, Frequency: "daily"},
+		{Title: "Gaji Karyawan", Category: "Gaji", AmountIDR: 5000000, DueDay: 25, Frequency: "monthly"},
+		{Title: "Pindah Saldo", Category: "Transfer", AmountIDR: 500000, DueDay: 15, Frequency: "monthly"},
 	} {
 		if _, err := actions.ProposeBillDraft(ctx, user.ID, invalid); !errors.Is(err, ai.ErrInvalidActionToolInput) {
 			t.Fatalf("expected ErrInvalidActionToolInput for %+v, got %v", invalid, err)

@@ -347,6 +347,9 @@ func (t *ActionTools) CheckAndPrepareTransaction(
 		note := strings.TrimSpace(item.Note)
 		contextHint := strings.TrimSpace(title + " " + note)
 		catResult := NormalizeCanonicalCategory(rawCategory, rawType, contextHint)
+		if rawType != "" && catResult.Type != rawType {
+			return nil, fmt.Errorf("%w: item %d category %q (%s) is incompatible with type %q", ErrInvalidActionToolInput, i, catResult.CanonicalCategory, catResult.Type, rawType)
+		}
 
 		itemType := rawType
 		if itemType == "" {
@@ -710,6 +713,9 @@ func (t *ActionTools) ProposeBillDraft(
 	}
 
 	catRes := NormalizeCanonicalCategory(input.Category, "expense", title)
+	if catRes.Type != "expense" {
+		return nil, fmt.Errorf("%w: bill category must be an expense category, got %s (%s)", ErrInvalidActionToolInput, catRes.CanonicalCategory, catRes.Type)
+	}
 
 	return &BillDraftPayload{
 		Title:                 title,
@@ -802,8 +808,13 @@ func matchWalletByHint(hint string, wallets []WalletSummaryItem) (WalletSummaryI
 				return w, true
 			}
 		}
-		// 3. Match wallet name against any known alias of that specific institution.
+		// 3. Match wallet name against any known alias only when institution_code is unset,
+		// so a wallet tagged with another institution (e.g. "blu" named "blu by BCA Digital")
+		// is never matched when requesting "bca".
 		for _, w := range wallets {
+			if w.InstitutionCode != nil && strings.TrimSpace(*w.InstitutionCode) != "" {
+				continue
+			}
 			nameTokens := tokenizeForMatch(w.Name)
 			for _, alias := range spec.aliases {
 				if matchTokenSequence(nameTokens, tokenizeForMatch(alias)) {
@@ -814,6 +825,9 @@ func matchWalletByHint(hint string, wallets []WalletSummaryItem) (WalletSummaryI
 		// 4. Physical cash wallet fallback when user asked for cash/tunai and owns a type="cash" wallet.
 		if spec.id == "cash" {
 			for _, w := range wallets {
+				if w.InstitutionCode != nil && strings.TrimSpace(*w.InstitutionCode) != "" && !strings.EqualFold(strings.TrimSpace(*w.InstitutionCode), "cash") {
+					continue
+				}
 				if strings.EqualFold(w.Type, "cash") {
 					return w, true
 				}
