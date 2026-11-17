@@ -27,64 +27,6 @@ final userNameProvider = Provider<String>((ref) {
   return ref.watch(userProfileProvider.select((p) => p.name));
 });
 
-// --- Quick Action Limit Provider ---
-class QuickActionLimitState {
-  final int aiChatCount;
-  final int voiceAiCount;
-  final int scanCount;
-
-  const QuickActionLimitState({
-    required this.aiChatCount,
-    required this.voiceAiCount,
-    required this.scanCount,
-  });
-
-  QuickActionLimitState copyWith({
-    int? aiChatCount,
-    int? voiceAiCount,
-    int? scanCount,
-  }) {
-    return QuickActionLimitState(
-      aiChatCount: aiChatCount ?? this.aiChatCount,
-      voiceAiCount: voiceAiCount ?? this.voiceAiCount,
-      scanCount: scanCount ?? this.scanCount,
-    );
-  }
-}
-
-class QuickActionLimitNotifier extends Notifier<QuickActionLimitState> {
-  @override
-  QuickActionLimitState build() {
-    return const QuickActionLimitState(
-      aiChatCount: 0,
-      voiceAiCount: 0,
-      scanCount: 0,
-    );
-  }
-
-  void incrementAiChat() {
-    if (state.aiChatCount < 10) {
-      state = state.copyWith(aiChatCount: state.aiChatCount + 1);
-    }
-  }
-
-  void incrementVoiceAi() {
-    if (state.voiceAiCount < 5) {
-      state = state.copyWith(voiceAiCount: state.voiceAiCount + 1);
-    }
-  }
-
-  void incrementScan() {
-    if (state.scanCount < 8) {
-      state = state.copyWith(scanCount: state.scanCount + 1);
-    }
-  }
-}
-
-final quickActionLimitProvider = NotifierProvider<QuickActionLimitNotifier, QuickActionLimitState>(() {
-  return QuickActionLimitNotifier();
-});
-
 // --- Wallets Provider ---
 class WalletsNotifier extends Notifier<List<WalletModel>> {
   @override

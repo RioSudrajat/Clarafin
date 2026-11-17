@@ -2,10 +2,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/models/transaction_category_model.dart';
 import '../../../../core/models/wallet_model.dart';
 import '../../../../core/providers/ai_quota_provider.dart';
 import '../../../../core/providers/mock_providers.dart';
 import '../../../../core/models/transaction_model.dart';
+import '../../../../core/utils/ai_category_normalizer.dart';
+import '../../../../shared/widgets/saas_upgrade_bottom_sheet.dart';
 import '../../../home/presentation/widgets/notion_doodle_icons.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../profile/presentation/providers/user_profile_provider.dart';
@@ -24,29 +27,50 @@ _ResolvedWallet _resolveWalletFromText(String text, List<WalletModel> wallets) {
     if (lower.contains(w.name.toLowerCase())) {
       return _ResolvedWallet(id: w.id, name: w.name);
     }
+    final instId = (w.institutionId ?? '').toLowerCase().trim();
+    if (instId.isNotEmpty && RegExp('\\b${RegExp.escape(instId)}\\b').hasMatch(lower)) {
+      return _ResolvedWallet(id: w.id, name: w.name);
+    }
   }
-  final keywords = {
+  const keywords = <String, String>{
+    'blu': 'blu by BCA Digital',
     'bni': 'BNI',
     'bca': 'BCA',
     'mandiri': 'Mandiri',
     'bri': 'BRI',
+    'bsi': 'BSI',
     'jago': 'Bank Jago',
-    'jenius': 'Jenius',
+    'jenius': 'Jenius BTPN',
+    'seabank': 'SeaBank',
+    'cimb': 'CIMB Niaga',
+    'permata': 'Bank Permata',
     'gopay': 'GoPay',
     'ovo': 'OVO',
     'dana': 'DANA',
     'shopeepay': 'ShopeePay',
-    'tunai': 'Tunai',
-    'cash': 'Tunai',
+    'linkaja': 'LinkAja',
+    'tunai': 'Dompet Tunai',
+    'cash': 'Dompet Tunai',
     'bibit': 'Bibit',
+    'stockbit': 'Stockbit',
   };
   for (final entry in keywords.entries) {
-    if (lower.contains(entry.key)) {
-      final match = wallets.firstWhere(
-        (w) => w.name.toLowerCase().contains(entry.key) || w.type.toLowerCase().contains(entry.key),
-        orElse: () => WalletModel(id: 'w_${entry.key}', name: entry.value, type: 'Bank', balance: 0.0),
-      );
-      return _ResolvedWallet(id: match.id, name: match.name);
+    if (RegExp('\\b${RegExp.escape(entry.key)}\\b').hasMatch(lower) ||
+        (entry.key.length > 3 && lower.contains(entry.key))) {
+      for (final w in wallets) {
+        final wNameLower = w.name.toLowerCase();
+        final wTypeLower = w.type.toLowerCase();
+        final wInstLower = (w.institutionId ?? '').toLowerCase();
+        if (wInstLower == entry.key ||
+            wNameLower.contains(entry.key) ||
+            wTypeLower.contains(entry.key)) {
+          return _ResolvedWallet(id: w.id, name: w.name);
+        }
+      }
+      if (wallets.isNotEmpty) {
+        return _ResolvedWallet(id: wallets.first.id, name: wallets.first.name);
+      }
+      return _ResolvedWallet(id: 'w_${entry.key}', name: entry.value);
     }
   }
   if (wallets.isNotEmpty) {
@@ -92,55 +116,20 @@ double _parseAmountFromText(String text) {
   return 50000.0;
 }
 
-String _resolveCategoryFromText(String text) {
+bool _isIncomeInput(String text) {
   final lower = text.toLowerCase();
+  return RegExp(
+    r'\b(gaji|gajian|salary|upah|honor|bonus|thr|dividen|cashback|bunga|cuan|profit|transfer masuk|pemasukan|terima|masuk|freelance)\b',
+  ).hasMatch(lower);
+}
 
-  // Transportasi
-  if (RegExp(r'\b(tiket|kreta|kereta|kai|pesawat|flight|bensin|bbm|pertalite|pertamax|solar|spbu|ojol|gojek|goride|gocar|grab|grabcar|grabbike|maxim|indrive|parkir|tol|mrt|lrt|krl|commuter|transjakarta|tj|bus|angkot|taksi|taxi)\b').hasMatch(lower)) {
-    return 'Transportasi';
-  }
-
-  // Makanan & Minuman
-  if (RegExp(r'\b(makan|makanan|minum|minuman|kopi|coffee|starbucks|janji jiwa|kulo|fore|chatime|cafe|kafe|resto|restoran|warung|warkop|mie|gacoan|bakso|sate|nasi|padang|ayam|geprek|pizza|burger|mcd|kfc|hokben|gofood|grabfood|shopeefood)\b').hasMatch(lower)) {
-    return 'Makanan';
-  }
-
-  // Tagihan & Utilitas
-  if (RegExp(r'\b(tagihan|listrik|pln|token|air|pdam|wifi|indihome|biznet|firstmedia|myrepublic|pulsa|kuota|paket data|telkomsel|indosat|xl|tri|smartfren|bpjs|sewa|kontrakan|kos|kost|ipl|pbb)\b').hasMatch(lower)) {
-    return 'Tagihan';
-  }
-
-  // Belanja & Kebutuhan
-  if (RegExp(r'\b(belanja|tokopedia|shopee|lazada|tiktok shop|supermarket|minimarket|indomaret|alfamart|hypermart|superindo|transmart|baju|celana|sepatu|tas|skincare|makeup|elektronik|laptop|hp|gadget)\b').hasMatch(lower)) {
-    return 'Belanja';
-  }
-
-  // Hiburan
-  if (RegExp(r'\b(hiburan|nonton|bioskop|cinema|xxi|cgv|netflix|spotify|youtube|disney|game|steam|playstation|karaoke|liburan|hotel|staycation)\b').hasMatch(lower)) {
-    return 'Hiburan';
-  }
-
-  // Kesehatan
-  if (RegExp(r'\b(kesehatan|obat|apotek|dokter|klinik|rumah sakit|rs|vitamin|halodoc|alodokter|periksa|rontgen|lab)\b').hasMatch(lower)) {
-    return 'Kesehatan';
-  }
-
-  // Pendidikan
-  if (RegExp(r'\b(pendidikan|sekolah|kuliah|spp|buku|kursus|les|seminar|workshop|ujian|skripsi)\b').hasMatch(lower)) {
-    return 'Pendidikan';
-  }
-
-  // Gaji / Pemasukan
-  if (RegExp(r'\b(gaji|salary|upah|honor|bonus|thr|dividen|cashback|bunga|cuan|profit|transfer masuk|terima)\b').hasMatch(lower)) {
-    return 'Gaji';
-  }
-
-  // Investasi
-  if (RegExp(r'\b(investasi|saham|reksadana|crypto|bitcoin|sbn|deposito|bibit|bareksa|ajaib|pluang)\b').hasMatch(lower)) {
-    return 'Investasi';
-  }
-
-  return 'Lainnya';
+String _resolveCategoryFromText(String text) {
+  final isIncome = _isIncomeInput(text);
+  return AiCategoryNormalizer.normalize(
+    text,
+    isIncome: isIncome,
+    contextHint: text,
+  );
 }
 
 String _resolveTitleFromText(String text, String category) {
@@ -184,7 +173,7 @@ String _resolveTitleFromText(String text, String category) {
 
   // Clean conversational filler words
   String cleaned = text
-      .replaceAll(RegExp(r'\b(abis|udah|tadi|baru|beli|bayar|buat|transaksi|catat|pake|pakai|lewat|dari|ke|sebesar|rp|bca|bni|bri|mandiri|gopay|ovo|dana|shopeepay|cash|tunai)\b', caseSensitive: false), '')
+      .replaceAll(RegExp(r'\b(abis|udah|tadi|baru|beli|bayar|buat|transaksi|catat|pake|pakai|lewat|dari|ke|sebesar|rp|bca|bni|bri|mandiri|bsi|jago|jenius|seabank|blu|cimb|permata|gopay|ovo|dana|shopeepay|linkaja|cash|tunai)\b', caseSensitive: false), '')
       .replaceAll(RegExp(r'\b\d+(?:[.,]\d+)?\s*(?:k|rb|ribu|jt|juta)?\b', caseSensitive: false), '')
       .trim();
   if (cleaned.length >= 3) {
@@ -256,7 +245,6 @@ class _QuickActionMenuSheet extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final limits = ref.watch(quickActionLimitProvider);
     final aiQuota = ref.watch(aiQuotaProvider);
     final isAiExhausted = !aiQuota.isUnlimited && aiQuota.quotaRemaining <= 0;
 
@@ -313,11 +301,14 @@ class _QuickActionMenuSheet extends ConsumerWidget {
                   title: 'AI Chat Action',
                   subtitle: 'Ketik lewat asisten AI',
                   limitText: 'AI Kuota: ${aiQuota.displayQuotaBadge}',
-                  isLimited: isAiExhausted || limits.aiChatCount >= 10,
+                  isLimited: isAiExhausted,
                   onTap: () {
                     Navigator.pop(context);
-                    if (isAiExhausted || limits.aiChatCount >= 10) {
-                      _showPremiumUpgradeSheet(context, 'AI Chat Quick Action');
+                    if (isAiExhausted) {
+                      SaasUpgradeBottomSheet.show(
+                        context,
+                        reason: 'Kuota AI kamu sudah habis untuk AI Chat Quick Action. Upgrade paket untuk lanjut.',
+                      );
                     } else {
                       _showAiChatQuickSheet(context, parentRef);
                     }
@@ -330,11 +321,14 @@ class _QuickActionMenuSheet extends ConsumerWidget {
                   title: 'Voice AI Action',
                   subtitle: 'Ucapkan ke asisten AI',
                   limitText: 'AI Kuota: ${aiQuota.displayQuotaBadge}',
-                  isLimited: isAiExhausted || limits.voiceAiCount >= 5,
+                  isLimited: isAiExhausted,
                   onTap: () {
                     Navigator.pop(context);
-                    if (isAiExhausted || limits.voiceAiCount >= 5) {
-                      _showPremiumUpgradeSheet(context, 'Voice AI Action');
+                    if (isAiExhausted) {
+                      SaasUpgradeBottomSheet.show(
+                        context,
+                        reason: 'Kuota AI kamu sudah habis untuk Voice AI Action. Upgrade paket untuk lanjut.',
+                      );
                     } else {
                       _showVoiceAiSheet(context, parentRef);
                     }
@@ -347,11 +341,14 @@ class _QuickActionMenuSheet extends ConsumerWidget {
                   title: 'Scan Action (OCR)',
                   subtitle: 'Foto struk belanja untuk scan',
                   limitText: 'AI Kuota: ${aiQuota.displayQuotaBadge}',
-                  isLimited: isAiExhausted || limits.scanCount >= 8,
+                  isLimited: isAiExhausted,
                   onTap: () {
                     Navigator.pop(context);
-                    if (isAiExhausted || limits.scanCount >= 8) {
-                      _showPremiumUpgradeSheet(context, 'Scan Action (OCR)');
+                    if (isAiExhausted) {
+                      SaasUpgradeBottomSheet.show(
+                        context,
+                        reason: 'Kuota AI kamu sudah habis untuk Scan Action (OCR). Upgrade paket untuk lanjut.',
+                      );
                     } else {
                       _showOcrScanSheet(context, parentRef);
                     }
@@ -482,171 +479,6 @@ class _QuickActionMenuSheet extends ConsumerWidget {
   }
 }
 
-// ─── Premium Upgrade Sheet ───────────────────────────────────────────────────
-
-void _showPremiumUpgradeSheet(BuildContext context, String featureName) {
-  showModalBottomSheet(
-    context: context,
-    backgroundColor: Colors.white,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      side: BorderSide(color: Colors.black, width: 2.0),
-    ),
-    builder: (ctx) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 44,
-              height: 5,
-              decoration: BoxDecoration(
-                color: Colors.black,
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            const SizedBox(height: 20),
-            // Premium icon with Neo-Brutalist circle
-            Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                color: const Color(0xFFCCFF00),
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.black, width: 2.0),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Colors.black,
-                    offset: Offset(0, 3),
-                    blurRadius: 0,
-                  ),
-                ],
-              ),
-              child: const Icon(Icons.star_rounded, color: Colors.black, size: 36),
-            ),
-            const SizedBox(height: 18),
-            const Text(
-              'Oops, Kuota Lo Habis! 🔒',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w900,
-                color: Colors.black,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Lo sudah mencapai limit gratis untuk $featureName minggu ini.',
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: Color(0xFF4B5563),
-              ),
-            ),
-            const SizedBox(height: 20),
-            
-            // Neo-Brutalist card listing advantages
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF9FAFB),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.black, width: 2.0),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Colors.black,
-                    offset: Offset(0, 3),
-                    blurRadius: 0,
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  _buildBenefitRow(Icons.all_inclusive_rounded, 'Akses Fitur Cepat Tanpa Batas'),
-                  const SizedBox(height: 10),
-                  _buildBenefitRow(Icons.sync_rounded, 'Sinkronisasi Otomatis Bank & E-Wallet'),
-                  const SizedBox(height: 10),
-                  _buildBenefitRow(Icons.analytics_rounded, 'Laporan Keuangan AI Mendalam'),
-                ],
-              ),
-            ),
-            
-            const SizedBox(height: 24),
-            
-            // Upgrade button
-            Container(
-              width: double.infinity,
-              height: 50,
-              decoration: BoxDecoration(
-                color: const Color(0xFFCCFF00),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Colors.black, width: 2.0),
-                boxShadow: const [
-                  BoxShadow(color: Colors.black, offset: Offset(0, 3), blurRadius: 0),
-                ],
-              ),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(12),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Terima kasih! Kamu sekarang terdaftar di Clarafin Premium 🚀', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-                        backgroundColor: Color(0xFFCCFF00),
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                  },
-                  child: const Center(
-                    child: Text(
-                      'Upgrade ke Premium — Rp 49.000 / bln',
-                      style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13.5, color: Colors.black),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text(
-                'Tunggu 1 Minggu (Reset Otomatis)',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF6B7280),
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    },
-  );
-}
-
-Widget _buildBenefitRow(IconData icon, String text) {
-  return Row(
-    children: [
-      Icon(icon, size: 18, color: Colors.black),
-      const SizedBox(width: 12),
-      Expanded(
-        child: Text(
-          text,
-          style: const TextStyle(
-            fontSize: 12.5,
-            fontWeight: FontWeight.w700,
-            color: Colors.black,
-          ),
-        ),
-      ),
-    ],
-  );
-}
-
 // ─── Redesigned AI Chat Quick Action Modal (Fundy-style Photo) ───────────────
 
 void _showAiChatQuickSheet(BuildContext context, WidgetRef parentRef) {
@@ -743,7 +575,7 @@ class _AiQuickChatModalState extends State<_AiQuickChatModal> {
         setState(() {
           _isProcessing = false;
           _messages.add(_QuickChatMessage(
-            text: 'Pengeluaran kamu bulan ini adalah Rp 3.041.000, terbagi di kategori Makanan, Belanja, dan Tagihan.',
+            text: 'Pengeluaran kamu bulan ini adalah Rp 3.041.000, terbagi di kategori Food & Beverage, Shopping, dan Bills & Utilities.',
             isUser: false,
           ));
         });
@@ -751,7 +583,7 @@ class _AiQuickChatModalState extends State<_AiQuickChatModal> {
         setState(() {
           _isProcessing = false;
           _messages.add(_QuickChatMessage(
-            text: 'Pemasukan kamu bulan ini Rp 15.000.000 vs Pengeluaran Rp 3.041.000. Keuangan kamu sehat! 📈',
+            text: 'Pemasukan kamu bulan ini Rp 15.000.000 vs Pengeluaran Rp 3.041.000. Keuangan kamu dalam kondisi sehat.',
             isUser: false,
           ));
         });
@@ -759,13 +591,14 @@ class _AiQuickChatModalState extends State<_AiQuickChatModal> {
         // Intelligent Natural Language Transaction Parser
         final userWallets = widget.parentRef.read(walletsProvider);
         final resolved = _resolveWalletFromText(lowerText, userWallets);
+        final isIncomeHint = _isIncomeInput(text);
         final category = _resolveCategoryFromText(text);
         final title = _resolveTitleFromText(text, category);
         final amount = _parseAmountFromText(text);
-        final isIncome = category == 'Gaji' ||
-            lowerText.contains('masuk') ||
-            lowerText.contains('dapat gaji') ||
-            lowerText.contains('terima');
+        final mainCat = category.split('•').first.trim();
+        final isIncome = isIncomeHint ||
+            (TransactionCategories.findCategory(mainCat, isIncome: true) != null &&
+                TransactionCategories.findCategory(mainCat, isIncome: false) == null);
         final type = isIncome ? 'income' : 'expense';
 
         final draft = _DraftTransaction(
@@ -803,7 +636,6 @@ class _AiQuickChatModalState extends State<_AiQuickChatModal> {
     );
 
     widget.parentRef.read(transactionsProvider.notifier).addTransaction(tx);
-    widget.parentRef.read(quickActionLimitProvider.notifier).incrementAiChat();
     widget.parentRef.read(aiQuotaProvider.notifier).useQuota();
 
     setState(() {
@@ -815,7 +647,7 @@ class _AiQuickChatModalState extends State<_AiQuickChatModal> {
       if (!mounted) return;
       setState(() {
         _messages.add(_QuickChatMessage(
-          text: 'Transaksi "${draft.title}" sebesar ${CurrencyFormatter.format(draft.amount, currencyCode: widget.parentRef.read(userProfileProvider).currency)} berhasil disimpan secara riil ke ${draft.walletName}! 🎉',
+          text: 'Transaksi "${draft.title}" sebesar ${CurrencyFormatter.format(draft.amount, currencyCode: widget.parentRef.read(userProfileProvider).currency)} berhasil disimpan ke ${draft.walletName}.',
           isUser: false,
         ));
       });
@@ -1371,7 +1203,7 @@ class _AiQuickChatModalState extends State<_AiQuickChatModal> {
         children: [
           const Row(
             children: [
-              Icon(Icons.auto_awesome, color: Colors.black, size: 18),
+              Icon(Icons.receipt_long_rounded, color: Colors.black, size: 18),
               SizedBox(width: 8),
               Text(
                 'TINJAU DRAF TRANSAKSI',
@@ -1400,7 +1232,7 @@ class _AiQuickChatModalState extends State<_AiQuickChatModal> {
             children: [
               Expanded(
                 child: Container(
-                  height: 40,
+                  height: 44,
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(10),
@@ -1415,7 +1247,7 @@ class _AiQuickChatModalState extends State<_AiQuickChatModal> {
                       borderRadius: BorderRadius.circular(8),
                       onTap: () => _cancelDraft(msg, draft),
                       child: const Center(
-                        child: Text('Batal', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.red)),
+                        child: Text('Batal', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFFB91C1C))),
                       ),
                     ),
                   ),
@@ -1424,7 +1256,7 @@ class _AiQuickChatModalState extends State<_AiQuickChatModal> {
               const SizedBox(width: 8),
               Expanded(
                 child: Container(
-                  height: 40,
+                  height: 44,
                   decoration: BoxDecoration(
                     color: const Color(0xFFCCFF00),
                     borderRadius: BorderRadius.circular(10),
@@ -1458,8 +1290,16 @@ class _AiQuickChatModalState extends State<_AiQuickChatModal> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280), fontWeight: FontWeight.w600)),
-          Text(value, style: const TextStyle(fontSize: 12, color: Colors.black, fontWeight: FontWeight.w800)),
+          Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF4B5563), fontWeight: FontWeight.w600)),
+          const SizedBox(width: 12),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 12, color: Colors.black, fontWeight: FontWeight.w800),
+            ),
+          ),
         ],
       ),
     );
@@ -1573,15 +1413,21 @@ class _VoiceAiModalState extends State<_VoiceAiModal> {
       // Process voice recognition mock
       Timer(const Duration(milliseconds: 1500), () {
         if (!mounted) return;
+        final userWallets = widget.parentRef.read(walletsProvider);
+        final resolvedWallet = _resolveWalletFromText('Dompet Tunai Cash', userWallets);
+        final canonicalCategory = AiCategoryNormalizer.normalize(
+          'Makanan',
+          contextHint: 'Makan Siang Padang',
+        );
 
         setState(() {
           _isProcessing = false;
           _voiceDraft = _DraftTransaction(
             title: 'Makan Siang Padang',
-            category: 'Makanan',
+            category: canonicalCategory,
             amount: 35000,
-            walletId: 'w4', // Dompet Tunai Cash
-            walletName: 'Dompet Tunai',
+            walletId: resolvedWallet.id,
+            walletName: resolvedWallet.name,
             type: 'expense',
           );
         });
@@ -1604,7 +1450,6 @@ class _VoiceAiModalState extends State<_VoiceAiModal> {
     );
 
     widget.parentRef.read(transactionsProvider.notifier).addTransaction(tx);
-    widget.parentRef.read(quickActionLimitProvider.notifier).incrementVoiceAi();
     widget.parentRef.read(aiQuotaProvider.notifier).useQuota();
 
     setState(() {
@@ -1734,7 +1579,7 @@ class _VoiceAiModalState extends State<_VoiceAiModal> {
             Icon(Icons.check_circle_rounded, color: Colors.black, size: 36),
             SizedBox(height: 10),
             Text(
-              'Sukses Menyimpan Transaksi! 🎉',
+              'Sukses Menyimpan Transaksi!',
               style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.black),
             ),
           ],
@@ -1782,7 +1627,7 @@ class _VoiceAiModalState extends State<_VoiceAiModal> {
         children: [
           const Row(
             children: [
-              Icon(Icons.auto_awesome, color: Colors.black, size: 20),
+              Icon(Icons.graphic_eq_rounded, color: Colors.black, size: 20),
               SizedBox(width: 8),
               Text(
                 'REVIEW DRAF SUARA AI',
@@ -1800,7 +1645,7 @@ class _VoiceAiModalState extends State<_VoiceAiModal> {
             children: [
               Expanded(
                 child: Container(
-                  height: 42,
+                  height: 44,
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(10),
@@ -1815,7 +1660,7 @@ class _VoiceAiModalState extends State<_VoiceAiModal> {
                       borderRadius: BorderRadius.circular(8),
                       onTap: _cancelDraft,
                       child: const Center(
-                        child: Text('Hapus', style: TextStyle(fontWeight: FontWeight.w800, color: Colors.red, fontSize: 13)),
+                        child: Text('Hapus', style: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFFB91C1C), fontSize: 13)),
                       ),
                     ),
                   ),
@@ -1824,7 +1669,7 @@ class _VoiceAiModalState extends State<_VoiceAiModal> {
               const SizedBox(width: 10),
               Expanded(
                 child: Container(
-                  height: 42,
+                  height: 44,
                   decoration: BoxDecoration(
                     color: const Color(0xFFCCFF00),
                     borderRadius: BorderRadius.circular(10),
@@ -1858,8 +1703,16 @@ class _VoiceAiModalState extends State<_VoiceAiModal> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280), fontWeight: FontWeight.w600)),
-          Text(val, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.black)),
+          Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF4B5563), fontWeight: FontWeight.w600)),
+          const SizedBox(width: 12),
+          Flexible(
+            child: Text(
+              val,
+              textAlign: TextAlign.end,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.black),
+            ),
+          ),
         ],
       ),
     );
@@ -2004,15 +1857,21 @@ class _OcrScanModalState extends State<_OcrScanModal> {
       // OCR detection simulation for 1.5s
       Timer(const Duration(milliseconds: 1500), () {
         if (!mounted) return;
+        final userWallets = widget.parentRef.read(walletsProvider);
+        final resolvedWallet = _resolveWalletFromText('GoPay', userWallets);
+        final canonicalCategory = AiCategoryNormalizer.normalize(
+          'Alfamart Belanja',
+          contextHint: 'Alfamart Belanja',
+        );
 
         setState(() {
           _scanningOCR = false;
           _ocrDraft = _DraftTransaction(
             title: 'Alfamart Belanja',
-            category: 'Belanja',
+            category: canonicalCategory,
             amount: 124500,
-            walletId: 'w2', // GoPay E-Wallet
-            walletName: 'GoPay',
+            walletId: resolvedWallet.id,
+            walletName: resolvedWallet.name,
             type: 'expense',
           );
         });
@@ -2035,7 +1894,6 @@ class _OcrScanModalState extends State<_OcrScanModal> {
     );
 
     widget.parentRef.read(transactionsProvider.notifier).addTransaction(tx);
-    widget.parentRef.read(quickActionLimitProvider.notifier).incrementScan();
     widget.parentRef.read(aiQuotaProvider.notifier).useQuota();
 
     setState(() {
@@ -2289,7 +2147,7 @@ class _OcrScanModalState extends State<_OcrScanModal> {
             Icon(Icons.check_circle_rounded, color: Colors.black, size: 36),
             SizedBox(height: 10),
             Text(
-              'Sukses Menyimpan Transaksi! 🎉',
+              'Sukses Menyimpan Transaksi!',
               style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.black),
             ),
           ],
@@ -2337,7 +2195,7 @@ class _OcrScanModalState extends State<_OcrScanModal> {
         children: [
           const Row(
             children: [
-              Icon(Icons.auto_awesome, color: Colors.black, size: 20),
+              Icon(Icons.receipt_long_rounded, color: Colors.black, size: 20),
               SizedBox(width: 8),
               Text(
                 'TINJAU HASIL SCAN OCR',
@@ -2355,7 +2213,7 @@ class _OcrScanModalState extends State<_OcrScanModal> {
             children: [
               Expanded(
                 child: Container(
-                  height: 42,
+                  height: 44,
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(10),
@@ -2370,7 +2228,7 @@ class _OcrScanModalState extends State<_OcrScanModal> {
                       borderRadius: BorderRadius.circular(8),
                       onTap: _cancelDraft,
                       child: const Center(
-                        child: Text('Hapus', style: TextStyle(fontWeight: FontWeight.w800, color: Colors.red, fontSize: 13)),
+                        child: Text('Hapus', style: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFFB91C1C), fontSize: 13)),
                       ),
                     ),
                   ),
@@ -2379,7 +2237,7 @@ class _OcrScanModalState extends State<_OcrScanModal> {
               const SizedBox(width: 10),
               Expanded(
                 child: Container(
-                  height: 42,
+                  height: 44,
                   decoration: BoxDecoration(
                     color: const Color(0xFFCCFF00),
                     borderRadius: BorderRadius.circular(10),
@@ -2413,8 +2271,16 @@ class _OcrScanModalState extends State<_OcrScanModal> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280), fontWeight: FontWeight.w600)),
-          Text(val, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.black)),
+          Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF4B5563), fontWeight: FontWeight.w600)),
+          const SizedBox(width: 12),
+          Flexible(
+            child: Text(
+              val,
+              textAlign: TextAlign.end,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.black),
+            ),
+          ),
         ],
       ),
     );

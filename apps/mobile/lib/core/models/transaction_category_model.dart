@@ -431,15 +431,40 @@ class TransactionCategories {
     ),
   ];
 
-  static TransactionCategory? findCategory(String name) {
+  static TransactionCategory? findCategory(String name, {bool? isIncome}) {
     final lower = name.toLowerCase().trim();
-    for (final cat in expenseCategories) {
-      if (cat.name.toLowerCase().trim() == lower) return cat;
+    if (isIncome != true) {
+      for (final cat in expenseCategories) {
+        if (cat.name.toLowerCase().trim() == lower) return cat;
+      }
     }
-    for (final cat in incomeCategories) {
-      if (cat.name.toLowerCase().trim() == lower) return cat;
+    if (isIncome != false) {
+      for (final cat in incomeCategories) {
+        if (cat.name.toLowerCase().trim() == lower) return cat;
+      }
     }
     return null;
+  }
+
+  static List<String> canonicalNames({bool? isIncome}) {
+    final list = <String>[];
+    final sources = isIncome == null
+        ? [...expenseCategories, ...incomeCategories]
+        : (isIncome ? incomeCategories : expenseCategories);
+    for (final cat in sources) {
+      list.add(cat.name);
+      for (final sub in cat.subcategories) {
+        list.add('${cat.name} • ${sub.name}');
+      }
+    }
+    if (isIncome == null) {
+      list.add('Transfer');
+    }
+    return list;
+  }
+
+  static bool isCanonical(String value, {bool? isIncome}) {
+    return canonicalNames(isIncome: isIncome).contains(value.trim());
   }
 
   static TransactionCategoryDisplay getCategoryDisplay(String categoryStr) {

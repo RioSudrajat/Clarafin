@@ -55,6 +55,66 @@ class InstitutionRegistry {
       isSvg: true,
       supportsAutoSync: false,
     ),
+    InstitutionModel(
+      id: 'jago',
+      name: 'Bank Jago',
+      shortName: 'Jago',
+      type: 'Bank',
+      logoAsset: 'assets/icons/institutions/jago.png',
+      brandColor: Color(0xFFFFB400),
+      fallbackIcon: Icons.account_balance,
+      isSvg: false,
+    ),
+    InstitutionModel(
+      id: 'jenius',
+      name: 'Jenius BTPN',
+      shortName: 'Jenius',
+      type: 'Bank',
+      logoAsset: 'assets/icons/institutions/jenius.png',
+      brandColor: Color(0xFF009CE0),
+      fallbackIcon: Icons.account_balance,
+      isSvg: false,
+    ),
+    InstitutionModel(
+      id: 'seabank',
+      name: 'SeaBank',
+      shortName: 'SeaBank',
+      type: 'Bank',
+      logoAsset: 'assets/icons/institutions/seabank.png',
+      brandColor: Color(0xFFFF6600),
+      fallbackIcon: Icons.account_balance,
+      isSvg: false,
+    ),
+    InstitutionModel(
+      id: 'blu',
+      name: 'blu by BCA Digital',
+      shortName: 'blu',
+      type: 'Bank',
+      logoAsset: 'assets/icons/institutions/blu.png',
+      brandColor: Color(0xFF00B4D8),
+      fallbackIcon: Icons.account_balance,
+      isSvg: false,
+    ),
+    InstitutionModel(
+      id: 'cimb',
+      name: 'CIMB Niaga',
+      shortName: 'CIMB',
+      type: 'Bank',
+      logoAsset: 'assets/icons/institutions/cimb.png',
+      brandColor: Color(0xFF7A0019),
+      fallbackIcon: Icons.account_balance,
+      isSvg: false,
+    ),
+    InstitutionModel(
+      id: 'permata',
+      name: 'Bank Permata',
+      shortName: 'Permata',
+      type: 'Bank',
+      logoAsset: 'assets/icons/institutions/permata.png',
+      brandColor: Color(0xFF1D6F42),
+      fallbackIcon: Icons.account_balance,
+      isSvg: false,
+    ),
 
     // ── E-Wallets ──
     InstitutionModel(
@@ -276,17 +336,29 @@ class InstitutionRegistry {
 
     final lower = name.toLowerCase();
 
-    // 1. Direct name matches
+    // 1. Direct name and alias matches (check blu before bca so "blu bca" resolves to blu)
+    if (RegExp(r'\bblu\b').hasMatch(lower) || lower.contains('bca digital')) {
+      return findById('blu')!;
+    }
     if (lower.contains('bca')) return findById('bca')!;
     if (lower.contains('mandiri') || lower.contains('livin')) return findById('mandiri')!;
-    if (lower.contains('bri')) return findById('bri')!;
-    if (lower.contains('bni')) return findById('bni')!;
-    if (lower.contains('bsi') || lower.contains('syariah indonesia')) return findById('bsi')!;
-    if (lower.contains('gopay')) return findById('gopay')!;
+    if (lower.contains('bri') || lower.contains('brimo')) return findById('bri')!;
+    if (lower.contains('bni') || lower.contains('wondr')) return findById('bni')!;
+    if (lower.contains('bsi') || lower.contains('syariah indonesia') || lower.contains('byond')) {
+      return findById('bsi')!;
+    }
+    if (lower.contains('jago') || lower.contains('kantong jago')) return findById('jago')!;
+    if (lower.contains('jenius') || lower.contains('btpn') || lower.contains('smbc')) {
+      return findById('jenius')!;
+    }
+    if (lower.contains('seabank') || lower.contains('sea bank')) return findById('seabank')!;
+    if (lower.contains('cimb') || lower.contains('octo')) return findById('cimb')!;
+    if (lower.contains('permata')) return findById('permata')!;
+    if (lower.contains('gopay') || lower.contains('go pay')) return findById('gopay')!;
     if (lower.contains('dana')) return findById('dana')!;
     if (lower.contains('ovo')) return findById('ovo')!;
-    if (lower.contains('shopee')) return findById('shopeepay')!;
-    if (lower.contains('linkaja')) return findById('linkaja')!;
+    if (lower.contains('shopee') || lower.contains('spay')) return findById('shopeepay')!;
+    if (lower.contains('linkaja') || lower.contains('link aja')) return findById('linkaja')!;
     if (lower.contains('binance')) return findById('binance')!;
     if (lower.contains('bitget')) return findById('bitget')!;
     if (lower.contains('floq')) return findById('floq')!;
