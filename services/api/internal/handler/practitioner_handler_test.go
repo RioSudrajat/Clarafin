@@ -12,6 +12,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/clarafin/api/internal/ai"
 	"github.com/clarafin/api/internal/config"
@@ -38,11 +39,27 @@ func newTestPractitionerRouter(store *repository.Store, fixedNow time.Time, loc 
 	return r
 }
 
-func TestPractitionerHandler_CatalogAndPractitionersEndpoints(t *testing.T) {
+func openPractitionerHandlerTxTest(t *testing.T) (*repository.Store, pgx.Tx, context.Context) {
+	t.Helper()
+
 	store, ctx := openTestStore(t)
+	tx, err := store.Pool.Begin(ctx)
+	if err != nil {
+		t.Fatalf("begin handler test tx: %v", err)
+	}
+	t.Cleanup(func() {
+		rollbackCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = tx.Rollback(rollbackCtx)
+	})
+	return &repository.Store{Queries: repository.New(tx)}, tx, ctx
+}
+
+func TestPractitionerHandler_CatalogAndPractitionersEndpoints(t *testing.T) {
+	txStore, tx, ctx := openPractitionerHandlerTxTest(t)
 	wib := time.FixedZone("WIB", 7*3600)
 	fixedNow := time.Date(2026, 11, 23, 8, 0, 0, 0, wib)
-	r := newTestPractitionerRouter(store, fixedNow, wib)
+	r := newTestPractitionerRouter(txStore, fixedNow, wib)
 
 	// 1. GET /v1/catalog-packages returns all 15 official catalog packages.
 	reqCat := httptest.NewRequest(http.MethodGet, "/v1/catalog-packages", nil)
@@ -152,11 +169,23 @@ func TestPractitionerHandler_CatalogAndPractitionersEndpoints(t *testing.T) {
 	}
 
 	// 4. GET /v1/practitioners/{id} accepts both "c1" and UUID, returns 400 on invalid id, 404 on unknown UUID.
-	// Insert a temporary anonymized review on c1 to verify review serialization and privacy masking.
-	reviewer := createTempHandlerUser(t, ctx, store, "rev-c1")
+	// Insert a temporary anonymized review on c1 inside the rolled-back tx to verify review masking without mutating shared DB state.
+	reviewerID := uuid.New()
+	reviewerEmail := "handler-rev-" + reviewerID.String()[:8] + "@clarafin.test"
+	if _, err := tx.Exec(ctx, `INSERT INTO auth.users (id, email) VALUES ($1, $2)`, reviewerID, reviewerEmail); err != nil {
+		t.Fatalf("insert reviewer auth.users: %v", err)
+	}
+	reviewer, err := txStore.EnsureDevUser(ctx, repository.EnsureDevUserParams{
+		ID:       reviewerID,
+		Email:    reviewerEmail,
+		FullName: "Handler Tester rev-c1",
+	})
+	if err != nil {
+		t.Fatalf("EnsureDevUser(reviewer): %v", err)
+	}
 	c1ID := uuid.MustParse("00000000-0000-4000-8000-0000000000c1")
 	var tempSessionID uuid.UUID
-	if err := store.Pool.QueryRow(ctx, `
+	if err := tx.QueryRow(ctx, `
 		INSERT INTO sessions (
 			client_user_id, practitioner_id, service_category, tier, package_title,
 			delivery_mode, scheduled_start_at, scheduled_end_at, subtotal_price_idr,
@@ -168,18 +197,12 @@ func TestPractitionerHandler_CatalogAndPractitionersEndpoints(t *testing.T) {
 	`, reviewer.ID, c1ID, fixedNow.Add(-48*time.Hour), fixedNow.Add(-47*time.Hour)).Scan(&tempSessionID); err != nil {
 		t.Fatalf("insert completed session for review: %v", err)
 	}
-	if _, err := store.Pool.Exec(ctx, `
+	if _, err := tx.Exec(ctx, `
 		INSERT INTO session_reviews (session_id, reviewer_user_id, rating, comment, is_anonymized)
 		VALUES ($1, $2, 5, 'Sangat membantu merapikan cashflow.', TRUE)
 	`, tempSessionID, reviewer.ID); err != nil {
 		t.Fatalf("insert anonymized review: %v", err)
 	}
-	t.Cleanup(func() {
-		cleanupCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		_, _ = store.Pool.Exec(cleanupCtx, `DELETE FROM session_reviews WHERE session_id = $1`, tempSessionID)
-		_, _ = store.Pool.Exec(cleanupCtx, `DELETE FROM sessions WHERE id = $1`, tempSessionID)
-	})
 
 	for _, idParam := range []string{"c1", c1ID.String()} {
 		recDetail := httptest.NewRecorder()

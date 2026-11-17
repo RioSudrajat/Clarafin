@@ -166,6 +166,8 @@ type MatchedConsultantOutput struct {
 	IsStaffPinned          bool      `json:"is_staff_pinned"`
 	NextAvailableSlotLabel string    `json:"next_available_slot_label"`
 	NextAvailableSlotISO   string    `json:"next_available_slot_iso"`
+	PreferredSlotLabel     string    `json:"preferred_slot_label,omitempty"`
+	PreferredSlotISO       string    `json:"preferred_slot_iso,omitempty"`
 	PackageCode            string    `json:"package_code"`
 	PackageTitle           string    `json:"package_title"`
 	OnlinePriceIDR         int64     `json:"online_price_idr"`
@@ -359,12 +361,9 @@ func (t *MatchingTool) MatchExpertsAndPackage(
 	if len(catalogPkgs) == 0 {
 		return nil, errors.New("no active catalog packages configured")
 	}
-	catalogCodeByID := make(map[uuid.UUID]string, len(catalogPkgs))
-	for _, cp := range catalogPkgs {
-		catalogCodeByID[cp.ID] = cp.Code
-	}
+	catalogCodeByID := buildCatalogCodeIndex(catalogPkgs)
 
-	resolved := mergeChatAndDBSignals(chatSignals, dbSignals)
+	resolved := mergeChatAndDBSignals(chatSignals, dbSignals, tagBySlug)
 	matchedTags := resolveMatchedProblemTags(resolved, tagBySlug)
 	recommendedPkg, requiredMinTierRank := selectBestCatalogPackage(resolved, matchedTags, tagBySlug, catalogPkgs)
 
@@ -435,11 +434,13 @@ func (t *MatchingTool) MatchExpertsAndPackage(
 
 	// Step 4: Available slot within next 14 days (excludes is_fully_booked = true and held/booked/session-blocked slots).
 	type rankedCandidate struct {
-		bundle       practitionerBundle
-		pkg          repository.PractitionerPackage
-		earliestSlot slotWindow
-		pin          pinRank
-		hasPin       bool
+		bundle           practitionerBundle
+		pkg              repository.PractitionerPackage
+		earliestSlot     slotWindow
+		preferredSlot    slotWindow
+		hasPreferredSlot bool
+		pin              pinRank
+		hasPin           bool
 	}
 	step4 := make([]rankedCandidate, 0, len(step3))
 	for _, c := range step3 {
@@ -450,14 +451,16 @@ func (t *MatchingTool) MatchExpertsAndPackage(
 		if len(slots) == 0 {
 			continue
 		}
-		chosenSlot := choosePreferredSlot(slots, resolved.SessionTime, t.jakartaLoc)
+		prefSlot, hasPrefSlot := findPreferredSlot(slots, resolved.SessionTime, t.jakartaLoc)
 		pin, hasPin := pinsByPractitioner[c.bundle.id]
 		step4 = append(step4, rankedCandidate{
-			bundle:       c.bundle,
-			pkg:          c.pkg,
-			earliestSlot: chosenSlot,
-			pin:          pin,
-			hasPin:       hasPin,
+			bundle:           c.bundle,
+			pkg:              c.pkg,
+			earliestSlot:     slots[0],
+			preferredSlot:    prefSlot,
+			hasPreferredSlot: hasPrefSlot,
+			pin:              pin,
+			hasPin:           hasPin,
 		})
 	}
 
@@ -484,6 +487,9 @@ func (t *MatchingTool) MatchExpertsAndPackage(
 		)
 	})
 	if len(pinned) > 3 {
+		for i := 3; i < len(pinned); i++ {
+			pinned[i].hasPin = false
+		}
 		unpinned = append(unpinned, pinned[3:]...)
 		pinned = pinned[:3]
 	}
@@ -517,6 +523,12 @@ func (t *MatchingTool) MatchExpertsAndPackage(
 			offlinePrice = *item.pkg.OfflinePriceIdr
 		}
 
+		var prefLabel, prefISO string
+		if item.hasPreferredSlot {
+			prefLabel = formatWIBSlotLabel(item.preferredSlot.start, nowWIB, t.jakartaLoc)
+			prefISO = item.preferredSlot.start.In(t.jakartaLoc).Format(time.RFC3339)
+		}
+
 		consultants = append(consultants, MatchedConsultantOutput{
 			ConsultantID:           item.bundle.code,
 			PractitionerUUID:       item.bundle.id,
@@ -532,6 +544,8 @@ func (t *MatchingTool) MatchExpertsAndPackage(
 			IsStaffPinned:          item.hasPin,
 			NextAvailableSlotLabel: formatWIBSlotLabel(item.earliestSlot.start, nowWIB, t.jakartaLoc),
 			NextAvailableSlotISO:   item.earliestSlot.start.In(t.jakartaLoc).Format(time.RFC3339),
+			PreferredSlotLabel:     prefLabel,
+			PreferredSlotISO:       prefISO,
 			PackageCode:            pkgCode,
 			PackageTitle:           item.pkg.PackageTitle,
 			OnlinePriceIDR:         onlinePrice,
@@ -590,10 +604,7 @@ func (t *MatchingTool) ListPublicPractitioners(ctx context.Context, filter Publi
 	if err != nil {
 		return nil, fmt.Errorf("list catalog packages: %w", err)
 	}
-	catalogCodeByID := make(map[uuid.UUID]string, len(catalogPkgs))
-	for _, cp := range catalogPkgs {
-		catalogCodeByID[cp.ID] = cp.Code
-	}
+	catalogCodeByID := buildCatalogCodeIndex(catalogPkgs)
 
 	problemTags, err := t.store.ListProblemTags(ctx)
 	if err != nil {
@@ -727,10 +738,7 @@ func (t *MatchingTool) GetPublicPractitioner(ctx context.Context, idOrCode strin
 	if err != nil {
 		return nil, fmt.Errorf("list catalog packages: %w", err)
 	}
-	catalogCodeByID := make(map[uuid.UUID]string, len(catalogPkgs))
-	for _, cp := range catalogPkgs {
-		catalogCodeByID[cp.ID] = cp.Code
-	}
+	catalogCodeByID := buildCatalogCodeIndex(catalogPkgs)
 
 	nowWIB := t.nowFn().In(t.jakartaLoc)
 	slotsByPrac, err := t.loadOpenSlots14Days(ctx, []uuid.UUID{pracUUID}, nowWIB, nowWIB, nowWIB.Add(14*24*time.Hour))
@@ -1027,7 +1035,79 @@ func parseAdvisoryFocusSignals(focuses []string) MatchSignals {
 	return out
 }
 
-func mergeChatAndDBSignals(chat MatchSignals, db dbSignalBundle) MatchSignals {
+func buildCatalogCodeIndex(catalogPkgs []repository.CatalogPackage) map[uuid.UUID]string {
+	catalogCodeByID := make(map[uuid.UUID]string, len(catalogPkgs))
+	for _, cp := range catalogPkgs {
+		catalogCodeByID[cp.ID] = cp.Code
+	}
+	return catalogCodeByID
+}
+
+func inferGoalSignals(goal string, tagBySlug map[string]repository.ProblemTag) (string, string, []string) {
+	goalLower := strings.ToLower(strings.TrimSpace(goal))
+	if goalLower == "" {
+		return "", "", nil
+	}
+
+	inferredTags := extractTagsFromGoalSummary(goalLower, tagBySlug)
+
+	var inferredTarget string
+	switch {
+	case containsAny(goalLower, "korporasi", "karyawan", "hrd", "townhall", "perusahaan"):
+		inferredTarget = "corporate"
+	case containsAnyTag(inferredTags, "kas_bisnis", "runway_usaha") ||
+		containsAny(goalLower, "umkm", "toko", "warung", "pembukuan", "hpp", "startup", "runway", "burn rate", "kas usaha", "bisnis", "usaha"):
+		inferredTarget = "business"
+	case containsAnyTag(inferredTags, "budget_nikah") ||
+		containsAny(goalLower, "nikah", "pranikah", "pre-marriage", "tunangan", "pasutri", "suami", "istri", "pasangan", "rekening bersama"):
+		inferredTarget = "couple"
+	case containsAny(goalLower, "keluarga", "generasi sandwich", "sandwich", "pendidikan anak", "dana pendidikan"):
+		inferredTarget = "family"
+	case containsAny(goalLower, "pribadi", "individu", "sendiri"):
+		inferredTarget = "self"
+	}
+
+	var inferredTopic string
+	switch {
+	case containsAny(goalLower, "korporasi", "karyawan", "hrd", "townhall", "perusahaan"):
+		inferredTopic = "corporate"
+	case containsAnyTag(inferredTags, "kas_bisnis", "runway_usaha") ||
+		containsAny(goalLower, "umkm", "toko", "warung", "pembukuan", "hpp", "startup", "runway", "burn rate", "kas usaha", "bisnis", "usaha"):
+		inferredTopic = "sme"
+	case containsAny(goalLower, "check-up", "checkup", "check up", "mcu keuangan", "skor keuangan", "audit polis"):
+		inferredTopic = "financial_checkup"
+	case containsAnyTag(inferredTags, "budget_nikah", "kpr") ||
+		containsAny(goalLower, "nikah", "pranikah", "pre-marriage", "tunangan", "sebelum akad", "kpr", "beli rumah", "dp rumah", "properti"):
+		inferredTopic = "house_wedding"
+	case containsAnyTag(inferredTags, "fire_pensiun") ||
+		containsAny(goalLower, "fire", "pensiun", "kebebasan finansial", "financial freedom", "passive income", "waris"):
+		inferredTopic = "retirement"
+	case containsAny(goalLower, "pendidikan anak", "dana pendidikan", "biaya kuliah", "sekolah anak"):
+		inferredTopic = "education"
+	case containsAnyTag(inferredTags, "dana_darurat", "asuransi") ||
+		containsAny(goalLower, "dana darurat", "emergency", "asuransi", "unitlink", "polis", "proteksi"):
+		inferredTopic = "emergency_insurance"
+	case containsAnyTag(inferredTags, "saham", "reksadana", "crypto") ||
+		containsAny(goalLower, "saham", "dividen", "ihsg", "reksadana", "reksa dana", "sbn", "obligasi", "portofolio", "investasi", "crypto", "kripto", "bitcoin", "web3"):
+		inferredTopic = "investment"
+	case containsAnyTag(inferredTags, "pinjol", "restrukturisasi_utang", "pemetaan_utang", "cashflow") ||
+		containsAny(goalLower, "pinjol", "paylater", "galbay", "restrukturisasi", "cicilan", "hutang", "utang", "kartu kredit", "cashflow", "arus kas", "gaji habis", "budget"):
+		inferredTopic = "debt_cashflow"
+	}
+
+	return inferredTarget, inferredTopic, inferredTags
+}
+
+func slicesOverlapFold(a, b []string) bool {
+	for _, x := range a {
+		if sliceContainsFold(b, x) {
+			return true
+		}
+	}
+	return false
+}
+
+func mergeChatAndDBSignals(chat MatchSignals, db dbSignalBundle, tagBySlug map[string]repository.ProblemTag) MatchSignals {
 	adv := parseAdvisoryFocusSignals(db.advisoryFocuses)
 	quiz := db.quizSignals
 
@@ -1038,25 +1118,41 @@ func mergeChatAndDBSignals(chat MatchSignals, db dbSignalBundle) MatchSignals {
 	chatGoal := strings.TrimSpace(chat.UserGoalSummary)
 	chatMethod := normalizeMethod(chat.Method)
 
+	inferredTarget, inferredTopic, inferredTags := inferGoalSignals(chatGoal, tagBySlug)
+	effectiveChatTarget := firstNonEmpty(chatTarget, inferredTarget)
+	effectiveChatTopic := firstNonEmpty(chatTopic, inferredTopic)
+
 	dbTarget := firstNonEmpty(normalizeTarget(quiz.Target), normalizeTarget(adv.Target), normalizeTarget(db.cashflowHint.Target), "self")
 	dbTopic := firstNonEmpty(normalizeMainTopic(quiz.MainTopic), normalizeMainTopic(adv.MainTopic), normalizeMainTopic(db.cashflowHint.MainTopic))
 	dbBudget := firstNonEmpty(normalizeBudgetTier(quiz.BudgetTier), normalizeBudgetTier(adv.BudgetTier), normalizeBudgetTier(db.cashflowHint.BudgetTier))
+	dbQuizTags := cleanNonEmpty(quiz.SpecificTags)
 
-	// Detect whether active chat shifted the intent domain away from stored onboarding/quiz context.
+	// Detect whether active chat (explicit fields or UserGoalSummary) shifted intent away from stored onboarding/quiz context.
 	intentOverriddenByChat := false
-	if chatTarget != "" && chatTarget != dbTarget {
+	if effectiveChatTarget != "" && effectiveChatTarget != dbTarget {
 		intentOverriddenByChat = true
 	}
-	if chatTopic != "" && dbTopic != "" && chatTopic != dbTopic {
+	if effectiveChatTopic != "" && dbTopic != "" && effectiveChatTopic != dbTopic {
+		intentOverriddenByChat = true
+	}
+	if (dbTarget == "business" || dbTarget == "corporate") && effectiveChatTopic != "" && effectiveChatTopic != "sme" && effectiveChatTopic != "corporate" {
 		intentOverriddenByChat = true
 	}
 	if len(chatTags) > 0 {
 		intentOverriddenByChat = true
 	}
+	if len(inferredTags) > 0 && len(dbQuizTags) > 0 && !slicesOverlapFold(inferredTags, dbQuizTags) {
+		intentOverriddenByChat = true
+	}
+
+	resolvedTarget := firstNonEmpty(effectiveChatTarget, dbTarget, "self")
+	if intentOverriddenByChat {
+		resolvedTarget = firstNonEmpty(effectiveChatTarget, "self")
+	}
 
 	resolved := MatchSignals{
 		Method:             firstNonEmpty(chatMethod, normalizeMethod(quiz.Method), "online"),
-		Target:             firstNonEmpty(chatTarget, dbTarget, "self"),
+		Target:             resolvedTarget,
 		Languages:          firstNonEmptySlice(cleanNonEmpty(chat.Languages), cleanNonEmpty(quiz.Languages)),
 		SessionTime:        firstNonEmptySlice(cleanNonEmpty(chat.SessionTime), cleanNonEmpty(quiz.SessionTime)),
 		Gender:             firstNonEmpty(normalizeGender(chat.Gender), normalizeGender(quiz.Gender)),
@@ -1067,16 +1163,16 @@ func mergeChatAndDBSignals(chat MatchSignals, db dbSignalBundle) MatchSignals {
 		UserGoalSummary:    chatGoal,
 	}
 
-	if chatTopic != "" {
-		resolved.MainTopic = chatTopic
+	if effectiveChatTopic != "" {
+		resolved.MainTopic = effectiveChatTopic
 	} else if !intentOverriddenByChat {
 		resolved.MainTopic = dbTopic
 	}
 
 	if len(chatTags) > 0 {
 		resolved.SpecificTags = chatTags
-	} else if !intentOverriddenByChat && chatGoal == "" && chatTopic == "" {
-		resolved.SpecificTags = cleanNonEmpty(quiz.SpecificTags)
+	} else if !intentOverriddenByChat && chatGoal == "" && effectiveChatTopic == "" {
+		resolved.SpecificTags = dbQuizTags
 	}
 
 	if chatBudget != "" {
@@ -1695,30 +1791,31 @@ func packageActiveForMethod(pkg repository.PractitionerPackage, method string) b
 	}
 }
 
-func choosePreferredSlot(slots []slotWindow, sessionTimes []string, loc *time.Location) slotWindow {
+func findPreferredSlot(slots []slotWindow, sessionTimes []string, loc *time.Location) (slotWindow, bool) {
 	preferred := cleanNonFlexible(sessionTimes)
-	if len(preferred) > 0 {
-		for _, s := range slots {
-			h := s.start.In(loc).Hour()
-			for _, p := range preferred {
-				switch strings.ToLower(p) {
-				case "morning", "pagi":
-					if h >= 8 && h < 12 {
-						return s
-					}
-				case "afternoon", "siang":
-					if h >= 12 && h < 17 {
-						return s
-					}
-				case "night", "malam", "evening":
-					if h >= 17 && h <= 21 {
-						return s
-					}
+	if len(preferred) == 0 {
+		return slotWindow{}, false
+	}
+	for _, s := range slots {
+		h := s.start.In(loc).Hour()
+		for _, p := range preferred {
+			switch strings.ToLower(p) {
+			case "morning", "pagi":
+				if h >= 8 && h < 12 {
+					return s, true
+				}
+			case "afternoon", "siang":
+				if h >= 12 && h < 17 {
+					return s, true
+				}
+			case "night", "malam", "evening":
+				if h >= 17 && h <= 21 {
+					return s, true
 				}
 			}
 		}
 	}
-	return slots[0]
+	return slotWindow{}, false
 }
 
 func compareTieBreaker(slotA time.Time, a practitionerBundle, slotB time.Time, b practitionerBundle) bool {
@@ -1965,7 +2062,7 @@ func buildPublicPractitionerDTO(
 			code = catalogCodeByID[*p.CatalogPackageID]
 		}
 		if p.IsOnlineActive && p.OnlinePriceIdr != nil && *p.OnlinePriceIdr > 0 {
-			if feePerSession == 0 || (p.Tier == b.tier && *p.OnlinePriceIdr < feePerSession) || *p.OnlinePriceIdr < feePerSession {
+			if feePerSession == 0 || *p.OnlinePriceIdr < feePerSession {
 				feePerSession = *p.OnlinePriceIdr
 			}
 		}
