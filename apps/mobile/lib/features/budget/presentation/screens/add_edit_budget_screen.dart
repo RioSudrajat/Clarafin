@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/models/transaction_category_model.dart';
+import '../../../../core/utils/currency_formatter.dart';
 import '../../../transaction/presentation/widgets/category_picker_bottom_sheet.dart';
 import '../providers/finance_providers.dart';
 import '../widgets/budget_form_header.dart';
@@ -14,8 +15,15 @@ import '../widgets/budget_submit_button.dart';
 /// Fully adheres to Clarafin Neo-Brutalism design system.
 class AddEditBudgetScreen extends ConsumerStatefulWidget {
   final String? budgetId;
+  final String? initialCategory;
+  final double? initialLimitAmount;
 
-  const AddEditBudgetScreen({super.key, this.budgetId});
+  const AddEditBudgetScreen({
+    super.key,
+    this.budgetId,
+    this.initialCategory,
+    this.initialLimitAmount,
+  });
 
   @override
   ConsumerState<AddEditBudgetScreen> createState() => _AddEditBudgetScreenState();
@@ -33,10 +41,65 @@ class _AddEditBudgetScreenState extends ConsumerState<AddEditBudgetScreen> {
   IconData _categoryIcon = Icons.restaurant;
   bool _initialized = false;
 
+  static const Map<String, String> _categoryAliases = {
+    'makanan': 'Food & Beverage',
+    'makan': 'Food & Beverage',
+    'fnb': 'Food & Beverage',
+    'transportasi': 'Transportation',
+    'transport': 'Transportation',
+    'rumah tangga': 'Household Needs',
+    'tagihan': 'Bills & Utilities',
+    'listrik': 'Bills & Utilities',
+    'keluarga': 'Family',
+    'belanja': 'Shopping',
+    'kesehatan': 'Health & Sports',
+    'olahraga': 'Health & Sports',
+    'donasi': 'Donations & Gifts',
+    'liburan': 'Travel',
+    'hiburan': 'Entertainment',
+    'pendidikan': 'Education',
+    'pinjaman': 'Loans',
+    'cicilan': 'Loans',
+    'utang': 'Loans',
+    'investasi': 'Investment',
+    'bisnis': 'Business',
+    'lainnya': 'Others',
+  };
+
   @override
   void initState() {
     super.initState();
     _totalAmountController = TextEditingController();
+    if (widget.budgetId == null) {
+      if (widget.initialCategory != null &&
+          widget.initialCategory!.trim().isNotEmpty) {
+        _applyCategoryPrefill(widget.initialCategory!.trim());
+      }
+      if (widget.initialLimitAmount != null && widget.initialLimitAmount! > 0) {
+        _totalAmountController.text = _formatAmount(widget.initialLimitAmount!);
+      }
+    }
+  }
+
+  void _applyCategoryPrefill(String rawCategory) {
+    final lower = rawCategory.toLowerCase();
+    final mapped = _categoryAliases[lower] ?? rawCategory;
+    TransactionCategory? mainCat = TransactionCategories.findCategory(mapped);
+    mainCat ??= TransactionCategories.expenseCategories
+        .where((c) => c.id.toLowerCase() == lower)
+        .firstOrNull;
+
+    if (mainCat != null) {
+      _categoryName = mainCat.name;
+      _categoryIcon = mainCat.icon;
+      _categoryColor = mainCat.color;
+      _categoryBgColor = mainCat.bgColor;
+      _categoryEmoji = mainCat.emoji;
+      _categoryGroup = mainCat.group;
+    } else {
+      _categoryName = rawCategory;
+      _categoryEmoji = '🏷️';
+    }
   }
 
   @override
@@ -59,16 +122,8 @@ class _AddEditBudgetScreenState extends ConsumerState<AddEditBudgetScreen> {
     }
   }
 
-  String _formatAmount(double val) {
-    final str = val.toInt().toString();
-    final buffer = StringBuffer();
-    final len = str.length;
-    for (int i = 0; i < len; i++) {
-      if (i > 0 && (len - i) % 3 == 0) buffer.write('.');
-      buffer.write(str[i]);
-    }
-    return buffer.toString();
-  }
+  String _formatAmount(double val) =>
+      CurrencyFormatter.formatWithoutSymbol(val.roundToDouble(), isIdrBase: false);
 
   @override
   void dispose() {

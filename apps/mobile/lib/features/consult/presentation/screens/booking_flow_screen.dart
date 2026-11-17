@@ -28,8 +28,12 @@ class _BookingFlowScreenState extends ConsumerState<BookingFlowScreen> {
 
   final TextEditingController _issueController = TextEditingController();
   final TextEditingController _expectationsController = TextEditingController();
-  List<String> _currentTopics = ['Review Investasi'];
+  List<String> _currentTopics = [];
   String? _currentFileName;
+
+  bool _isHydrating = false;
+  bool _issueEditedByUser = false;
+  bool _expectationsEditedByUser = false;
 
   bool _step1Valid = false;
   bool _step2Valid = false;
@@ -46,10 +50,64 @@ class _BookingFlowScreenState extends ConsumerState<BookingFlowScreen> {
     super.initState();
     _currentStep = widget.initialStep.clamp(0, 2);
     _pageController = PageController(initialPage: _currentStep);
+    _issueController.addListener(_onIssueChanged);
+    _expectationsController.addListener(_onExpectationsChanged);
+    _hydrateIntakeFromProvider();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _hydrateIntakeFromProvider();
+    });
+  }
+
+  void _onIssueChanged() {
+    if (!_isHydrating) _issueEditedByUser = true;
+  }
+
+  void _onExpectationsChanged() {
+    if (!_isHydrating) _expectationsEditedByUser = true;
+  }
+
+  void _hydrateIntakeFromProvider() {
+    final state = ref.read(bookingProvider);
+    _isHydrating = true;
+    try {
+      if (!_issueEditedByUser &&
+          _issueController.text.isEmpty &&
+          state.description.isNotEmpty) {
+        _issueController.text = state.description;
+      }
+      if (!_expectationsEditedByUser &&
+          _expectationsController.text.isEmpty &&
+          state.expectations.isNotEmpty) {
+        _expectationsController.text = state.expectations;
+      }
+      if (_currentTopics.isEmpty) {
+        if (state.prefilledTopics.isNotEmpty) {
+          _currentTopics = List<String>.from(state.prefilledTopics);
+        } else if (state.topic.trim().isNotEmpty) {
+          final parsed = state.topic
+              .split(',')
+              .map((t) => t.trim())
+              .where((t) => t.isNotEmpty)
+              .toList();
+          if (parsed.isNotEmpty) {
+            _currentTopics = parsed;
+          }
+        }
+      }
+      if (_currentFileName == null &&
+          state.fileName != null &&
+          state.fileName!.isNotEmpty) {
+        _currentFileName = state.fileName;
+      }
+    } finally {
+      _isHydrating = false;
+    }
   }
 
   @override
   void dispose() {
+    _issueController.removeListener(_onIssueChanged);
+    _expectationsController.removeListener(_onExpectationsChanged);
     _pageController.dispose();
     _issueController.dispose();
     _expectationsController.dispose();
@@ -82,8 +140,11 @@ class _BookingFlowScreenState extends ConsumerState<BookingFlowScreen> {
         curve: Curves.easeInOutCubic,
       );
     } else if (_currentStep == 2) {
+      final topicsToSave = _currentTopics.isNotEmpty
+          ? _currentTopics
+          : const ['Review Portofolio Investasi'];
       ref.read(bookingProvider.notifier).updatePreConsult(
-            topic: _currentTopics.join(', '),
+            topic: topicsToSave.join(', '),
             description: _issueController.text.trim(),
             expectations: _expectationsController.text.trim(),
             fileName: _currentFileName,
@@ -151,19 +212,23 @@ class _BookingFlowScreenState extends ConsumerState<BookingFlowScreen> {
                 children: [
                   BookingStep1ServiceView(
                     consultantId: widget.consultantId,
-                    onValidationChanged: (val) => setState(() => _step1Valid = val),
+                    onValidationChanged: (val) =>
+                        setState(() => _step1Valid = val),
                   ),
                   BookingStep2ScheduleView(
                     consultantId: widget.consultantId,
-                    onValidationChanged: (val) => setState(() => _step2Valid = val),
+                    onValidationChanged: (val) =>
+                        setState(() => _step2Valid = val),
                   ),
                   BookingStep3IntakeView(
                     consultantId: widget.consultantId,
                     issueController: _issueController,
                     expectationsController: _expectationsController,
-                    onValidationChanged: (val) => setState(() => _step3Valid = val),
+                    initialTopics: _currentTopics,
+                    onValidationChanged: (val) =>
+                        setState(() => _step3Valid = val),
                     onDataChanged: (topics, file) {
-                      _currentTopics = topics;
+                      _currentTopics = List<String>.from(topics);
                       _currentFileName = file;
                     },
                   ),

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/providers/mock_providers.dart';
+import '../../../../core/utils/currency_formatter.dart';
 import '../../../budget/presentation/providers/finance_providers.dart';
 import '../widgets/goal_form_header.dart';
 import '../widgets/goal_form_inputs.dart';
@@ -16,8 +17,17 @@ import '../widgets/goal_submit_button.dart';
 /// Fully adheres to Clarafin Neo-Brutalism design system.
 class AddEditGoalScreen extends ConsumerStatefulWidget {
   final String? goalId;
+  final String? initialName;
+  final double? initialTargetAmount;
+  final String? initialDeadline;
 
-  const AddEditGoalScreen({super.key, this.goalId});
+  const AddEditGoalScreen({
+    super.key,
+    this.goalId,
+    this.initialName,
+    this.initialTargetAmount,
+    this.initialDeadline,
+  });
 
   @override
   ConsumerState<AddEditGoalScreen> createState() => _AddEditGoalScreenState();
@@ -40,6 +50,7 @@ class _AddEditGoalScreenState extends ConsumerState<AddEditGoalScreen> {
 
     if (widget.goalId != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
         final goals = ref.read(goalsProvider);
         final goal = goals.firstWhere(
           (g) => g.id == widget.goalId,
@@ -53,19 +64,39 @@ class _AddEditGoalScreenState extends ConsumerState<AddEditGoalScreen> {
           _selectedIcon = goal.icon;
         });
       });
+    } else {
+      if (widget.initialName != null && widget.initialName!.trim().isNotEmpty) {
+        _nameController.text = widget.initialName!.trim();
+      }
+      if (widget.initialTargetAmount != null && widget.initialTargetAmount! > 0) {
+        _targetAmountController.text = _formatAmount(widget.initialTargetAmount!);
+      }
+      final parsedDeadline = _parseDeadline(widget.initialDeadline);
+      if (parsedDeadline != null) {
+        _targetDate = parsedDeadline;
+      }
     }
   }
 
-  String _formatAmount(double val) {
-    final str = val.toInt().toString();
-    final buffer = StringBuffer();
-    final len = str.length;
-    for (int i = 0; i < len; i++) {
-      if (i > 0 && (len - i) % 3 == 0) buffer.write('.');
-      buffer.write(str[i]);
+  DateTime? _parseDeadline(String? raw) {
+    if (raw == null) return null;
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) return null;
+    final direct = DateTime.tryParse(trimmed);
+    if (direct != null) return direct;
+    final ym = RegExp(r'^(\d{4})-(\d{1,2})$').firstMatch(trimmed);
+    if (ym != null) {
+      final year = int.tryParse(ym.group(1)!);
+      final month = int.tryParse(ym.group(2)!);
+      if (year != null && month != null && month >= 1 && month <= 12) {
+        return DateTime(year, month, 1);
+      }
     }
-    return buffer.toString();
+    return null;
   }
+
+  String _formatAmount(double val) =>
+      CurrencyFormatter.formatWithoutSymbol(val.roundToDouble(), isIdrBase: false);
 
   @override
   void dispose() {
@@ -105,9 +136,7 @@ class _AddEditGoalScreenState extends ConsumerState<AddEditGoalScreen> {
       );
       ref.read(goalsProvider.notifier).addGoal(newGoal);
     } else {
-      final existing = ref
-          .read(goalsProvider)
-          .firstWhere((g) => g.id == widget.goalId);
+      final existing = ref.read(goalsProvider).firstWhere((g) => g.id == widget.goalId);
       final updated = existing.copyWith(
         name: _nameController.text.trim(),
         targetAmount: targetAmount,
@@ -119,7 +148,6 @@ class _AddEditGoalScreenState extends ConsumerState<AddEditGoalScreen> {
       );
       ref.read(goalsProvider.notifier).updateGoal(updated);
     }
-
     context.pop();
   }
 
@@ -131,15 +159,55 @@ class _AddEditGoalScreenState extends ConsumerState<AddEditGoalScreen> {
   }
 
   Future<void> _selectDate() async {
+    final now = DateTime.now();
     final picked = await showDatePicker(
       context: context,
       initialDate: _targetDate,
-      firstDate: DateTime.now(),
+      firstDate: _targetDate.isBefore(now) ? _targetDate : now,
       lastDate: DateTime(2035),
     );
     if (picked != null && picked != _targetDate) {
       setState(() => _targetDate = picked);
     }
+  }
+
+  Widget _buildSourceSection() {
+    final goal = ref.watch(goalsProvider).where((g) => g.id == widget.goalId).firstOrNull;
+    if (goal == null) return const SizedBox.shrink();
+    final wallets = ref.watch(walletsProvider);
+    return GoalSourceFundsSection(
+      goal: goal,
+      wallets: wallets,
+      padding: EdgeInsets.zero,
+      onAddSource: () => context.push('/transaction/entry', extra: {
+        'type': 'Transfer',
+        'targetGoalId': goal.id,
+      }),
+      onTapSource: (wId, wName, amt) {
+        final w = wallets.where((x) => x.id == wId).firstOrNull;
+        showModalBottomSheet(
+          context: context,
+          backgroundColor: Colors.transparent,
+          isScrollControlled: true,
+          builder: (ctx) => GoalSourceActionSheet(
+            institutionId: w?.institutionId,
+            walletType: w?.type,
+            walletName: wName,
+            currentAmount: amt,
+            onAddFunds: () => context.push('/transaction/entry', extra: {
+              'type': 'Transfer',
+              'targetGoalId': goal.id,
+              'sourceWalletId': wId,
+            }),
+            onWithdrawFunds: () => context.push('/transaction/entry', extra: {
+              'type': 'Transfer',
+              'sourceWalletId': 'goal:${goal.id}:$wId',
+              'targetWalletId': wId,
+            }),
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -154,10 +222,7 @@ class _AddEditGoalScreenState extends ConsumerState<AddEditGoalScreen> {
         child: Column(
           children: [
             SizedBox(height: topPadding),
-            GoalFormHeader(
-              isEditing: isEditing,
-              onDelete: _deleteGoal,
-            ),
+            GoalFormHeader(isEditing: isEditing, onDelete: _deleteGoal),
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
@@ -183,57 +248,10 @@ class _AddEditGoalScreenState extends ConsumerState<AddEditGoalScreen> {
                         onPrioritySelected: (p) => setState(() => _priority = p),
                       ),
                       const SizedBox(height: 32),
-                      GoalSubmitButton(
-                        isEditing: isEditing,
-                        onPressed: _saveGoal,
-                      ),
+                      GoalSubmitButton(isEditing: isEditing, onPressed: _saveGoal),
                       if (isEditing) ...[
                         const SizedBox(height: 24),
-                        Builder(
-                          builder: (context) {
-                            final goals = ref.watch(goalsProvider);
-                            final goal = goals.where((g) => g.id == widget.goalId).firstOrNull;
-                            if (goal == null) return const SizedBox.shrink();
-                            final wallets = ref.watch(walletsProvider);
-                            return GoalSourceFundsSection(
-                              goal: goal,
-                              wallets: wallets,
-                              padding: EdgeInsets.zero,
-                              onAddSource: () => context.push('/transaction/entry', extra: {
-                                'type': 'Transfer',
-                                'targetGoalId': goal.id,
-                              }),
-                              onTapSource: (wId, wName, amt) {
-                                final w = wallets.where((x) => x.id == wId).firstOrNull;
-                                showModalBottomSheet(
-                                  context: context,
-                                  backgroundColor: Colors.transparent,
-                                  isScrollControlled: true,
-                                  builder: (ctx) => GoalSourceActionSheet(
-                                    institutionId: w?.institutionId,
-                                    walletType: w?.type,
-                                    walletName: wName,
-                                    currentAmount: amt,
-                                    onAddFunds: () {
-                                      context.push('/transaction/entry', extra: {
-                                        'type': 'Transfer',
-                                        'targetGoalId': goal.id,
-                                        'sourceWalletId': wId,
-                                      });
-                                    },
-                                    onWithdrawFunds: () {
-                                      context.push('/transaction/entry', extra: {
-                                        'type': 'Transfer',
-                                        'sourceWalletId': 'goal:${goal.id}:$wId',
-                                        'targetWalletId': wId,
-                                      });
-                                    },
-                                  ),
-                                );
-                              },
-                            );
-                          },
-                        ),
+                        _buildSourceSection(),
                       ],
                       const SizedBox(height: 24),
                     ],

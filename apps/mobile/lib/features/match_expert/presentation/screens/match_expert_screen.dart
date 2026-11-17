@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../consult/presentation/providers/booking_provider.dart';
 import '../../domain/data/match_expert_questions_data.dart';
 import '../providers/match_expert_provider.dart';
 import '../widgets/match_expert_consultant_detail_sheet.dart';
@@ -68,11 +69,12 @@ class MatchExpertScreen extends ConsumerWidget {
     }
 
     // Step 13: Result
-    return _buildResultView(context, state, notifier);
+    return _buildResultView(context, ref, state, notifier);
   }
 
   Widget _buildResultView(
     BuildContext context,
+    WidgetRef ref,
     MatchExpertState state,
     MatchExpertNotifier notifier,
   ) {
@@ -184,6 +186,7 @@ class MatchExpertScreen extends ConsumerWidget {
                   MatchExpertConsultantDetailSheet(
                     consultant: activeConsultant,
                     onBookSession: () {
+                      ref.read(bookingProvider.notifier).reset();
                       context.push('/booking/${activeConsultant.id}/service');
                     },
                   ),

@@ -12,6 +12,7 @@ class BookingStep3IntakeView extends ConsumerStatefulWidget {
   final String consultantId;
   final TextEditingController issueController;
   final TextEditingController expectationsController;
+  final List<String>? initialTopics;
   final ValueChanged<bool> onValidationChanged;
   final Function(List<String> topics, String? fileName)? onDataChanged;
 
@@ -20,15 +21,18 @@ class BookingStep3IntakeView extends ConsumerStatefulWidget {
     required this.consultantId,
     required this.issueController,
     required this.expectationsController,
+    this.initialTopics,
     required this.onValidationChanged,
     this.onDataChanged,
   });
 
   @override
-  ConsumerState<BookingStep3IntakeView> createState() => _BookingStep3IntakeViewState();
+  ConsumerState<BookingStep3IntakeView> createState() =>
+      _BookingStep3IntakeViewState();
 }
 
-class _BookingStep3IntakeViewState extends ConsumerState<BookingStep3IntakeView> {
+class _BookingStep3IntakeViewState
+    extends ConsumerState<BookingStep3IntakeView> {
   final List<String> _selectedTopics = ['Review Portofolio Investasi'];
   String? _uploadedFileName;
   String? _uploadedFileSize;
@@ -37,9 +41,42 @@ class _BookingStep3IntakeViewState extends ConsumerState<BookingStep3IntakeView>
   @override
   void initState() {
     super.initState();
+    _hydrateTopicsAndFile();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       _notifyValidation();
     });
+  }
+
+  void _hydrateTopicsAndFile() {
+    final booking = ref.read(bookingProvider);
+    final initial = widget.initialTopics;
+
+    if (initial != null && initial.isNotEmpty) {
+      _selectedTopics
+        ..clear()
+        ..addAll(initial);
+    } else if (booking.prefilledTopics.isNotEmpty) {
+      _selectedTopics
+        ..clear()
+        ..addAll(booking.prefilledTopics);
+    } else if (booking.topic.trim().isNotEmpty) {
+      final parsed = booking.topic
+          .split(',')
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
+      if (parsed.isNotEmpty) {
+        _selectedTopics
+          ..clear()
+          ..addAll(parsed);
+      }
+    }
+
+    if (booking.fileName != null && booking.fileName!.isNotEmpty) {
+      _uploadedFileName = booking.fileName;
+      _uploadedFileSize ??= '1.2 MB';
+    }
   }
 
   void _notifyValidation() {
@@ -61,6 +98,22 @@ class _BookingStep3IntakeViewState extends ConsumerState<BookingStep3IntakeView>
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<List<String>>(
+      bookingProvider.select((s) => s.prefilledTopics),
+      (prev, next) {
+        if (next.isNotEmpty && mounted) {
+          setState(() {
+            _selectedTopics
+              ..clear()
+              ..addAll(next);
+          });
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) _notifyValidation();
+          });
+        }
+      },
+    );
+
     final consultants = ref.watch(consultantsListProvider);
     final consultant = consultants.cast<Consultant?>().firstWhere(
       (c) => c?.id == widget.consultantId,

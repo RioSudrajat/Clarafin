@@ -1,17 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/neo_brutalism_decorations.dart';
+import '../../../consult/presentation/providers/booking_provider.dart';
 
-class DebtPayoffStrategyScreen extends StatefulWidget {
+class DebtPayoffStrategyScreen extends ConsumerStatefulWidget {
   const DebtPayoffStrategyScreen({super.key});
 
   @override
-  State<DebtPayoffStrategyScreen> createState() => _DebtPayoffStrategyScreenState();
+  ConsumerState<DebtPayoffStrategyScreen> createState() =>
+      _DebtPayoffStrategyScreenState();
 }
 
-class _DebtPayoffStrategyScreenState extends State<DebtPayoffStrategyScreen> {
+class _DebtPayoffStrategyScreenState
+    extends ConsumerState<DebtPayoffStrategyScreen> {
   bool _isSnowball = true; // true: Snowball, false: Avalanche
   double _extraMonthlyPayment = 500000;
 
@@ -296,7 +300,10 @@ class _DebtPayoffStrategyScreenState extends State<DebtPayoffStrategyScreen> {
 
                         // CTA Button to Personal Advisory Basic
                         GestureDetector(
-                          onTap: () => context.push('/booking/c3/service'),
+                          onTap: () {
+                            ref.read(bookingProvider.notifier).reset();
+                            context.push('/booking/c3/service');
+                          },
                           child: Container(
                             width: double.infinity,
                             height: 48,

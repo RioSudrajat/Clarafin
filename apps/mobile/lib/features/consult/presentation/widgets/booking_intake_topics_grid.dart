@@ -22,6 +22,29 @@ class BookingIntakeTopicsGrid extends StatefulWidget {
 }
 
 class _BookingIntakeTopicsGridState extends State<BookingIntakeTopicsGrid> {
+  final List<String> _pinnedTopics = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _syncPinnedTopics(widget.selectedTopics);
+  }
+
+  @override
+  void didUpdateWidget(covariant BookingIntakeTopicsGrid oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _syncPinnedTopics(widget.selectedTopics);
+  }
+
+  void _syncPinnedTopics(List<String> selected) {
+    for (final topic in selected) {
+      final trimmed = topic.trim();
+      if (trimmed.isNotEmpty && !_pinnedTopics.contains(trimmed)) {
+        _pinnedTopics.add(trimmed);
+      }
+    }
+  }
+
   static const List<String> _defaultTopics = [
     'Review Portofolio Investasi',
     'Perencanaan Pensiun (FIRE)',
@@ -82,6 +105,10 @@ class _BookingIntakeTopicsGridState extends State<BookingIntakeTopicsGrid> {
 
     if (topics.isEmpty) {
       topics.addAll(_defaultTopics);
+    }
+
+    for (final pinned in _pinnedTopics) {
+      topics.add(pinned);
     }
 
     return topics.toList();
@@ -221,12 +248,14 @@ class _BookingIntakeTopicsGridState extends State<BookingIntakeTopicsGrid> {
                                 const Icon(Icons.check_rounded, size: 13, color: Colors.black),
                                 const SizedBox(width: 4),
                               ],
-                              Text(
-                                topic,
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 11.5,
-                                  fontWeight: isSelected ? FontWeight.w900 : FontWeight.w700,
-                                  color: Colors.black,
+                              Flexible(
+                                child: Text(
+                                  topic,
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 11.5,
+                                    fontWeight: isSelected ? FontWeight.w900 : FontWeight.w700,
+                                    color: Colors.black,
+                                  ),
                                 ),
                               ),
                             ],

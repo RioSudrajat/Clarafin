@@ -1,17 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/neo_brutalism_decorations.dart';
+import '../../../consult/presentation/providers/booking_provider.dart';
 
-class FinancialTestCatalogScreen extends StatefulWidget {
+class FinancialTestCatalogScreen extends ConsumerStatefulWidget {
   const FinancialTestCatalogScreen({super.key});
 
   @override
-  State<FinancialTestCatalogScreen> createState() => _FinancialTestCatalogScreenState();
+  ConsumerState<FinancialTestCatalogScreen> createState() =>
+      _FinancialTestCatalogScreenState();
 }
 
-class _FinancialTestCatalogScreenState extends State<FinancialTestCatalogScreen> {
+class _FinancialTestCatalogScreenState
+    extends ConsumerState<FinancialTestCatalogScreen> {
   int _selectedTierIndex = 0;
 
   final currencyFormat = NumberFormat.currency(
@@ -375,6 +379,7 @@ class _FinancialTestCatalogScreenState extends State<FinancialTestCatalogScreen>
                         GestureDetector(
                           onTap: () {
                             final consultantId = activeTier['recommendedConsultantId'] as String;
+                            ref.read(bookingProvider.notifier).reset();
                             context.push('/booking/$consultantId/service');
                           },
                           child: Container(

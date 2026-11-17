@@ -68,6 +68,27 @@ final routerNotifierProvider = Provider<RouterNotifier>((ref) {
   return RouterNotifier(ref);
 });
 
+Map<String, dynamic>? _asExtraMap(Object? extra) {
+  if (extra is Map<String, dynamic>) return extra;
+  if (extra is Map) {
+    return extra.map((k, v) => MapEntry(k.toString(), v));
+  }
+  return null;
+}
+
+double? _asDouble(Object? value) {
+  if (value is num) return value.toDouble();
+  if (value is String) return double.tryParse(value.trim());
+  return null;
+}
+
+int? _asInt(Object? value) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  if (value is String) return int.tryParse(value.trim());
+  return null;
+}
+
 // Keys for each navigator branch
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _homeNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'home');
@@ -229,7 +250,14 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/goal/add',
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => const AddEditGoalScreen(),
+        builder: (context, state) {
+          final extra = _asExtraMap(state.extra);
+          return AddEditGoalScreen(
+            initialName: extra?['name']?.toString(),
+            initialTargetAmount: _asDouble(extra?['targetAmount']),
+            initialDeadline: extra?['deadline']?.toString(),
+          );
+        },
       ),
       GoRoute(
         path: '/goal/edit/:id',
@@ -244,7 +272,13 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/budget/add',
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => const AddEditBudgetScreen(),
+        builder: (context, state) {
+          final extra = _asExtraMap(state.extra);
+          return AddEditBudgetScreen(
+            initialCategory: extra?['category']?.toString(),
+            initialLimitAmount: _asDouble(extra?['limitAmount']),
+          );
+        },
       ),
       GoRoute(
         path: '/budget/edit/:id',
@@ -254,7 +288,16 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/bill/add',
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => const AddEditBillScreen(),
+        builder: (context, state) {
+          final extra = _asExtraMap(state.extra);
+          return AddEditBillScreen(
+            initialTitle: (extra?['title'] ?? extra?['name'])?.toString(),
+            initialAmount: _asDouble(extra?['amount']),
+            initialDueDay: _asInt(extra?['dueDay']),
+            initialFrequency: extra?['frequency']?.toString(),
+            initialCategory: extra?['category']?.toString(),
+          );
+        },
       ),
       GoRoute(
         path: '/bill/edit/:id',

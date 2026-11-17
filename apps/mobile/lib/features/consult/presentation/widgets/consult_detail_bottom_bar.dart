@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/neo_brutalism_decorations.dart';
 import '../../domain/models/consultant.dart';
+import '../providers/booking_provider.dart';
 import 'booking_service_mock_data.dart';
 
-class ConsultDetailBottomBar extends StatelessWidget {
+class ConsultDetailBottomBar extends ConsumerWidget {
   final Consultant consultant;
 
   const ConsultDetailBottomBar({
@@ -14,7 +16,7 @@ class ConsultDetailBottomBar extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final currencyFormat = NumberFormat.currency(
       locale: 'id_ID',
       symbol: 'Rp ',
@@ -124,7 +126,10 @@ class ConsultDetailBottomBar extends StatelessWidget {
                       ),
                     )
                   : GestureDetector(
-                      onTap: () => context.push('/booking/${consultant.id}/service'),
+                      onTap: () {
+                        ref.read(bookingProvider.notifier).reset();
+                        context.push('/booking/${consultant.id}/service');
+                      },
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 22),
                         alignment: Alignment.center,
