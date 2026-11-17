@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/neo_brutalism_decorations.dart';
 import '../../../../core/utils/currency_formatter.dart';
-import '../../../profile/presentation/providers/user_profile_provider.dart';
 import '../../domain/models/ai_chat_models.dart';
+import 'ai_analytical_card_helpers.dart';
+import 'ai_money_flow_painter.dart';
 
 /// Neo-Brutalist 3-column merchant spending breakdown table card for AI chat.
 class AiSpendingBreakdownTableCard extends ConsumerWidget {
@@ -25,20 +25,6 @@ class AiSpendingBreakdownTableCard extends ConsumerWidget {
 
   static const Color _mutedInk = Color(0xFF4B5563);
 
-  TextStyle _font(double size, FontWeight w, Color c, {double? height, double? spacing}) =>
-      GoogleFonts.plusJakartaSans(fontSize: size, fontWeight: w, color: c, height: height, letterSpacing: spacing);
-
-  String _resolveCurrency(WidgetRef ref) {
-    if (currencyCode != null && currencyCode!.isNotEmpty) return currencyCode!;
-    try {
-      return ref.watch(userProfileProvider.select((p) => p.currency));
-    } on Object catch (_) {
-      return 'IDR';
-    }
-  }
-
-  double _safeNonNeg(double v) => (v.isFinite && v > 0) ? v : 0.0;
-
   void _openHistory(BuildContext context) {
     if (onViewHistory != null) {
       onViewHistory!();
@@ -49,14 +35,14 @@ class AiSpendingBreakdownTableCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final currency = _resolveCurrency(ref);
+    final currency = resolveAnalyticalCurrency(ref, currencyCode);
     final heading = data.title.trim().isNotEmpty ? data.title.trim() : 'Rincian Pengeluaran';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(heading, style: _font(13.5, FontWeight.w800, NeoBrutalism.dark)),
+        Text(heading, style: analyticalFont(13.5, FontWeight.w800, NeoBrutalism.dark)),
         const SizedBox(height: 8),
         Container(
           width: double.infinity,
@@ -84,7 +70,7 @@ class AiSpendingBreakdownTableCard extends ConsumerWidget {
   }
 
   Widget _buildHeader() {
-    final style = _font(10.5, FontWeight.w800, _mutedInk, spacing: 0.3);
+    final style = analyticalFont(10.5, FontWeight.w800, _mutedInk, spacing: 0.3);
     return Container(
       color: NeoBrutalism.surfaceWarm,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -107,7 +93,7 @@ class AiSpendingBreakdownTableCard extends ConsumerWidget {
   Widget _buildEmptyRow() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-      child: Text('Belum ada transaksi merchant tercatat pada periode ini.', style: _font(12, FontWeight.w500, _mutedInk)),
+      child: Text('Belum ada transaksi merchant tercatat pada periode ini.', style: analyticalFont(12, FontWeight.w500, _mutedInk)),
     );
   }
 
@@ -119,8 +105,8 @@ class AiSpendingBreakdownTableCard extends ConsumerWidget {
           if (i > 0) const Divider(height: 1, thickness: 1, color: AppColors.divider),
           _buildTableRow(
             label: data.rows[i].merchant.trim().isEmpty ? '-' : data.rows[i].merchant.trim(),
-            countText: '${data.rows[i].transactionCount}',
-            amountText: CurrencyFormatter.format(_safeNonNeg(data.rows[i].totalAmount), currencyCode: currency),
+            countText: '${data.rows[i].transactionCount < 0 ? 0 : data.rows[i].transactionCount}',
+            amountText: CurrencyFormatter.format(safeFlowAmount(data.rows[i].totalAmount), currencyCode: currency),
             isTotal: false,
           ),
         ],
@@ -129,12 +115,13 @@ class AiSpendingBreakdownTableCard extends ConsumerWidget {
   }
 
   Widget _buildFooter(String currency) {
+    final safeTotalTx = data.totalTransactions < 0 ? 0 : data.totalTransactions;
     return Container(
       color: AppColors.primaryLight,
       child: _buildTableRow(
         label: 'Total',
-        countText: '${data.totalTransactions}',
-        amountText: CurrencyFormatter.format(_safeNonNeg(data.totalAmount), currencyCode: currency),
+        countText: '$safeTotalTx',
+        amountText: CurrencyFormatter.format(safeFlowAmount(data.totalAmount), currencyCode: currency),
         isTotal: true,
       ),
     );
@@ -153,15 +140,15 @@ class AiSpendingBreakdownTableCard extends ConsumerWidget {
         children: [
           Expanded(
             flex: 5,
-            child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: _font(s, isTotal ? FontWeight.w800 : FontWeight.w600, NeoBrutalism.dark)),
+            child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: analyticalFont(s, isTotal ? FontWeight.w800 : FontWeight.w600, NeoBrutalism.dark)),
           ),
           Expanded(
             flex: 2,
-            child: Text(countText, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis, style: _font(s, isTotal ? FontWeight.w800 : FontWeight.w600, isTotal ? NeoBrutalism.dark : _mutedInk)),
+            child: Text(countText, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis, style: analyticalFont(s, isTotal ? FontWeight.w800 : FontWeight.w600, isTotal ? NeoBrutalism.dark : _mutedInk)),
           ),
           Expanded(
             flex: 3,
-            child: Text(amountText, textAlign: TextAlign.right, maxLines: 1, overflow: TextOverflow.ellipsis, style: _font(s, isTotal ? FontWeight.w900 : FontWeight.w700, NeoBrutalism.dark)),
+            child: Text(amountText, textAlign: TextAlign.right, maxLines: 1, overflow: TextOverflow.ellipsis, style: analyticalFont(s, isTotal ? FontWeight.w900 : FontWeight.w700, NeoBrutalism.dark)),
           ),
         ],
       ),
@@ -173,39 +160,33 @@ class AiSpendingBreakdownTableCard extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (footnote.isNotEmpty) Text(footnote, style: _font(12, FontWeight.w500, _mutedInk, height: 1.4)),
+        if (footnote.isNotEmpty) ...[
+          Text(footnote, style: analyticalFont(12, FontWeight.w500, _mutedInk, height: 1.4)),
+          if (showHistoryLink) const SizedBox(height: 4),
+        ],
         if (showHistoryLink)
-          Semantics(
-            button: true,
-            label: 'Lihat Riwayat transaksi',
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                key: const Key('spending_table_history_link'),
-                borderRadius: BorderRadius.circular(8),
-                onTap: () => _openHistory(context),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(minHeight: 44, minWidth: 44),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 10),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Flexible(
-                          child: Text(
-                            'Lihat Riwayat',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: _font(12.5, FontWeight.w800, NeoBrutalism.teal),
-                          ),
-                        ),
-                        const SizedBox(width: 2),
-                        const Icon(Icons.chevron_right_rounded, size: 18, color: NeoBrutalism.teal),
-                      ],
-                    ),
+          AnalyticalActionSurface(
+            buttonKey: const Key('spending_table_history_link'),
+            semanticLabel: 'Lihat Riwayat transaksi',
+            onTap: () => _openHistory(context),
+            baseColor: Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+            defaultBorder: const BorderSide(color: Colors.transparent, width: 2.5),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  child: Text(
+                    'Lihat Riwayat',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: analyticalFont(12.5, FontWeight.w800, NeoBrutalism.teal),
                   ),
                 ),
-              ),
+                const SizedBox(width: 2),
+                const Icon(Icons.chevron_right_rounded, size: 18, color: NeoBrutalism.teal),
+              ],
             ),
           ),
       ],

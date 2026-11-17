@@ -5,13 +5,14 @@ import '../../../../core/theme/neo_brutalism_decorations.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../domain/models/ai_chat_models.dart';
 
+final RegExp _hexColorPattern = RegExp(r'^[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$');
+
 /// Parses a CSS hex color string safely, falling back on malformed inputs.
 Color parseFlowNodeColor(String hex, {Color fallback = NeoBrutalism.teal}) {
   final cleaned = hex.trim().replaceFirst('#', '');
+  if (!_hexColorPattern.hasMatch(cleaned)) return fallback;
   final normalized = cleaned.length == 6 ? 'FF$cleaned' : cleaned;
-  if (normalized.length != 8) return fallback;
-  final value = int.tryParse(normalized, radix: 16);
-  return value != null ? Color(value) : fallback;
+  return Color(int.parse(normalized, radix: 16));
 }
 
 /// Sanitizes finite positive numeric amounts to avoid NaN/negative math.
@@ -21,8 +22,13 @@ double safeFlowAmount(double v) => (v.isFinite && v > 0) ? v : 0.0;
 class AiMoneyFlowPainter extends CustomPainter {
   final AiMoneyFlowData data;
   final String currencyCode;
+  final String? fontFamily;
 
-  const AiMoneyFlowPainter({required this.data, required this.currencyCode});
+  const AiMoneyFlowPainter({
+    required this.data,
+    required this.currencyCode,
+    this.fontFamily,
+  });
 
   static const double _barWidth = 12.0;
   static const double _labelGap = 6.0;
@@ -31,13 +37,20 @@ class AiMoneyFlowPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (size.width <= 40 || size.height <= 20) return;
+    if (size.width <= 40 || size.height <= 40) return;
     final sources = data.incomeSources;
     final targets = data.expenseCategories;
     if (sources.isEmpty && targets.isEmpty) return;
 
-    final leftLabelW = (size.width * 0.28).clamp(62.0, 98.0);
-    final rightLabelW = (size.width * 0.31).clamp(68.0, 108.0);
+    // Scale label widths proportionally so center ribbon span never collapses.
+    final maxLabels = math.max(0.0, size.width - (_barWidth + _labelGap) * 2 - 12.0);
+    final desiredLeft = math.min(98.0, size.width * 0.28);
+    final desiredRight = math.min(108.0, size.width * 0.31);
+    final desiredSum = desiredLeft + desiredRight;
+    final scale = (desiredSum > maxLabels && desiredSum > 0) ? (maxLabels / desiredSum) : 1.0;
+    final leftLabelW = desiredLeft * scale;
+    final rightLabelW = desiredRight * scale;
+
     final leftBarX = sources.isNotEmpty ? leftLabelW + _labelGap : 0.0;
     final rightBarX = targets.isNotEmpty
         ? size.width - rightLabelW - _labelGap - _barWidth
@@ -141,6 +154,42 @@ class AiMoneyFlowPainter extends CustomPainter {
     }
   }
 
+  /// Builds separate single-line painters so wrapping titles never hide amounts.
+  @visibleForTesting
+  (TextPainter, TextPainter) buildNodeLabelPainters(
+    AiMoneyFlowNode node,
+    bool isLeft,
+    double labelW,
+  ) {
+    final title = node.label.trim().isEmpty ? '-' : node.label.trim();
+    final amount = CurrencyFormatter.format(safeFlowAmount(node.amount), currencyCode: currencyCode);
+    final align = isLeft ? TextAlign.right : TextAlign.left;
+
+    final titleTp = TextPainter(
+      text: TextSpan(
+        text: title,
+        style: TextStyle(fontFamily: fontFamily, fontSize: 10.5, fontWeight: FontWeight.w700, color: NeoBrutalism.dark, height: 1.15),
+      ),
+      textAlign: align,
+      textDirection: TextDirection.ltr,
+      maxLines: 1,
+      ellipsis: '...',
+    )..layout(minWidth: labelW, maxWidth: labelW);
+
+    final amountTp = TextPainter(
+      text: TextSpan(
+        text: amount,
+        style: TextStyle(fontFamily: fontFamily, fontSize: 9.5, fontWeight: FontWeight.w600, color: const Color(0xFF4B5563), height: 1.15),
+      ),
+      textAlign: align,
+      textDirection: TextDirection.ltr,
+      maxLines: 1,
+      ellipsis: '...',
+    )..layout(minWidth: labelW, maxWidth: labelW);
+
+    return (titleTp, amountTp);
+  }
+
   void _paintNodes(
     Canvas canvas,
     Size size,
@@ -162,46 +211,19 @@ class AiMoneyFlowPainter extends CustomPainter {
       final fillColor = parseFlowNodeColor(node.colorHex, fallback: fallback);
       canvas.drawRRect(rrect, Paint()..color = fillColor);
       canvas.drawRRect(rrect, borderPaint);
+      if (labelW < 16.0) continue;
 
-      final title = node.label.trim().isEmpty ? '-' : node.label.trim();
-      final amount = CurrencyFormatter.format(safeFlowAmount(node.amount), currencyCode: currencyCode);
-      final tp = TextPainter(
-        text: TextSpan(
-          text: '$title\n',
-          style: const TextStyle(
-            fontFamily: 'Plus Jakarta Sans',
-            fontSize: 10.5,
-            fontWeight: FontWeight.w700,
-            color: NeoBrutalism.dark,
-            height: 1.2,
-          ),
-          children: [
-            TextSpan(
-              text: amount,
-              style: const TextStyle(
-                fontFamily: 'Plus Jakarta Sans',
-                fontSize: 9.5,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF4B5563),
-                height: 1.25,
-              ),
-            ),
-          ],
-        ),
-        textAlign: isLeft ? TextAlign.right : TextAlign.left,
-        textDirection: TextDirection.ltr,
-        maxLines: 2,
-        ellipsis: '...',
-      )..layout(minWidth: labelW, maxWidth: labelW);
-
+      final (titleTp, amountTp) = buildNodeLabelPainters(node, isLeft, labelW);
+      const lineGap = 1.5;
+      final totalH = titleTp.height + lineGap + amountTp.height;
       final dx = isLeft ? 0.0 : (rect.right + _labelGap);
-      final maxDy = math.max<double>(0.0, size.height - tp.height);
-      final dy = (rect.center.dy - tp.height / 2).clamp(0.0, maxDy).toDouble();
-      tp.paint(canvas, Offset(dx, dy));
+      final dy = (rect.center.dy - totalH / 2).clamp(0.0, math.max<double>(0.0, size.height - totalH)).toDouble();
+      titleTp.paint(canvas, Offset(dx, dy));
+      amountTp.paint(canvas, Offset(dx, dy + titleTp.height + lineGap));
     }
   }
 
   @override
   bool shouldRepaint(covariant AiMoneyFlowPainter oldDelegate) =>
-      oldDelegate.data != data || oldDelegate.currencyCode != currencyCode;
+      oldDelegate.data != data || oldDelegate.currencyCode != currencyCode || oldDelegate.fontFamily != fontFamily;
 }

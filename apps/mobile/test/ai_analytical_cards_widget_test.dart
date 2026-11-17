@@ -1,9 +1,13 @@
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile/core/services/local_storage_service.dart';
+import 'package:mobile/core/theme/neo_brutalism_decorations.dart';
 import 'package:mobile/features/profile/presentation/providers/user_profile_provider.dart';
 import 'package:mobile/features/session/domain/models/ai_chat_models.dart';
 import 'package:mobile/features/session/presentation/widgets/ai_money_flow_card.dart';
@@ -410,6 +414,225 @@ void main() {
         expect(tester.takeException(), isNull);
         expect(find.text('Money Flow'), findsOneWidget);
         expect(find.text('Total'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'paints Sankey title and amount separately, resolves theme fontFamily, and checks shouldRepaint',
+      (tester) async {
+        final prefs = await createMockPrefs();
+        const themeFont = 'CustomThemeFamily';
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+            child: MaterialApp(
+              theme: ThemeData(fontFamily: themeFont),
+              home: const Scaffold(
+                body: SingleChildScrollView(child: AiMoneyFlowCard(data: sampleFlow)),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final customPaint = tester.widget<CustomPaint>(
+          find.descendant(
+            of: find.byType(AiMoneyFlowCard),
+            matching: find.byWidgetPredicate(
+              (w) => w is CustomPaint && w.painter is AiMoneyFlowPainter,
+            ),
+          ),
+        );
+        final painter = customPaint.painter! as AiMoneyFlowPainter;
+        expect(painter.fontFamily, equals(themeFont));
+
+        final (titleTp, amountTp) = painter.buildNodeLabelPainters(
+          const AiMoneyFlowNode(
+            label: 'Gaji Bulanan Utama Perusahaan Teknologi Sangat Panjang',
+            amount: 10230000,
+          ),
+          true,
+          62.0,
+        );
+        expect(titleTp.maxLines, equals(1));
+        expect(titleTp.didExceedMaxLines, isTrue);
+        expect(titleTp.text?.style?.fontFamily, equals(themeFont));
+        expect(amountTp.maxLines, equals(1));
+        expect((amountTp.text! as TextSpan).toPlainText(), contains('10.230.000'));
+        expect(amountTp.text?.style?.fontFamily, equals(themeFont));
+        expect(amountTp.height, greaterThan(0));
+
+        expect(
+          painter.shouldRepaint(
+            AiMoneyFlowPainter(
+              data: sampleFlow,
+              currencyCode: 'USD',
+              fontFamily: themeFont,
+            ),
+          ),
+          isTrue,
+        );
+        expect(
+          painter.shouldRepaint(
+            const AiMoneyFlowPainter(
+              data: AiMoneyFlowData(
+                periodLabel: 'Nov 2026',
+                totalIncome: 1,
+                totalExpense: 0,
+                netCashflow: 1,
+                transactionCount: 1,
+              ),
+              currencyCode: 'IDR',
+              fontFamily: themeFont,
+            ),
+          ),
+          isTrue,
+        );
+        expect(
+          painter.shouldRepaint(
+            AiMoneyFlowPainter(
+              data: sampleFlow,
+              currencyCode: 'IDR',
+              fontFamily: 'OtherFont',
+            ),
+          ),
+          isTrue,
+        );
+
+        final recorder = ui.PictureRecorder();
+        final canvas = Canvas(recorder);
+        painter.paint(canvas, const Size(140, 100));
+        painter.paint(canvas, const Size(200, 30));
+        recorder.endRecording();
+
+        expect(
+          parseFlowNodeColor('+112233', fallback: NeoBrutalism.teal),
+          equals(NeoBrutalism.teal),
+        );
+        expect(
+          parseFlowNodeColor('#0F758A'),
+          equals(const Color(0xFF0F758A)),
+        );
+      },
+    );
+
+    testWidgets(
+      'normalizes -0.0 netCashflow, clamps negative counts, exposes non-duplicated Semantics, and shows high-contrast focus ring',
+      (tester) async {
+        final prefs = await createMockPrefs();
+        const negativeZeroFlow = AiMoneyFlowData(
+          periodLabel: 'Feb 2027',
+          totalIncome: 0,
+          totalExpense: 0,
+          netCashflow: -0.0,
+          transactionCount: -5,
+          incomeSources: [
+            AiMoneyFlowNode(label: 'Gaji', amount: 1000000, colorHex: '#0F758A'),
+          ],
+          expenseCategories: [
+            AiMoneyFlowNode(label: 'Makan', amount: 400000, colorHex: '#DC2626'),
+          ],
+        );
+        const negativeCountTable = AiSpendingTableData(
+          title: 'Tabel Uji',
+          rows: [
+            AiSpendingMerchantRow(
+              merchant: 'Warung Kopi',
+              transactionCount: -2,
+              totalAmount: 25000,
+            ),
+          ],
+          totalAmount: 25000,
+          totalTransactions: -4,
+        );
+
+        final handle = tester.ensureSemantics();
+        try {
+          await tester.pumpWidget(
+            wrapAtPhoneWidth(
+              prefs: prefs,
+              child: Column(
+                children: const [
+                  AiMoneyFlowCard(data: negativeZeroFlow),
+                  SizedBox(height: 16),
+                  AiSpendingBreakdownTableCard(data: negativeCountTable),
+                ],
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+
+          expect(find.text('Net +Rp 0'), findsOneWidget);
+          expect(find.text('Net -Rp 0'), findsNothing);
+          expect(find.textContaining('-5 transaksi'), findsNothing);
+          expect(find.text('-2'), findsNothing);
+          expect(find.text('-4'), findsNothing);
+          expect(find.text('0'), findsNWidgets(2));
+
+          final reportingNode = tester.getSemantics(
+            find.byKey(const Key('money_flow_reporting_link')),
+          );
+          expect(
+            reportingNode.label,
+            equals(
+              'Lihat detail laporan Money Flow: Pemasukan +Rp 0, Pengeluaran Rp 0',
+            ),
+          );
+          expect(reportingNode.getSemanticsData().hasAction(SemanticsAction.tap), isTrue);
+
+          final historyNode = tester.getSemantics(
+            find.byKey(const Key('spending_table_history_link')),
+          );
+          expect(historyNode.label, equals('Lihat Riwayat transaksi'));
+          expect(historyNode.getSemanticsData().hasAction(SemanticsAction.tap), isTrue);
+
+          final sankeySemantics = find.bySemanticsLabel(
+            RegExp(r'Diagram aliran dana: Pemasukan .*Gaji.* ke Pengeluaran .*Makan'),
+          );
+          expect(sankeySemantics, findsOneWidget);
+
+          await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+          await tester.pumpAndSettle();
+
+          final reportingMaterial = tester.widget<Material>(
+            find.ancestor(
+              of: find.byKey(const Key('money_flow_reporting_link')),
+              matching: find.byType(Material),
+            ).first,
+          );
+          final reportingShape = reportingMaterial.shape! as RoundedRectangleBorder;
+          expect(reportingShape.side.color, equals(NeoBrutalism.darkTeal));
+          expect(reportingShape.side.width, equals(2.5));
+          expect(
+            reportingMaterial.color,
+            equals(
+              Color.alphaBlend(
+                NeoBrutalism.teal.withValues(alpha: 0.12),
+                NeoBrutalism.surfaceWarm,
+              ),
+            ),
+          );
+
+          await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+          await tester.pumpAndSettle();
+
+          final historyMaterial = tester.widget<Material>(
+            find.ancestor(
+              of: find.byKey(const Key('spending_table_history_link')),
+              matching: find.byType(Material),
+            ).first,
+          );
+          final historyShape = historyMaterial.shape! as RoundedRectangleBorder;
+          expect(historyShape.side.color, equals(NeoBrutalism.darkTeal));
+          expect(historyShape.side.width, equals(2.5));
+          expect(
+            historyMaterial.color,
+            equals(NeoBrutalism.teal.withValues(alpha: 0.12)),
+          );
+        } finally {
+          handle.dispose();
+        }
       },
     );
   });
