@@ -35,6 +35,7 @@ class EditableDraftItem {
         category = AiCategoryNormalizer.normalize(
           category,
           isIncome: !isExpense,
+          allowCrossType: false,
           contextHint: title,
         );
 

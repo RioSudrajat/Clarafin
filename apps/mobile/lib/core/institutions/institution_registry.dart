@@ -327,6 +327,10 @@ class InstitutionRegistry {
     }
   }
 
+  static final RegExp _danaNonWalletRegex = RegExp(
+    r'\bdana\s+(darurat|pensiun|pendidikan|usaha|nikah|cadangan|sosial|investasi|rumah|liburan|menikah|tunai)\b',
+  );
+
   /// Smart lookup: finds an institution by matching wallet name or type keywords
   static InstitutionModel findByWallet({String? institutionId, required String name, required String type}) {
     if (institutionId != null && institutionId.isNotEmpty) {
@@ -340,11 +344,17 @@ class InstitutionRegistry {
     if (RegExp(r'\bblu\b').hasMatch(lower) || lower.contains('bca digital')) {
       return findById('blu')!;
     }
-    if (lower.contains('bca')) return findById('bca')!;
+    if (lower.contains('bca') || lower.contains('bank central asia')) {
+      return findById('bca')!;
+    }
     if (lower.contains('mandiri') || lower.contains('livin')) return findById('mandiri')!;
-    if (lower.contains('bri') || lower.contains('brimo')) return findById('bri')!;
-    if (lower.contains('bni') || lower.contains('wondr')) return findById('bni')!;
-    if (lower.contains('bsi') || lower.contains('syariah indonesia') || lower.contains('byond')) {
+    if (lower.contains('bri') || lower.contains('brimo') || lower.contains('bank rakyat indonesia')) {
+      return findById('bri')!;
+    }
+    if (lower.contains('bni') || lower.contains('wondr') || lower.contains('bank negara indonesia')) {
+      return findById('bni')!;
+    }
+    if (lower.contains('bsi') || lower.contains('bank syariah indonesia') || lower.contains('syariah indonesia') || lower.contains('byond')) {
       return findById('bsi')!;
     }
     if (lower.contains('jago') || lower.contains('kantong jago')) return findById('jago')!;
@@ -355,7 +365,9 @@ class InstitutionRegistry {
     if (lower.contains('cimb') || lower.contains('octo')) return findById('cimb')!;
     if (lower.contains('permata')) return findById('permata')!;
     if (lower.contains('gopay') || lower.contains('go pay')) return findById('gopay')!;
-    if (lower.contains('dana')) return findById('dana')!;
+    if (RegExp(r'\bdana\b').hasMatch(lower) && !_danaNonWalletRegex.hasMatch(lower)) {
+      return findById('dana')!;
+    }
     if (lower.contains('ovo')) return findById('ovo')!;
     if (lower.contains('shopee') || lower.contains('spay')) return findById('shopeepay')!;
     if (lower.contains('linkaja') || lower.contains('link aja')) return findById('linkaja')!;

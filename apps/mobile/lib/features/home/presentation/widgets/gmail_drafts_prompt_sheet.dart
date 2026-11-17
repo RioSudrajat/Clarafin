@@ -64,7 +64,10 @@ class GmailDraftsPromptSheet extends ConsumerWidget {
       SnackBar(
         content: Text(
           '2 Transaksi Gmail berhasil dicatat ke dompet Anda!',
-          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+          style: GoogleFonts.plusJakartaSans(
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
         ),
         backgroundColor: NeoBrutalism.teal,
       ),
@@ -83,10 +86,11 @@ class GmailDraftsPromptSheet extends ConsumerWidget {
           right: BorderSide(color: Colors.black, width: 2.0),
         ),
       ),
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
       child: SafeArea(
         top: false,
-        child: Column(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+          child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -223,6 +227,7 @@ class GmailDraftsPromptSheet extends ConsumerWidget {
               ),
             ),
           ],
+          ),
         ),
       ),
     );

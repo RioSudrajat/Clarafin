@@ -15,11 +15,13 @@ import 'package:mobile/core/providers/mock_providers.dart';
 import 'package:mobile/core/services/local_storage_service.dart';
 import 'package:mobile/core/utils/ai_category_normalizer.dart';
 import 'package:mobile/features/budget/presentation/providers/finance_providers.dart';
+import 'package:mobile/features/home/presentation/widgets/gmail_draft_item_card.dart';
 import 'package:mobile/features/home/presentation/widgets/gmail_drafts_prompt_sheet.dart';
 import 'package:mobile/features/profile/presentation/providers/user_profile_provider.dart';
 import 'package:mobile/features/profile/presentation/widgets/profile_saas_plan_card.dart';
 import 'package:mobile/features/session/presentation/screens/quick_action_sheets.dart';
 import 'package:mobile/features/transaction/presentation/screens/ai_draft_review_screen.dart';
+import 'package:mobile/features/transaction/presentation/widgets/ai_draft_review_form_card.dart';
 import 'package:mobile/shared/widgets/saas_upgrade_bottom_sheet.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -563,6 +565,273 @@ void main() {
       expect(txs.length, equals(2));
       expect(txs.map((t) => t.category).toSet(), equals({'Shopping', 'Food & Beverage • Food delivery'}));
       expect(txs.map((t) => t.walletId).toSet(), equals({'w_bca', 'w_gopay'}));
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      container.dispose();
+    });
+  });
+
+  group('Task 3.2 Fix Round 1: Regression Tests', () {
+    test('allowCrossType: false prevents income leakage into expense mode', () {
+      expect(
+        AiCategoryNormalizer.normalize(
+          'Income • Salary',
+          isIncome: false,
+          allowCrossType: false,
+        ),
+        equals('Others • General Uncategorized'),
+      );
+      expect(
+        AiCategoryNormalizer.normalize(
+          'Gift • From Family',
+          isIncome: false,
+          allowCrossType: false,
+        ),
+        equals('Others • General Uncategorized'),
+      );
+      expect(
+        AiCategoryNormalizer.normalize(
+          'Business • Sales Revenue',
+          isIncome: false,
+          allowCrossType: false,
+        ),
+        equals('Business'),
+      );
+      expect(
+        AiCategoryNormalizer.normalize('Gaji'),
+        equals('Income • Salary'),
+      );
+
+      final item = EditableDraftItem(
+        amount: 5000000,
+        title: 'Gaji Bulan Ini',
+        isExpense: true,
+        category: 'Income • Salary',
+      );
+      expect(item.category, equals('Others • General Uncategorized'));
+      item.dispose();
+    });
+
+    test('shared-parent income phrases normalize to income type cleanly', () {
+      final sales = AiCategoryNormalizer.normalizeDetailed('Omset penjualan toko 2jt');
+      expect(sales.type, equals('income'));
+      expect(sales.canonicalCategory, equals('Business • Sales Revenue'));
+
+      final loan = AiCategoryNormalizer.normalizeDetailed('Pencairan pinjaman bank 10jt');
+      expect(loan.type, equals('income'));
+      expect(loan.canonicalCategory, equals('Loans • Bank Loan'));
+
+      final gain = AiCategoryNormalizer.normalizeDetailed('Profit saham 500rb');
+      expect(gain.type, equals('income'));
+      expect(gain.canonicalCategory, equals('Investment • Capital Gains'));
+    });
+
+    test('InstitutionRegistry guards dana fund phrases and resolves full bank names', () {
+      for (final fund in const [
+        'Dana Darurat',
+        'Dana Pensiun',
+        'Dana Pendidikan',
+        'Dana Usaha',
+        'Dana Nikah',
+      ]) {
+        expect(
+          InstitutionRegistry.findByWallet(name: fund, type: 'Bank').id,
+          equals('bca'),
+          reason: '$fund should not match e-wallet dana',
+        );
+      }
+
+      expect(
+        InstitutionRegistry.findByWallet(name: 'DANA Utama', type: 'E-Wallet').id,
+        equals('dana'),
+      );
+      expect(
+        InstitutionRegistry.findByWallet(name: 'Bank Rakyat Indonesia', type: 'Bank').id,
+        equals('bri'),
+      );
+      expect(
+        InstitutionRegistry.findByWallet(name: 'Bank Negara Indonesia', type: 'Bank').id,
+        equals('bni'),
+      );
+      expect(
+        InstitutionRegistry.findByWallet(name: 'Bank Central Asia', type: 'Bank').id,
+        equals('bca'),
+      );
+      expect(
+        InstitutionRegistry.findByWallet(name: 'Bank Syariah Indonesia', type: 'Bank').id,
+        equals('bsi'),
+      );
+    });
+
+    test('GmailDraftItemCard.matchWallet guards empty institutionId and prioritizes blu before bca', () {
+      final wEmpty = WalletModel(
+        id: 'w_empty',
+        name: 'Dompet Pribadi',
+        type: 'Bank',
+        balance: 0,
+        institutionId: '',
+      );
+      final wBlu = WalletModel(
+        id: 'w_blu',
+        name: 'blu Tabungan',
+        type: 'Bank',
+        balance: 100000,
+        institutionId: 'blu',
+      );
+      final wBca = WalletModel(
+        id: 'w_bca',
+        name: 'BCA Utama',
+        type: 'Bank',
+        balance: 500000,
+        institutionId: 'bca',
+      );
+
+      expect(
+        GmailDraftItemCard.matchWallet([wEmpty, wBca], 'BCA Rekening Utama')?.id,
+        equals('w_bca'),
+      );
+      expect(
+        GmailDraftItemCard.matchWallet([wBca, wBlu], 'blu by BCA Digital')?.id,
+        equals('w_blu'),
+      );
+    });
+
+    testWidgets('AiDraftReviewScreen switches Income -> Expense cleanly and syncs mismatched walletId', (tester) async {
+      final container = await _createAuthenticatedContainer();
+      container.read(walletsProvider.notifier).addWallet(
+            WalletModel(
+              id: 'w_jago',
+              name: 'Bank Jago',
+              type: 'Bank',
+              balance: 1000000,
+              institutionId: 'jago',
+            ),
+          );
+
+      // Untyped map + mismatched walletId should still resolve to w_jago in UI & save.
+      final untypedItem = <dynamic, dynamic>{
+        'title': 'Gaji November',
+        'amount': 8000000,
+        'isExpense': false,
+        'category': 'Income • Salary',
+        'walletId': 'w_nonexistent',
+        'walletName': 'Bank Jago',
+      };
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            home: AiDraftReviewScreen(
+              extra: {
+                'prefillItems': [untypedItem],
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Gaji November'), findsOneWidget);
+      expect(find.text('Income • Salary'), findsOneWidget);
+      expect(find.byIcon(Icons.radio_button_checked), findsOneWidget);
+
+      await tester.tap(find.text('Pengeluaran'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Income • Salary'), findsNothing);
+      expect(find.text('Others • General Uncategorized'), findsOneWidget);
+
+      await tester.ensureVisible(find.text('Konfirmasi & Simpan'));
+      await tester.tap(find.text('Konfirmasi & Simpan'));
+      await tester.pumpAndSettle();
+
+      final txs = container.read(transactionsProvider);
+      expect(txs.length, equals(1));
+      expect(txs.first.type, equals('expense'));
+      expect(txs.first.category, equals('Others • General Uncategorized'));
+      expect(txs.first.walletId, equals('w_jago'));
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      container.dispose();
+    });
+
+    testWidgets('Quick chat modal classifies shared-parent income phrases as Pemasukan', (tester) async {
+      final container = await _createAuthenticatedContainer();
+      container.read(walletsProvider.notifier).addWallet(
+            WalletModel(
+              id: 'w_bca',
+              name: 'BCA Utama',
+              type: 'Bank',
+              balance: 1000000,
+              institutionId: 'bca',
+            ),
+          );
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            home: Scaffold(
+              body: Consumer(
+                builder: (context, ref, _) => ElevatedButton(
+                  onPressed: () => showAiChatQuickSheet(context, ref),
+                  child: const Text('Buka Quick Chat'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Buka Quick Chat'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField), 'Omset penjualan toko 2jt');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pump(const Duration(milliseconds: 1600));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Business • Sales Revenue'), findsOneWidget);
+      expect(find.text('Pemasukan'), findsOneWidget);
+
+      await tester.enterText(find.byType(TextField), 'Pencairan pinjaman bank 10jt');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pump(const Duration(milliseconds: 1600));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Loans • Bank Loan'), findsOneWidget);
+      expect(find.text('Pemasukan'), findsNWidgets(2));
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      container.dispose();
+    });
+
+    testWidgets('GmailDraftsPromptSheet scrolls cleanly at 1.8x text scaling on 360px viewport', (tester) async {
+      tester.view.physicalSize = const Size(360, 640);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final container = await _createAuthenticatedContainer();
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(
+            home: MediaQuery(
+              data: MediaQueryData(textScaler: TextScaler.linear(1.8)),
+              child: Scaffold(
+                body: GmailDraftsPromptSheet(),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('2 Draf Transaksi Baru'), findsOneWidget);
+      expect(tester.takeException(), isNull);
 
       await tester.pumpWidget(const SizedBox.shrink());
       container.dispose();

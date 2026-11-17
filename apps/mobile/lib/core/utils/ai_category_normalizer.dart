@@ -57,11 +57,13 @@ class AiCategoryNormalizer {
   static String normalize(
     String raw, {
     bool isIncome = false,
+    bool allowCrossType = true,
     String? contextHint,
   }) {
     return normalizeDetailed(
       raw,
       isIncome: isIncome,
+      allowCrossType: allowCrossType,
       contextHint: contextHint,
     ).canonicalCategory;
   }
@@ -70,7 +72,11 @@ class AiCategoryNormalizer {
   /// name (`Food & Beverage`, `Transportation`, `Shopping`, etc.) so
   /// `syncedBudgetsProvider` matches normalized transactions reliably.
   static String normalizeBudgetCategory(String raw) {
-    final res = normalizeDetailed(raw, isIncome: false);
+    final res = normalizeDetailed(
+      raw,
+      isIncome: false,
+      allowCrossType: false,
+    );
     if (res.type == 'expense' &&
         TransactionCategories.findCategory(res.mainCategory, isIncome: false) != null) {
       return res.mainCategory;
@@ -82,6 +88,7 @@ class AiCategoryNormalizer {
     String raw, {
     bool isIncome = false,
     bool isTransfer = false,
+    bool allowCrossType = true,
     String? contextHint,
   }) {
     final rawTrimmed = raw.trim();
@@ -108,7 +115,11 @@ class AiCategoryNormalizer {
     if (isIncome) {
       return _normalizeIncome(rawTrimmed, hintTrimmed);
     }
-    return _normalizeExpenseWithExplicitIncomeSupport(rawTrimmed, hintTrimmed);
+    return _normalizeExpenseWithExplicitIncomeSupport(
+      rawTrimmed,
+      hintTrimmed,
+      allowCrossType: allowCrossType,
+    );
   }
 
   static CanonicalCategoryResult _normalizeIncome(
@@ -151,13 +162,14 @@ class AiCategoryNormalizer {
 
   static CanonicalCategoryResult _normalizeExpenseWithExplicitIncomeSupport(
     String rawTrimmed,
-    String hintTrimmed,
-  ) {
+    String hintTrimmed, {
+    bool allowCrossType = true,
+  }) {
     if (rawTrimmed.isNotEmpty) {
       final def = _resolveTextToCategory(
         rawTrimmed,
         preferredType: 'expense',
-        allowCrossType: !_isGenericOthersInput(rawTrimmed),
+        allowCrossType: allowCrossType && !_isGenericOthersInput(rawTrimmed),
       );
       if (def != null) {
         if (def.mainName == 'Others' && hintTrimmed.isNotEmpty) {
@@ -247,17 +259,20 @@ class AiCategoryNormalizer {
     final verbatim = _matchVerbatimCategory(text, preferredType);
     if (verbatim != null) return verbatim;
 
-    final alias = _matchAliasRules(text, preferredType);
-    if (alias != null) return alias;
+    final otherType = preferredType == 'income' ? 'expense' : 'income';
+    final crossVerbatim = _matchVerbatimCategory(text, otherType);
+    if (crossVerbatim != null) {
+      if (allowCrossType) return crossVerbatim;
+      // Preserve shared parent categories (e.g. "Business") when switching types,
+      // while blocking token scraping of income-only subcategories like "Gift • From Family".
+      return _matchVerbatimCategory(crossVerbatim.mainName, preferredType);
+    }
 
     if (allowCrossType) {
-      final otherType = preferredType == 'income' ? 'expense' : 'income';
-      final crossVerbatim = _matchVerbatimCategory(text, otherType);
-      if (crossVerbatim != null) return crossVerbatim;
-      final crossAlias = _matchAliasRules(text, otherType);
-      if (crossAlias != null) return crossAlias;
+      return _matchAliasRules(text, null, preferredType: preferredType);
     }
-    return null;
+
+    return _matchAliasRules(text, preferredType, preferredType: preferredType);
   }
 
   static _CategoryDef? _matchVerbatimCategory(String raw, String typeFilter) {
@@ -294,7 +309,11 @@ class AiCategoryNormalizer {
     return null;
   }
 
-  static _CategoryDef? _matchAliasRules(String text, String typeFilter) {
+  static _CategoryDef? _matchAliasRules(
+    String text,
+    String? typeFilter, {
+    required String preferredType,
+  }) {
     final tokens = _tokenizeForMatch(text);
     if (tokens.isEmpty) return null;
 
@@ -302,10 +321,12 @@ class AiCategoryNormalizer {
     _CategoryDef? bestDef;
 
     for (final rule in _aliasRules) {
-      if (rule.def.txType != typeFilter) continue;
+      if (typeFilter != null && rule.def.txType != typeFilter) continue;
       if (!_matchTokenSequence(tokens, rule.aliasTokens)) continue;
 
-      final score = rule.aliasTokens.length * 100 + (rule.def.isParent ? 0 : 20);
+      final score = rule.aliasTokens.length * 100 +
+          (rule.def.isParent ? 0 : 20) +
+          (rule.def.txType == preferredType ? 1 : 0);
       if (bestDef == null || score > bestScore) {
         bestScore = score;
         bestDef = rule.def;

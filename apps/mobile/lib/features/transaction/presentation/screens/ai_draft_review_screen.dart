@@ -44,7 +44,10 @@ class _AiDraftReviewScreenState extends ConsumerState<AiDraftReviewScreen> {
     final directExtra = widget.extra ?? _tryReadRouteExtra();
     final list = directExtra?['prefillItems'];
     if (list is List) {
-      return list.whereType<Map<String, dynamic>>().toList();
+      return list
+          .whereType<Map>()
+          .map((m) => Map<String, dynamic>.from(m))
+          .toList();
     }
     return const [];
   }
@@ -79,7 +82,10 @@ class _AiDraftReviewScreenState extends ConsumerState<AiDraftReviewScreen> {
           SnackBar(
             content: Text(
               'Nominal draf ${i + 1} tidak valid.',
-              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+              style: GoogleFonts.plusJakartaSans(
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
             ),
             backgroundColor: NeoBrutalism.dark,
           ),
@@ -103,6 +109,7 @@ class _AiDraftReviewScreenState extends ConsumerState<AiDraftReviewScreen> {
               category: AiCategoryNormalizer.normalize(
                 item.category,
                 isIncome: !item.isExpense,
+                allowCrossType: false,
                 contextHint: note,
               ),
               amount: amount,
@@ -155,7 +162,10 @@ class _AiDraftReviewScreenState extends ConsumerState<AiDraftReviewScreen> {
   Widget build(BuildContext context) {
     final wallets = ref.watch(walletsProvider);
     final activeDraft = _drafts[_activeIndex];
-    activeDraft.walletId ??= activeDraft.resolveWalletId(wallets);
+    final resolvedWalletId = activeDraft.resolveWalletId(wallets);
+    if (wallets.isNotEmpty && activeDraft.walletId != resolvedWalletId) {
+      activeDraft.walletId = resolvedWalletId;
+    }
 
     return Scaffold(
       backgroundColor: const Color(0xFF0F758A),
@@ -206,6 +216,7 @@ class _AiDraftReviewScreenState extends ConsumerState<AiDraftReviewScreen> {
                               activeDraft.category = AiCategoryNormalizer.normalize(
                                 activeDraft.category,
                                 isIncome: !isExp,
+                                allowCrossType: false,
                                 contextHint: activeDraft.noteController.text,
                               );
                             });

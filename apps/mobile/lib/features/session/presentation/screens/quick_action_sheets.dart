@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/models/transaction_category_model.dart';
 import '../../../../core/models/wallet_model.dart';
 import '../../../../core/providers/ai_quota_provider.dart';
 import '../../../../core/providers/mock_providers.dart';
@@ -123,9 +122,9 @@ bool _isIncomeInput(String text) {
   ).hasMatch(lower);
 }
 
-String _resolveCategoryFromText(String text) {
+CanonicalCategoryResult _resolveCategoryDetailFromText(String text) {
   final isIncome = _isIncomeInput(text);
-  return AiCategoryNormalizer.normalize(
+  return AiCategoryNormalizer.normalizeDetailed(
     text,
     isIncome: isIncome,
     contextHint: text,
@@ -592,13 +591,11 @@ class _AiQuickChatModalState extends State<_AiQuickChatModal> {
         final userWallets = widget.parentRef.read(walletsProvider);
         final resolved = _resolveWalletFromText(lowerText, userWallets);
         final isIncomeHint = _isIncomeInput(text);
-        final category = _resolveCategoryFromText(text);
+        final detail = _resolveCategoryDetailFromText(text);
+        final category = detail.canonicalCategory;
         final title = _resolveTitleFromText(text, category);
         final amount = _parseAmountFromText(text);
-        final mainCat = category.split('•').first.trim();
-        final isIncome = isIncomeHint ||
-            (TransactionCategories.findCategory(mainCat, isIncome: true) != null &&
-                TransactionCategories.findCategory(mainCat, isIncome: false) == null);
+        final isIncome = detail.type == 'income' || isIncomeHint;
         final type = isIncome ? 'income' : 'expense';
 
         final draft = _DraftTransaction(

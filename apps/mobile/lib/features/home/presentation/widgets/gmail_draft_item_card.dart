@@ -12,22 +12,59 @@ class GmailDraftItemCard extends StatelessWidget {
 
   static WalletModel? matchWallet(List<WalletModel> wallets, String hint) {
     if (wallets.isEmpty) return null;
-    final lower = hint.toLowerCase();
+    final lower = hint.toLowerCase().trim();
+    if (lower.isEmpty) return wallets.first;
+
+    // 1. Exact wallet name match first.
     for (final w in wallets) {
-      if (lower.contains(w.name.toLowerCase()) ||
-          w.name.toLowerCase().contains(lower) ||
-          (w.institutionId != null && lower.contains(w.institutionId!.toLowerCase()))) {
-        return w;
+      if (w.name.toLowerCase().trim() == lower) return w;
+    }
+
+    // 2. Institution priority match (blu / bca digital checked before bca).
+    const priorityInstitutions = <String>[
+      'blu',
+      'bca',
+      'gopay',
+      'mandiri',
+      'bri',
+      'bni',
+      'bsi',
+      'jago',
+      'jenius',
+      'seabank',
+      'cimb',
+      'permata',
+      'ovo',
+      'dana',
+      'shopeepay',
+      'linkaja',
+    ];
+    for (final instKey in priorityInstitutions) {
+      final matchesHint = switch (instKey) {
+        'blu' => RegExp(r'\bblu\b').hasMatch(lower) || lower.contains('bca digital'),
+        'dana' => RegExp(r'\bdana\b').hasMatch(lower) &&
+            !RegExp(
+              r'\bdana\s+(darurat|pensiun|pendidikan|usaha|nikah|cadangan|sosial|investasi|rumah|liburan|menikah|tunai)\b',
+            ).hasMatch(lower),
+        _ => RegExp('\\b${RegExp.escape(instKey)}\\b').hasMatch(lower) ||
+            lower.contains(instKey),
+      };
+      if (!matchesHint) continue;
+      for (final w in wallets) {
+        final wInst = (w.institutionId ?? '').toLowerCase().trim();
+        if (wInst == instKey || w.name.toLowerCase().contains(instKey)) {
+          return w;
+        }
       }
     }
-    for (final key in const ['bca', 'gopay', 'mandiri', 'bri', 'bni', 'jago', 'jenius']) {
-      if (lower.contains(key)) {
-        for (final w in wallets) {
-          if (w.name.toLowerCase().contains(key) ||
-              (w.institutionId ?? '').toLowerCase() == key) {
-            return w;
-          }
-        }
+
+    // 3. Fallback substring match against non-empty wallet names / institutionIds.
+    for (final w in wallets) {
+      final wName = w.name.toLowerCase().trim();
+      final wInst = (w.institutionId ?? '').toLowerCase().trim();
+      if ((wName.isNotEmpty && (lower.contains(wName) || wName.contains(lower))) ||
+          (wInst.isNotEmpty && RegExp('\\b${RegExp.escape(wInst)}\\b').hasMatch(lower))) {
+        return w;
       }
     }
     return wallets.first;
