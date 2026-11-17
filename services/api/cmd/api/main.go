@@ -16,6 +16,7 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
+	"github.com/clarafin/api/internal/adapter/gemini"
 	"github.com/clarafin/api/internal/ai"
 	"github.com/clarafin/api/internal/config"
 	"github.com/clarafin/api/internal/repository"
@@ -80,7 +81,41 @@ func main() {
 		service.WithTrackerJakartaLocation(jakartaLoc),
 		service.WithTrackerQuotaProvider(quotaService),
 	)
+	financialTools := ai.NewFinancialTools(store, ai.WithFinancialJakartaLocation(jakartaLoc))
+	actionTools := ai.NewActionTools(
+		store,
+		ai.WithActionJakartaLocation(jakartaLoc),
+		ai.WithActionFinancialTools(financialTools),
+	)
 	matchingTool := ai.NewMatchingTool(store, ai.WithMatchingJakartaLocation(jakartaLoc))
+
+	geminiCtx, geminiCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	geminiClient, err := gemini.NewClient(geminiCtx, gemini.Config{
+		APIKey:              cfg.GeminiAPIKey,
+		DefaultModel:        cfg.GeminiModel,
+		ContextCacheEnabled: cfg.GeminiContextCacheEnabled,
+		Logger:              logger,
+	})
+	geminiCancel()
+	if err != nil {
+		logger.Fatal("failed to initialize gemini client", zap.Error(err))
+	}
+	if !geminiClient.IsConfigured() {
+		logger.Warn("GEMINI_API_KEY is empty; non-greeting AI endpoints will return unavailable until configured")
+	}
+
+	orchestrator := ai.NewOrchestrator(ai.OrchestratorConfig{
+		Model:      cfg.GeminiModel,
+		LLM:        geminiClient,
+		Quota:      quotaService,
+		Financial:  financialTools,
+		Actions:    actionTools,
+		Matching:   matchingTool,
+		DraftRepo:  store,
+		Logger:     logger,
+		JakartaLoc: jakartaLoc,
+	})
+
 	router := server.NewRouter(server.Dependencies{
 		Config:              cfg,
 		Logger:              logger,
@@ -88,6 +123,7 @@ func main() {
 		QuotaService:        quotaService,
 		TrackerService:      trackerService,
 		PractitionerCatalog: matchingTool,
+		AIService:           orchestrator,
 		Redis:               rdb,
 		JakartaLoc:          jakartaLoc,
 	})

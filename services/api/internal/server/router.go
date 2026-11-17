@@ -28,6 +28,7 @@ type Dependencies struct {
 	QuotaService            handler.QuotaProvider
 	TrackerService          handler.TrackerProvider
 	PractitionerCatalog     handler.PractitionerProvider
+	AIService               handler.AIChatService
 	Redis                   *redis.Client
 	JakartaLoc              *time.Location
 	RegisterProtectedRoutes func(r chi.Router)
@@ -130,6 +131,10 @@ func NewRouter(deps Dependencies) http.Handler {
 				// Quota polling stays outside the 10rpm chat rate limiter so UI badge refreshes never starve AI calls.
 				ai.Group(func(aiLimited chi.Router) {
 					aiLimited.Use(middleware.RateLimitAI(deps.Redis, cfg.AIRateLimitPerMin, time.Minute))
+					if deps.AIService != nil {
+						aiHandler := handler.NewAIHandler(deps.AIService, logger)
+						aiHandler.RegisterRoutes(aiLimited)
+					}
 					if deps.RegisterAIRoutes != nil {
 						deps.RegisterAIRoutes(aiLimited)
 					}
