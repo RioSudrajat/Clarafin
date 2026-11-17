@@ -141,7 +141,7 @@ func (c *Client) GenerateContent(ctx context.Context, req ai.GenerateRequest) (*
 	}
 
 	rawResp, err := c.genaiClient.Models.GenerateContent(ctx, model, contents, genCfg)
-	if err != nil && usedCacheName != "" {
+	if err != nil && usedCacheName != "" && ctx.Err() == nil {
 		c.invalidateExplicitCache(buildExplicitCacheKey(model, req.CacheKey, req.ToolDeclarations))
 		c.logger.Warn("gemini cached generation failed; falling back to implicit prefix caching", zap.String("cache_name", usedCacheName), zap.Error(err))
 		usedCacheName = ""
@@ -244,8 +244,19 @@ func ToGenaiSchema(s *ai.ToolParameterSchema) *genai.Schema {
 	if s == nil {
 		return nil
 	}
+	resolvedType := toGenaiType(s.Type)
+	if resolvedType == genai.TypeUnspecified {
+		switch {
+		case len(s.Properties) > 0:
+			resolvedType = genai.TypeObject
+		case s.Items != nil:
+			resolvedType = genai.TypeArray
+		default:
+			resolvedType = genai.TypeString
+		}
+	}
 	out := &genai.Schema{
-		Type:             toGenaiType(s.Type),
+		Type:             resolvedType,
 		Description:      s.Description,
 		Enum:             append([]string(nil), s.Enum...),
 		Format:           s.Format,

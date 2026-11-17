@@ -339,6 +339,9 @@ func (o *Orchestrator) ChatStream(
 		sessionID = "sess_" + uuid.NewString()
 	}
 	clientReqID := normalizeClientRequestID(req.ClientRequestID)
+	if len(clientReqID) > 128 {
+		return nil, fmt.Errorf("%w: client_request_id exceeds 128 characters", service.ErrInvalidQuotaRequest)
+	}
 	traceReqID := strings.TrimSpace(req.RequestID)
 	if traceReqID == "" {
 		traceReqID = clientReqID
@@ -387,6 +390,9 @@ func (o *Orchestrator) ChatStream(
 	reservation, err := o.quota.ReserveAction(ctx, userID, clientReqID, "chat", surfaceMode)
 	if err != nil {
 		return nil, err
+	}
+	if reservation.Reused {
+		return nil, fmt.Errorf("%w: duplicate client_request_id %q", service.ErrReservationFinalized, clientReqID)
 	}
 
 	committed := false
@@ -582,9 +588,15 @@ func (o *Orchestrator) extractAndStageDrafts(
 	parts []LLMPart,
 ) (*DraftExtractionResult, error) {
 	clientReqID := normalizeClientRequestID(rawClientReqID)
+	if len(clientReqID) > 128 {
+		return nil, fmt.Errorf("%w: client_request_id exceeds 128 characters", service.ErrInvalidQuotaRequest)
+	}
 	reservation, err := o.quota.ReserveAction(ctx, userID, clientReqID, actionType, surfaceMode)
 	if err != nil {
 		return nil, err
+	}
+	if reservation.Reused {
+		return nil, fmt.Errorf("%w: duplicate client_request_id %q", service.ErrReservationFinalized, clientReqID)
 	}
 
 	committed := false
@@ -920,11 +932,18 @@ func (o *Orchestrator) executePass1Tool(
 		if err := decodeToolArgs(tc.Args, &input); err != nil {
 			return nil, fmt.Errorf("%w: %v", ErrInvalidActionToolInput, err)
 		}
+		if len(input.Items) == 0 {
+			var singleItem PrepareTransactionItemInput
+			if err := decodeToolArgs(tc.Args, &singleItem); err == nil && (strings.TrimSpace(singleItem.Title) != "" || singleItem.AmountIDR > 0) {
+				input.Items = []PrepareTransactionItemInput{singleItem}
+			}
+		}
 		out, err := o.actions.CheckAndPrepareTransaction(ctx, userID, input)
 		if err != nil {
 			return nil, err
 		}
-		bundle.PrepareTx = out
+		bundle.TxChecks = append(bundle.TxChecks, out)
+		bundle.PrepareTx = mergePrepareTransactionResults(bundle.TxChecks)
 		return structToMap(out)
 
 	case "propose_goal_draft":
@@ -1264,10 +1283,86 @@ func computePass2ThinkingBudget(surfaceMode string, bundle *Pass1ToolBundle) int
 	if bundle.Matching != nil ||
 		bundle.FlowCashflow != nil ||
 		len(bundle.SearchSummaries) > 0 ||
-		(surfaceMode == "full_screen" && (bundle.MerchantCashflow != nil || bundle.BudgetBills != nil || bundle.BudgetDraft != nil || bundle.GoalDraft != nil)) {
+		bundle.GoalDraft != nil ||
+		bundle.BudgetDraft != nil ||
+		bundle.BillDraft != nil ||
+		(surfaceMode == "full_screen" && (bundle.MerchantCashflow != nil || bundle.BudgetBills != nil)) {
 		return 768
 	}
 	return 128
+}
+
+func mergePrepareTransactionResults(results []*PrepareTransactionResult) *PrepareTransactionResult {
+	if len(results) == 0 {
+		return nil
+	}
+	if len(results) == 1 {
+		return results[0]
+	}
+
+	var firstMissingDraft *WalletCreationDraft
+	for _, r := range results {
+		if r != nil && r.Status == "missing_wallet" {
+			if firstMissingDraft == nil && r.WalletCreationDraft != nil {
+				cp := *r.WalletCreationDraft
+				cp.ExistingWallets = append([]ExistingWalletChip(nil), r.WalletCreationDraft.ExistingWallets...)
+				firstMissingDraft = &cp
+			}
+		}
+	}
+
+	if firstMissingDraft != nil {
+		var pending []PendingTransactionItem
+		for _, r := range results {
+			if r == nil {
+				continue
+			}
+			if len(r.PendingItems) > 0 {
+				pending = append(pending, r.PendingItems...)
+			} else if r.TransactionDraft != nil {
+				for _, item := range r.TransactionDraft.Items {
+					pending = append(pending, PendingTransactionItem{
+						Title:                 item.Title,
+						AmountIDR:             item.AmountIDR,
+						Type:                  item.Type,
+						CanonicalCategory:     item.CanonicalCategory,
+						CanonicalMainCategory: item.CanonicalMainCategory,
+						Note:                  item.Note,
+						RequestedWalletHint:   item.WalletName,
+						OccurredAt:            item.OccurredAt,
+					})
+				}
+			}
+		}
+		return &PrepareTransactionResult{
+			Status:              "missing_wallet",
+			WalletCreationDraft: firstMissingDraft,
+			PendingItems:        pending,
+		}
+	}
+
+	var mergedItems []TransactionDraftItem
+	var totalAmount int64
+	for _, r := range results {
+		if r == nil || r.TransactionDraft == nil {
+			continue
+		}
+		for _, item := range r.TransactionDraft.Items {
+			mergedItems = append(mergedItems, item)
+			totalAmount += item.AmountIDR
+		}
+	}
+	if len(mergedItems) == 0 {
+		return results[len(results)-1]
+	}
+	return &PrepareTransactionResult{
+		Status: "ready",
+		TransactionDraft: &TransactionDraftPayload{
+			Items:          mergedItems,
+			TotalAmountIDR: totalAmount,
+			ItemCount:      len(mergedItems),
+		},
+	}
 }
 
 func buildPass2SynthesisPrompt(surfaceMode, userMessage string, bundle *Pass1ToolBundle, pass1Summary string) string {
@@ -1368,9 +1463,6 @@ func normalizeClientRequestID(raw string) string {
 	trimmed := strings.TrimSpace(raw)
 	if trimmed == "" {
 		return "req_" + uuid.NewString()
-	}
-	if len(trimmed) > 128 {
-		return trimmed[:128]
 	}
 	return trimmed
 }

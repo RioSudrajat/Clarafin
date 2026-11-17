@@ -229,6 +229,153 @@ func TestClient_ExplicitCacheCreatesAndFallsBackToImplicitPrefix(t *testing.T) {
 	}
 }
 
+func TestBuildGenaiConfig_AndRealHTTPSerialization_StructuredAndExtractionSchemas(t *testing.T) {
+	assertValidGenaiSchemaTree := func(t *testing.T, path string, s *genai.Schema) {
+		t.Helper()
+		var walk func(p string, node *genai.Schema)
+		walk = func(p string, node *genai.Schema) {
+			if node == nil {
+				t.Fatalf("%s: schema node is nil", p)
+			}
+			switch node.Type {
+			case genai.TypeObject, genai.TypeString, genai.TypeNumber, genai.TypeInteger, genai.TypeBoolean, genai.TypeArray:
+			default:
+				t.Fatalf("%s: invalid or unspecified genai.Type %q", p, node.Type)
+			}
+			if node.Type == genai.TypeArray && node.Items == nil {
+				t.Fatalf("%s: array schema missing Items", p)
+			}
+			if node.Items != nil {
+				walk(p+".items", node.Items)
+			}
+			for k, prop := range node.Properties {
+				walk(p+"."+k, prop)
+			}
+		}
+		walk(path, s)
+	}
+
+	structuredCfg, err := gemini.BuildGenaiConfig(ai.GenerateRequest{
+		Pass: ai.Pass2StructuredJSON,
+		Params: ai.GenerationParams{
+			Temperature:      0.28,
+			ResponseMIMEType: "application/json",
+			ResponseSchema:   ai.BuildStructuredResponseSchema(),
+		},
+	})
+	if err != nil {
+		t.Fatalf("BuildGenaiConfig(StructuredResponseSchema): %v", err)
+	}
+	if structuredCfg.ResponseSchema == nil || structuredCfg.ResponseSchema.Type != genai.TypeObject {
+		t.Fatalf("expected root TypeObject on StructuredResponseSchema, got %+v", structuredCfg.ResponseSchema)
+	}
+	assertValidGenaiSchemaTree(t, "structured", structuredCfg.ResponseSchema)
+
+	extractCfg, err := gemini.BuildGenaiConfig(ai.GenerateRequest{
+		Pass: ai.PassExtraction,
+		Params: ai.GenerationParams{
+			Temperature:      0.1,
+			ResponseMIMEType: "application/json",
+			ResponseSchema:   ai.BuildQuickDraftExtractionSchema(),
+		},
+	})
+	if err != nil {
+		t.Fatalf("BuildGenaiConfig(QuickDraftExtractionSchema): %v", err)
+	}
+	if extractCfg.ResponseSchema == nil || extractCfg.ResponseSchema.Type != genai.TypeObject {
+		t.Fatalf("expected root TypeObject on QuickDraftExtractionSchema, got %+v", extractCfg.ResponseSchema)
+	}
+	assertValidGenaiSchemaTree(t, "extraction", extractCfg.ResponseSchema)
+
+	// Also verify ToGenaiSchema infers Type when omitted on object/array/enum nodes.
+	inferred := gemini.ToGenaiSchema(&ai.ToolParameterSchema{
+		Properties: map[string]*ai.ToolParameterSchema{
+			"status": {Enum: []string{"ready", "missing_wallet"}},
+			"tags":   {Items: &ai.ToolParameterSchema{Type: "STRING"}},
+		},
+	})
+	assertValidGenaiSchemaTree(t, "inferred", inferred)
+
+	// Exercise a real genai.Client over HTTP to prove SDK serialization of both schemas and Pass 1 tools.
+	var capturedBodies []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		capturedBodies = append(capturedBodies, string(b))
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"candidates": []any{
+				map[string]any{
+					"content": map[string]any{
+						"role":  "model",
+						"parts": []any{map[string]any{"text": `{"narrative":"OK","thinking_summary":[]}`}},
+					},
+				},
+			},
+		})
+	}))
+	defer srv.Close()
+
+	origHTTP := srv.Client()
+	redirectClient := &http.Client{
+		Transport: roundTripperFunc(func(req *http.Request) (*http.Response, error) {
+			cloned := req.Clone(req.Context())
+			cloned.URL.Scheme = "http"
+			cloned.URL.Host = strings.TrimPrefix(srv.URL, "http://")
+			return origHTTP.Transport.RoundTrip(cloned)
+		}),
+	}
+
+	c, err := gemini.NewClient(context.Background(), gemini.Config{
+		APIKey:              "test-key",
+		DefaultModel:        "gemini-2.5-flash",
+		ContextCacheEnabled: false,
+		HTTPClient:          redirectClient,
+	})
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+
+	if _, err := c.GenerateContent(context.Background(), ai.GenerateRequest{
+		Pass:             ai.Pass1ToolPlanning,
+		ToolDeclarations: ai.BuildPass1ToolDeclarations(),
+		Contents:         []ai.LLMMessage{{Role: "user", Parts: []ai.LLMPart{{Text: "kopi 25k"}}}},
+		Params:           ai.GenerationParams{Temperature: 0.1},
+	}); err != nil {
+		t.Fatalf("GenerateContent(Pass1 tools) failed SDK schema check: %v", err)
+	}
+
+	if _, err := c.GenerateContent(context.Background(), ai.GenerateRequest{
+		Pass:     ai.Pass2StructuredJSON,
+		Contents: []ai.LLMMessage{{Role: "user", Parts: []ai.LLMPart{{Text: "synthesize"}}}},
+		Params: ai.GenerationParams{
+			Temperature:      0.28,
+			ResponseMIMEType: "application/json",
+			ResponseSchema:   ai.BuildStructuredResponseSchema(),
+		},
+	}); err != nil {
+		t.Fatalf("GenerateContent(Pass2 StructuredResponseSchema) failed SDK schema check: %v", err)
+	}
+
+	if _, err := c.GenerateContent(context.Background(), ai.GenerateRequest{
+		Pass:     ai.PassExtraction,
+		Contents: []ai.LLMMessage{{Role: "user", Parts: []ai.LLMPart{{Text: "kopi 25k"}}}},
+		Params: ai.GenerationParams{
+			Temperature:      0.1,
+			ResponseMIMEType: "application/json",
+			ResponseSchema:   ai.BuildQuickDraftExtractionSchema(),
+		},
+	}); err != nil {
+		t.Fatalf("GenerateContent(PassExtraction QuickDraftExtractionSchema) failed SDK schema check: %v", err)
+	}
+
+	if len(capturedBodies) != 3 {
+		t.Fatalf("expected 3 HTTP requests serialized, got %d", len(capturedBodies))
+	}
+	if !strings.Contains(capturedBodies[1], `"responseSchema"`) || !strings.Contains(capturedBodies[2], `"responseSchema"`) {
+		t.Fatalf("expected generationConfig.responseSchema serialized in HTTP body")
+	}
+}
+
 type roundTripperFunc func(*http.Request) (*http.Response, error)
 
 func (f roundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {

@@ -510,6 +510,7 @@ type Pass1ToolBundle struct {
 	WalletCashflow   *CashflowSummaryOutput
 	BudgetBills      *BudgetBillsOutput
 	PrepareTx        *PrepareTransactionResult
+	TxChecks         []*PrepareTransactionResult
 	GoalDraft        *GoalDraftPayload
 	BudgetDraft      *BudgetDraftPayload
 	BillDraft        *BillDraftPayload
@@ -574,9 +575,9 @@ func ValidateAndReconcileStructuredResponse(resp *AiStructuredResponse, bundle *
 					PendingItems:      append([]PendingTransactionItem(nil), bundle.PrepareTx.PendingItems...),
 				}
 				if !walletCreationDraftsEqual(resp.WalletCreationDraft, expectedWalletDraft) {
-					resp.WalletCreationDraft = expectedWalletDraft
 					corrections = append(corrections, "hydrated wallet_creation_draft from Pass 1")
 				}
+				resp.WalletCreationDraft = expectedWalletDraft
 			}
 		} else if bundle.PrepareTx.TransactionDraft != nil {
 			if resp.WalletCreationDraft != nil {
@@ -584,9 +585,9 @@ func ValidateAndReconcileStructuredResponse(resp *AiStructuredResponse, bundle *
 				corrections = append(corrections, "cleared wallet_creation_draft for ready wallet")
 			}
 			if !txDraftsEqual(resp.TransactionDraft, bundle.PrepareTx.TransactionDraft) {
-				resp.TransactionDraft = cloneTransactionDraft(bundle.PrepareTx.TransactionDraft)
 				corrections = append(corrections, "reconciled transaction_draft numbers/ids from Pass 1")
 			}
+			resp.TransactionDraft = cloneTransactionDraft(bundle.PrepareTx.TransactionDraft)
 		}
 	} else {
 		if resp.TransactionDraft != nil {
@@ -603,9 +604,9 @@ func ValidateAndReconcileStructuredResponse(resp *AiStructuredResponse, bundle *
 	if bundle.FlowCashflow != nil {
 		expected := buildMoneyFlowCard(bundle.FlowCashflow)
 		if !moneyFlowCardsEqual(resp.MoneyFlowCard, expected) {
-			resp.MoneyFlowCard = expected
 			corrections = append(corrections, "reconciled money_flow_card from Pass 1 SQL summary")
 		}
+		resp.MoneyFlowCard = expected
 	} else if resp.MoneyFlowCard != nil {
 		resp.MoneyFlowCard = nil
 		corrections = append(corrections, "stripped ungrounded money_flow_card")
@@ -619,9 +620,9 @@ func ValidateAndReconcileStructuredResponse(resp *AiStructuredResponse, bundle *
 		}
 		expected := buildSpendingBreakdownTable(bundle.MerchantCashflow, customTitle)
 		if !spendingTablesEqual(resp.SpendingBreakdownTable, expected) {
-			resp.SpendingBreakdownTable = expected
 			corrections = append(corrections, "reconciled spending_breakdown_table from Pass 1 SQL summary")
 		}
+		resp.SpendingBreakdownTable = expected
 	} else if resp.SpendingBreakdownTable != nil {
 		resp.SpendingBreakdownTable = nil
 		corrections = append(corrections, "stripped ungrounded spending_breakdown_table")
@@ -630,10 +631,10 @@ func ValidateAndReconcileStructuredResponse(resp *AiStructuredResponse, bundle *
 	// 4. Reconcile GoalDraft, BudgetDraft, BillDraft against deterministic ActionTools outputs.
 	if bundle.GoalDraft != nil {
 		if !goalDraftsEqual(resp.GoalDraft, bundle.GoalDraft) {
-			cp := *bundle.GoalDraft
-			resp.GoalDraft = &cp
 			corrections = append(corrections, "reconciled goal_draft from Pass 1")
 		}
+		cp := *bundle.GoalDraft
+		resp.GoalDraft = &cp
 	} else if resp.GoalDraft != nil {
 		resp.GoalDraft = nil
 		corrections = append(corrections, "stripped ungrounded goal_draft")
@@ -641,10 +642,10 @@ func ValidateAndReconcileStructuredResponse(resp *AiStructuredResponse, bundle *
 
 	if bundle.BudgetDraft != nil {
 		if !budgetDraftsEqual(resp.BudgetDraft, bundle.BudgetDraft) {
-			cp := *bundle.BudgetDraft
-			resp.BudgetDraft = &cp
 			corrections = append(corrections, "reconciled budget_draft from Pass 1")
 		}
+		cp := *bundle.BudgetDraft
+		resp.BudgetDraft = &cp
 	} else if resp.BudgetDraft != nil {
 		resp.BudgetDraft = nil
 		corrections = append(corrections, "stripped ungrounded budget_draft")
@@ -652,10 +653,10 @@ func ValidateAndReconcileStructuredResponse(resp *AiStructuredResponse, bundle *
 
 	if bundle.BillDraft != nil {
 		if !billDraftsEqual(resp.BillDraft, bundle.BillDraft) {
-			cp := *bundle.BillDraft
-			resp.BillDraft = &cp
 			corrections = append(corrections, "reconciled bill_draft from Pass 1")
 		}
+		cp := *bundle.BillDraft
+		resp.BillDraft = &cp
 	} else if resp.BillDraft != nil {
 		resp.BillDraft = nil
 		corrections = append(corrections, "stripped ungrounded bill_draft")
@@ -665,14 +666,15 @@ func ValidateAndReconcileStructuredResponse(resp *AiStructuredResponse, bundle *
 	if bundle.Matching != nil {
 		expectedPkg := buildPackageBannerPayload(bundle.Matching)
 		if !packageBannersEqual(resp.RecommendedPackage, expectedPkg) {
-			resp.RecommendedPackage = expectedPkg
 			corrections = append(corrections, "reconciled recommended_package from Pass 1")
 		}
+		resp.RecommendedPackage = expectedPkg
+
 		expectedCons := buildConsultantCardPayloads(bundle.Matching, resp.RecommendedConsultants)
 		if !consultantSlicesEqual(resp.RecommendedConsultants, expectedCons) {
-			resp.RecommendedConsultants = expectedCons
 			corrections = append(corrections, "reconciled recommended_consultants from Pass 1")
 		}
+		resp.RecommendedConsultants = expectedCons
 	} else {
 		if resp.RecommendedPackage != nil {
 			resp.RecommendedPackage = nil
@@ -691,7 +693,7 @@ func ValidateAndReconcileStructuredResponse(resp *AiStructuredResponse, bundle *
 	return corrections, nil
 }
 
-var idrTokenRegexp = regexp.MustCompile(`(?i)\b(?:rp\.?|idr)\s*([0-9]+(?:\.[0-9]{3})*)(?:,00)?`)
+var idrTokenRegexp = regexp.MustCompile(`(?i)\b(?:rp\.?|idr)\s*([0-9]+(?:\.[0-9]{3})*)(?:(?:,[0-9]{1,2}\b)|(?:\.[0-9]{1,2}\b))?`)
 
 // FormatIDR formats an integer Rupiah amount with Indonesian thousand dot separators (Rp X.XXX).
 func FormatIDR(amount int64) string {

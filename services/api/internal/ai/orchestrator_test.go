@@ -38,6 +38,7 @@ type mockQuotaManager struct {
 	compensateCalls []string
 	statusCalls     int
 	reserveErr      error
+	reserveReused   bool
 	status          service.QuotaStatus
 	reserveBucket   string
 }
@@ -49,7 +50,7 @@ func (m *mockQuotaManager) ReserveAction(_ context.Context, userID uuid.UUID, re
 	if m.reserveErr != nil {
 		return nil, m.reserveErr
 	}
-	if m.status.QuotaTotal > 0 && m.status.QuotaRemaining > 0 {
+	if !m.reserveReused && m.status.QuotaTotal > 0 && m.status.QuotaRemaining > 0 {
 		m.status.QuotaUsed++
 		m.status.QuotaRemaining--
 	}
@@ -66,6 +67,7 @@ func (m *mockQuotaManager) ReserveAction(_ context.Context, userID uuid.UUID, re
 		SurfaceMode: surfaceMode,
 		Bucket:      bucket,
 		Status:      "reserved",
+		Reused:      m.reserveReused,
 		QuotaStatus: m.status,
 	}, nil
 }
@@ -1079,6 +1081,422 @@ func TestOrchestrator_NumericAntiHallucinationValidator_ReconcilesAllCards(t *te
 		}
 		if res.Response.SpendingBreakdownTable.TotalAmountIDR != 412000 || res.Response.SpendingBreakdownTable.Rows[0].Merchant != "Kopi Kenangan" {
 			t.Fatalf("SpendingBreakdownTable not corrected to SQL output: %+v", res.Response.SpendingBreakdownTable)
+		}
+	})
+}
+
+func TestOrchestrator_MultipleCheckAndPrepareCalls_AndDecimalIDRAndPlanningBudget(t *testing.T) {
+	userID := uuid.New()
+	gopayID := uuid.New()
+	bcaID := uuid.New()
+
+	t.Run("merges two separate check_and_prepare_transaction calls in Pass 1 into 2 items", func(t *testing.T) {
+		llm := &mockLLMClient{
+			fn: func(_ context.Context, callIdx int, _ ai.GenerateRequest) (*ai.GenerateResponse, error) {
+				switch callIdx {
+				case 0:
+					return &ai.GenerateResponse{
+						FunctionCalls: []ai.ToolCall{
+							{
+								ID:   "tx_1",
+								Name: "check_and_prepare_transaction",
+								Args: map[string]any{
+									"default_wallet_hint": "gopay",
+									"items": []any{
+										map[string]any{"title": "Kopi Kenangan", "amount_idr": 25000, "type": "expense", "raw_category": "kopi"},
+									},
+								},
+							},
+							{
+								ID:   "tx_2",
+								Name: "check_and_prepare_transaction",
+								Args: map[string]any{
+									"default_wallet_hint": "gopay",
+									"items": []any{
+										map[string]any{"title": "Parkir", "amount_idr": 5000, "type": "expense", "raw_category": "parkir"},
+									},
+								},
+							},
+						},
+					}, nil
+				case 1:
+					return &ai.GenerateResponse{Text: "2 items ready"}, nil
+				case 2:
+					// Even if Pass 2 only returned 1 item or drifted numbers, reconciliation must emit BOTH items from Pass 1!
+					partial := ai.AiStructuredResponse{
+						Narrative:       "Draf Kopi Kenangan Rp 25000.50 dan Parkir Rp 5000,75 siap.",
+						ThinkingSummary: []ai.ThinkingStep{{StepNumber: 1, Title: "Cek dompet", Detail: "OK", Status: "completed"}},
+						TransactionDraft: &ai.TransactionDraftPayload{
+							ItemCount:      1,
+							TotalAmountIDR: 25000,
+							Items: []ai.TransactionDraftItem{
+								{Title: "Kopi Kenangan", AmountIDR: 25000, Type: "expense", CanonicalCategory: "Food & Beverage • Coffee Shop", CanonicalMainCategory: "Food & Beverage", WalletID: gopayID, WalletName: "GoPay"},
+							},
+						},
+					}
+					b, _ := json.Marshal(partial)
+					return &ai.GenerateResponse{Text: string(b)}, nil
+				default:
+					return nil, nil
+				}
+			},
+		}
+
+		actions := &stubActionProvider{
+			prepareTxFn: func(_ context.Context, _ uuid.UUID, input ai.PrepareTransactionInput) (*ai.PrepareTransactionResult, error) {
+				item := input.Items[0]
+				cat := "Food & Beverage • Coffee Shop"
+				mainCat := "Food & Beverage"
+				if strings.EqualFold(item.Title, "Parkir") {
+					cat = "Transportation • Parking & Toll"
+					mainCat = "Transportation"
+				}
+				return &ai.PrepareTransactionResult{
+					Status: "ready",
+					TransactionDraft: &ai.TransactionDraftPayload{
+						ItemCount:      1,
+						TotalAmountIDR: item.AmountIDR,
+						Items: []ai.TransactionDraftItem{
+							{
+								Title:                 item.Title,
+								AmountIDR:             item.AmountIDR,
+								Type:                  "expense",
+								CanonicalCategory:     cat,
+								CanonicalMainCategory: mainCat,
+								WalletID:              gopayID,
+								WalletName:            "GoPay",
+							},
+						},
+					},
+				}, nil
+			},
+		}
+
+		orch := ai.NewOrchestrator(ai.OrchestratorConfig{
+			Model:     "gemini-2.5-flash",
+			LLM:       llm,
+			Quota:     &mockQuotaManager{status: service.QuotaStatus{PlanType: "free", QuotaTotal: 40, QuotaRemaining: 40}},
+			Financial: &stubFinancialProvider{},
+			Actions:   actions,
+			Matching:  &stubMatchingProvider{},
+		})
+
+		res, err := orch.ChatStream(context.Background(), userID, ai.ChatRequest{
+			ClientRequestID: "req_multi_prepare_1",
+			Message:         "kopi kenangan 25k + parkir goceng pake gopay",
+			SurfaceMode:     "quick_sheet",
+		}, func(ai.SSEEvent) error { return nil })
+		if err != nil {
+			t.Fatalf("ChatStream error: %v", err)
+		}
+		if res.Response.TransactionDraft == nil || res.Response.TransactionDraft.ItemCount != 2 || len(res.Response.TransactionDraft.Items) != 2 {
+			t.Fatalf("expected 2 merged items in TransactionDraft, got %+v", res.Response.TransactionDraft)
+		}
+		if res.Response.TransactionDraft.TotalAmountIDR != 30000 {
+			t.Fatalf("expected merged TotalAmountIDR=30000, got %d", res.Response.TransactionDraft.TotalAmountIDR)
+		}
+		if res.Response.TransactionDraft.Items[0].Title != "Kopi Kenangan" || res.Response.TransactionDraft.Items[1].Title != "Parkir" {
+			t.Fatalf("unexpected merged items order: %+v", res.Response.TransactionDraft.Items)
+		}
+		if !strings.Contains(res.Response.Narrative, "Rp 25.000") || !strings.Contains(res.Response.Narrative, "Rp 5.000") || strings.Contains(res.Response.Narrative, ".50") {
+			t.Fatalf("expected US/ID decimal fractions stripped in narrative, got %q", res.Response.Narrative)
+		}
+	})
+
+	t.Run("rejects reused client_request_id and >128 char client_request_id before LLM call", func(t *testing.T) {
+		llm := &mockLLMClient{
+			fn: func(context.Context, int, ai.GenerateRequest) (*ai.GenerateResponse, error) {
+				t.Fatal("LLM must not be called when client_request_id is reused or >128 chars")
+				return nil, nil
+			},
+		}
+		reusedQuota := &mockQuotaManager{
+			reserveReused: true,
+			status:        service.QuotaStatus{PlanType: "free", QuotaTotal: 40, QuotaRemaining: 39},
+		}
+		orch := ai.NewOrchestrator(ai.OrchestratorConfig{
+			Model:     "gemini-2.5-flash",
+			LLM:       llm,
+			Quota:     reusedQuota,
+			Financial: &stubFinancialProvider{},
+			Actions:   &stubActionProvider{},
+			Matching:  &stubMatchingProvider{},
+			DraftRepo: &memoryDraftRepo{},
+		})
+
+		_, err := orch.ChatStream(context.Background(), userID, ai.ChatRequest{
+			ClientRequestID: "req_dup_chat",
+			Message:         "cek saldo",
+			SurfaceMode:     "quick_sheet",
+		}, func(ai.SSEEvent) error { return nil })
+		if !errors.Is(err, service.ErrReservationFinalized) {
+			t.Fatalf("expected ErrReservationFinalized on reused chat request ID, got %v", err)
+		}
+
+		_, err = orch.QuickAddDraft(context.Background(), userID, ai.QuickAddRequest{
+			ClientRequestID: "req_dup_qa",
+			Text:            "kopi 25k",
+			Source:          "ai_text",
+		})
+		if !errors.Is(err, service.ErrReservationFinalized) {
+			t.Fatalf("expected ErrReservationFinalized on reused quick-add request ID, got %v", err)
+		}
+
+		_, err = orch.ChatStream(context.Background(), userID, ai.ChatRequest{
+			ClientRequestID: strings.Repeat("x", 129),
+			Message:         "cek saldo",
+			SurfaceMode:     "quick_sheet",
+		}, func(ai.SSEEvent) error { return nil })
+		if !errors.Is(err, service.ErrInvalidQuotaRequest) {
+			t.Fatalf("expected ErrInvalidQuotaRequest when client_request_id > 128 chars, got %v", err)
+		}
+	})
+
+	t.Run("always assigns canonical Pass 1 structs preserving OccurredAt and consultant metadata", func(t *testing.T) {
+		occurred := time.Date(2026, 11, 17, 14, 30, 0, 0, time.UTC)
+		c2UUID := uuid.MustParse("00000000-0000-4000-8000-0000000000c2")
+		pkgID := uuid.New()
+
+		bundle := &ai.Pass1ToolBundle{
+			PrepareTx: &ai.PrepareTransactionResult{
+				Status: "ready",
+				TransactionDraft: &ai.TransactionDraftPayload{
+					ItemCount:      1,
+					TotalAmountIDR: 25000,
+					Items: []ai.TransactionDraftItem{
+						{
+							Title:                 "Kopi Kenangan",
+							AmountIDR:             25000,
+							Type:                  "expense",
+							CanonicalCategory:     "Food & Beverage • Coffee Shop",
+							CanonicalMainCategory: "Food & Beverage",
+							WalletID:              gopayID,
+							WalletName:            "GoPay",
+							Note:                  "Catatan asli Pass 1",
+							OccurredAt:            occurred,
+						},
+					},
+				},
+			},
+			Matching: &ai.MatchingOutput{
+				RecommendedPackage: ai.RecommendedPackageOutput{
+					ID:              pkgID,
+					PackageCode:     "personal_basic",
+					CategoryTag:     "Personal Advisory • Basic",
+					Tier:            "basic",
+					PackageTitle:    "Fondasi Arus Kas & Utang",
+					OnlinePriceIDR:  199000,
+					OfflinePriceIDR: 349000,
+				},
+				Consultants: []ai.MatchedConsultantOutput{
+					{
+						ConsultantID:           "c2",
+						PractitionerUUID:       c2UUID,
+						DisplayName:            "Nurhuzaifah Amini, M.M., CFP®, BKP",
+						TitleHeadline:          "Debt Relief & Tax Specialist",
+						Certifications:         []string{"CFP®", "BKP"},
+						Tier:                   "premium",
+						Rating:                 4.92,
+						ReviewCount:            198,
+						TotalSessionsCompleted: 520,
+						MatchReason:            "Spesialis utang",
+						IsStaffPinned:          true,
+						NextAvailableSlotLabel: "Besok, 19:00 WIB",
+						NextAvailableSlotISO:   "2026-11-18T19:00:00+07:00",
+						PackageCode:            "personal_basic",
+						PackageTitle:           "Fondasi Arus Kas & Utang",
+						OnlinePriceIDR:         199000,
+						OfflinePriceIDR:        349000,
+					},
+				},
+			},
+		}
+
+		// Pass 2 matches on subset fields (so txDraftsEqual & consultantSlicesEqual return true),
+		// but omits OccurredAt, Note, Certifications, ReviewCount, TotalSessionsCompleted, IsStaffPinned!
+		pass2 := &ai.AiStructuredResponse{
+			Narrative:       "Siap dicatat Rp 25.000.",
+			ThinkingSummary: []ai.ThinkingStep{{StepNumber: 1, Title: "OK", Detail: "OK", Status: "completed"}},
+			TransactionDraft: &ai.TransactionDraftPayload{
+				ItemCount:      1,
+				TotalAmountIDR: 25000,
+				Items: []ai.TransactionDraftItem{
+					{
+						Title:                 "Kopi Kenangan",
+						AmountIDR:             25000,
+						Type:                  "expense",
+						CanonicalCategory:     "Food & Beverage • Coffee Shop",
+						CanonicalMainCategory: "Food & Beverage",
+						WalletID:              gopayID,
+						WalletName:            "GoPay",
+					},
+				},
+			},
+			RecommendedPackage: &ai.PackageBannerPayload{
+				ID:                     pkgID,
+				PackageCode:            "personal_basic",
+				CategoryTag:            "Personal Advisory • Basic",
+				PackageTitle:           "Fondasi Arus Kas & Utang",
+				OnlinePriceIDR:         199000,
+				OfflinePriceIDR:        349000,
+				PrefilledIntakeSummary: &ai.PrefilledIntakeSummary{},
+			},
+			RecommendedConsultants: []ai.ConsultantCardPayload{
+				{
+					ConsultantID:           "c2",
+					PractitionerUUID:       c2UUID,
+					DisplayName:            "Nurhuzaifah Amini, M.M., CFP®, BKP",
+					Tier:                   "premium",
+					MatchReason:            "Cocok untuk pelunasan cicilan.",
+					NextAvailableSlotLabel: "Besok, 19:00 WIB",
+					NextAvailableSlotISO:   "2026-11-18T19:00:00+07:00",
+					PackageCode:            "personal_basic",
+					OnlinePriceIDR:         199000,
+					OfflinePriceIDR:        349000,
+				},
+			},
+		}
+
+		if _, err := ai.ValidateAndReconcileStructuredResponse(pass2, bundle); err != nil {
+			t.Fatalf("ValidateAndReconcileStructuredResponse: %v", err)
+		}
+		if !pass2.TransactionDraft.Items[0].OccurredAt.Equal(occurred) {
+			t.Fatalf("expected OccurredAt=%v preserved from Pass 1, got %v", occurred, pass2.TransactionDraft.Items[0].OccurredAt)
+		}
+		if pass2.TransactionDraft.Items[0].Note != "Catatan asli Pass 1" {
+			t.Fatalf("expected Note preserved from Pass 1, got %q", pass2.TransactionDraft.Items[0].Note)
+		}
+		cons := pass2.RecommendedConsultants[0]
+		if len(cons.Certifications) != 2 || cons.TotalSessionsCompleted != 520 || cons.ReviewCount != 198 || !cons.IsStaffPinned {
+			t.Fatalf("expected full consultant metadata preserved from Pass 1, got %+v", cons)
+		}
+	})
+
+	t.Run("withholds all TransactionDrafts if any check_and_prepare_transaction call returns missing_wallet", func(t *testing.T) {
+		llm := &mockLLMClient{
+			fn: func(_ context.Context, callIdx int, _ ai.GenerateRequest) (*ai.GenerateResponse, error) {
+				switch callIdx {
+				case 0:
+					return &ai.GenerateResponse{
+						FunctionCalls: []ai.ToolCall{
+							{ID: "tx_ok", Name: "check_and_prepare_transaction", Args: map[string]any{"default_wallet_hint": "gopay", "items": []any{map[string]any{"title": "Kopi", "amount_idr": 25000, "type": "expense"}}}},
+							{ID: "tx_miss", Name: "check_and_prepare_transaction", Args: map[string]any{"default_wallet_hint": "jago", "items": []any{map[string]any{"title": "Makan", "amount_idr": 45000, "type": "expense"}}}},
+						},
+					}, nil
+				case 1:
+					return &ai.GenerateResponse{Text: "one wallet missing"}, nil
+				case 2:
+					b, _ := json.Marshal(ai.AiStructuredResponse{
+						Narrative:       "Dompet Bank Jago belum tersedia.",
+						ThinkingSummary: []ai.ThinkingStep{{StepNumber: 1, Title: "Cek dompet", Detail: "Bank Jago belum ada", Status: "completed"}},
+					})
+					return &ai.GenerateResponse{Text: string(b)}, nil
+				default:
+					return nil, nil
+				}
+			},
+		}
+
+		actions := &stubActionProvider{
+			prepareTxFn: func(_ context.Context, _ uuid.UUID, input ai.PrepareTransactionInput) (*ai.PrepareTransactionResult, error) {
+				if input.DefaultWalletHint == "gopay" {
+					return &ai.PrepareTransactionResult{
+						Status: "ready",
+						TransactionDraft: &ai.TransactionDraftPayload{
+							ItemCount:      1,
+							TotalAmountIDR: 25000,
+							Items: []ai.TransactionDraftItem{
+								{Title: "Kopi", AmountIDR: 25000, Type: "expense", CanonicalCategory: "Food & Beverage • Coffee Shop", CanonicalMainCategory: "Food & Beverage", WalletID: gopayID, WalletName: "GoPay"},
+							},
+						},
+					}, nil
+				}
+				return &ai.PrepareTransactionResult{
+					Status: "missing_wallet",
+					WalletCreationDraft: &ai.WalletCreationDraft{
+						InstitutionID:   "jago",
+						InstitutionName: "Bank Jago",
+						InstitutionType: "bank",
+						ExistingWallets: []ai.ExistingWalletChip{{ID: bcaID, Name: "BCA", Type: "bank", BalanceIDR: 1000000}},
+					},
+					PendingItems: []ai.PendingTransactionItem{
+						{Title: "Makan", AmountIDR: 45000, Type: "expense", CanonicalCategory: "Food & Beverage", CanonicalMainCategory: "Food & Beverage"},
+					},
+				}, nil
+			},
+		}
+
+		orch := ai.NewOrchestrator(ai.OrchestratorConfig{
+			Model:     "gemini-2.5-flash",
+			LLM:       llm,
+			Quota:     &mockQuotaManager{status: service.QuotaStatus{PlanType: "free", QuotaTotal: 40, QuotaRemaining: 40}},
+			Financial: &stubFinancialProvider{},
+			Actions:   actions,
+			Matching:  &stubMatchingProvider{},
+		})
+
+		res, err := orch.ChatStream(context.Background(), userID, ai.ChatRequest{
+			ClientRequestID: "req_mixed_missing",
+			Message:         "kopi 25k gopay sama makan 45k jago",
+			SurfaceMode:     "quick_sheet",
+		}, func(ai.SSEEvent) error { return nil })
+		if err != nil {
+			t.Fatalf("ChatStream error: %v", err)
+		}
+		if res.Response.TransactionDraft != nil {
+			t.Fatalf("expected TransactionDraft withheld when any wallet is missing, got %+v", res.Response.TransactionDraft)
+		}
+		if res.Response.WalletCreationDraft == nil || len(res.Response.WalletCreationDraft.PendingItems) != 2 {
+			t.Fatalf("expected WalletCreationDraft with 2 pending items preserved, got %+v", res.Response.WalletCreationDraft)
+		}
+	})
+
+	t.Run("propose_bill_draft in quick_sheet triggers >= 512 thinkingBudget", func(t *testing.T) {
+		llm := &mockLLMClient{
+			fn: func(_ context.Context, callIdx int, req ai.GenerateRequest) (*ai.GenerateResponse, error) {
+				switch callIdx {
+				case 0:
+					return &ai.GenerateResponse{
+						FunctionCalls: []ai.ToolCall{
+							{ID: "b1", Name: "propose_bill_draft", Args: map[string]any{"title": "Wi-Fi", "amount_idr": 385000, "due_day": 20}},
+						},
+					}, nil
+				case 1:
+					return &ai.GenerateResponse{Text: "bill ready"}, nil
+				case 2:
+					if req.Params.ThinkingBudget < 512 {
+						t.Fatalf("expected ThinkingBudget >= 512 for planning draft, got %d", req.Params.ThinkingBudget)
+					}
+					b, _ := json.Marshal(ai.AiStructuredResponse{
+						Narrative:       "Draf tagihan Wi-Fi Rp 385.000 siap.",
+						ThinkingSummary: []ai.ThinkingStep{{StepNumber: 1, Title: "Siapkan tagihan", Detail: "OK", Status: "completed"}},
+					})
+					return &ai.GenerateResponse{Text: string(b)}, nil
+				default:
+					return nil, nil
+				}
+			},
+		}
+
+		orch := ai.NewOrchestrator(ai.OrchestratorConfig{
+			Model:     "gemini-2.5-flash",
+			LLM:       llm,
+			Quota:     &mockQuotaManager{status: service.QuotaStatus{PlanType: "free", QuotaTotal: 40, QuotaRemaining: 40}},
+			Financial: &stubFinancialProvider{},
+			Actions: &stubActionProvider{
+				billFn: func(context.Context, uuid.UUID, ai.BillDraftInput) (*ai.BillDraftPayload, error) {
+					return &ai.BillDraftPayload{Title: "Wi-Fi", CanonicalCategory: "Bills & Utilities • Internet & Wi-Fi", CanonicalMainCategory: "Bills & Utilities", AmountIDR: 385000, DueDay: 20, NextDueDate: "2026-11-20", Frequency: "monthly"}, nil
+				},
+			},
+			Matching: &stubMatchingProvider{},
+		})
+
+		if _, err := orch.ChatStream(context.Background(), userID, ai.ChatRequest{
+			ClientRequestID: "req_bill_budget",
+			Message:         "ingetin tagihan wifi 385rb tgl 20",
+			SurfaceMode:     "quick_sheet",
+		}, func(ai.SSEEvent) error { return nil }); err != nil {
+			t.Fatalf("ChatStream error: %v", err)
 		}
 	})
 }

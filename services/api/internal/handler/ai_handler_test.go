@@ -408,6 +408,22 @@ func TestAIHandler_QuickAddAndOCR_Endpoints(t *testing.T) {
 	if recBadMime.Code != http.StatusBadRequest {
 		t.Fatalf("POST /v1/ai/ocr invalid mime expected 400, got %d", recBadMime.Code)
 	}
+
+	// 5. Conflicting client_request_id maps to 409 Conflict.
+	conflictSvc := &stubAIChatService{
+		quickAddFn: func(context.Context, uuid.UUID, ai.QuickAddRequest) (*ai.DraftExtractionResult, error) {
+			return nil, service.ErrRequestIDConflict
+		},
+	}
+	conflictHandler := handler.NewAIHandler(conflictSvc, nil)
+	reqConflict := httptest.NewRequest(http.MethodPost, "/v1/ai/quick-add", bytes.NewBufferString(`{"client_request_id":"dup_1","text":"kopi 25k"}`))
+	reqConflict.Header.Set("Content-Type", "application/json")
+	reqConflict = reqConflict.WithContext(middleware.ContextWithUserID(reqConflict.Context(), userID))
+	recConflict := httptest.NewRecorder()
+	middleware.RequestID(http.HandlerFunc(conflictHandler.QuickAdd)).ServeHTTP(recConflict, reqConflict)
+	if recConflict.Code != http.StatusConflict {
+		t.Fatalf("expected 409 Conflict on ErrRequestIDConflict, got %d", recConflict.Code)
+	}
 }
 
 func TestAIHandler_Chat_ValidationAndMidStreamError(t *testing.T) {
