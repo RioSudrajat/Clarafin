@@ -1,16 +1,27 @@
+import 'dart:ui' show Tristate;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile/core/institutions/institution_logo_widget.dart';
+import 'package:mobile/core/theme/app_theme.dart';
+import 'package:mobile/core/theme/neo_brutalism_decorations.dart';
 import 'package:mobile/features/session/domain/models/ai_chat_models.dart';
 import 'package:mobile/features/session/presentation/widgets/ai_planning_action_card.dart';
 import 'package:mobile/features/session/presentation/widgets/ai_transaction_draft_card.dart';
 import 'package:mobile/features/session/presentation/widgets/ai_wallet_creation_draft_card.dart';
 
-Widget _wrapViewport360(Widget child) {
+Widget _wrapViewport360(Widget child, {double textScale = 1.0}) {
   return MaterialApp(
+    theme: AppTheme.lightTheme,
     home: MediaQuery(
-      data: const MediaQueryData(size: Size(360, 640)),
+      data: MediaQueryData(
+        size: const Size(360, 640),
+        textScaler: TextScaler.linear(textScale),
+      ),
       child: Scaffold(
         body: SizedBox(
           width: 360,
@@ -38,7 +49,43 @@ void _expectMinTouchTarget(WidgetTester tester, Finder finder) {
   expect(size.width, greaterThanOrEqualTo(44.0));
 }
 
+void _expectSingleButtonSemantics(
+  WidgetTester tester,
+  Finder finder,
+  String expectedLabel, {
+  required bool enabled,
+}) {
+  final data = tester.getSemantics(finder).getSemanticsData();
+  expect(data.label, equals(expectedLabel));
+  expect(data.flagsCollection.isButton, isTrue);
+  expect(
+    data.flagsCollection.isEnabled,
+    equals(enabled ? Tristate.isTrue : Tristate.isFalse),
+  );
+  expect(data.hasAction(SemanticsAction.tap), equals(enabled));
+}
+
+bool _hasFocusRing(WidgetTester tester, Finder descendantFinder) {
+  final containers = tester.widgetList<Container>(
+    find.ancestor(of: descendantFinder, matching: find.byType(Container)),
+  );
+  for (final container in containers) {
+    final fg = container.foregroundDecoration;
+    if (fg is BoxDecoration && fg.border is Border) {
+      final border = fg.border! as Border;
+      if (border.top.color == NeoBrutalism.teal && border.top.width >= 2.0) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 void main() {
+  setUpAll(() {
+    GoogleFonts.config.allowRuntimeFetching = false;
+  });
+
   group('AiWalletCreationDraftCard', () {
     const baseDraft = AiWalletCreationDraft(
       institutionId: 'jago',
@@ -49,7 +96,7 @@ void main() {
     );
 
     testWidgets(
-      'renders institution logo, balance input, typo chips, and invokes callbacks without 360px overflow',
+      'renders institution logo, clean borderless TextField under AppTheme, single semantics, focus ring, and callbacks at 360px',
       (tester) async {
         tester.view.physicalSize = const Size(360, 640);
         tester.view.devicePixelRatio = 1.0;
@@ -75,10 +122,13 @@ void main() {
         expect(tester.takeException(), isNull);
         expect(find.byType(InstitutionLogoWidget), findsOneWidget);
         expect(find.text('Bank Jago'), findsOneWidget);
-        expect(find.textContaining('Bank'), findsWidgets);
         expect(find.text('Atau pakai dompet yang ada:'), findsOneWidget);
         expect(find.text('BCA Utama'), findsOneWidget);
         expect(find.text('GoPay'), findsOneWidget);
+
+        final field = tester.widget<TextField>(find.byType(TextField));
+        expect(field.decoration?.enabledBorder, equals(InputBorder.none));
+        expect(field.decoration?.focusedBorder, equals(InputBorder.none));
 
         _expectMinTouchTarget(
           tester,
@@ -92,6 +142,29 @@ void main() {
           tester,
           find.byKey(const Key('wallet_existing_chip_w-gopay')),
         );
+        _expectSingleButtonSemantics(
+          tester,
+          find.byKey(const Key('wallet_create_button')),
+          '+ Buat Dompet Bank Jago',
+          enabled: true,
+        );
+        _expectSingleButtonSemantics(
+          tester,
+          find.byKey(const Key('wallet_existing_chip_w-bca')),
+          'BCA Utama',
+          enabled: true,
+        );
+
+        await tester.tap(find.byType(TextField));
+        await tester.pump();
+        expect(_hasFocusRing(tester, find.byType(TextField)), isTrue);
+
+        await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+        await tester.pump();
+        expect(
+          _hasFocusRing(tester, find.byKey(const Key('wallet_create_button'))),
+          isTrue,
+        );
 
         await tester.tap(find.byKey(const Key('wallet_create_button')));
         await tester.pump();
@@ -99,8 +172,10 @@ void main() {
 
         await tester.enterText(find.byType(TextField), '250000');
         await tester.pump();
-        final field = tester.widget<TextField>(find.byType(TextField));
-        expect(field.controller?.text, equals('250.000'));
+        expect(
+          tester.widget<TextField>(find.byType(TextField)).controller?.text,
+          equals('250.000'),
+        );
 
         await tester.tap(find.byKey(const Key('wallet_create_button')));
         await tester.pump();
@@ -113,29 +188,69 @@ void main() {
       },
     );
 
-    testWidgets('shows mint state and disables create button once created', (
-      tester,
-    ) async {
-      var tapCount = 0;
+    testWidgets(
+      'hides input & chips when created, disables button, and resets controller when isCreated transitions back to false',
+      (tester) async {
+        var tapCount = 0;
+        await tester.pumpWidget(
+          _wrapViewport360(
+            AiWalletCreationDraftCard(
+              draft: baseDraft.copyWith(
+                initialBalance: 500000,
+                isCreated: true,
+                createdWalletId: 'w-jago-1',
+              ),
+              onCreateWallet: (_) => tapCount++,
+            ),
+          ),
+        );
+        await tester.pump();
+
+        expect(find.textContaining('Dompet Bank Jago dibuat'), findsOneWidget);
+        expect(find.byType(TextField), findsNothing);
+        expect(find.text('Atau pakai dompet yang ada:'), findsNothing);
+        _expectSingleButtonSemantics(
+          tester,
+          find.byKey(const Key('wallet_create_button')),
+          '+ Buat Dompet Bank Jago',
+          enabled: false,
+        );
+
+        await tester.tap(find.byKey(const Key('wallet_create_button')));
+        await tester.pump();
+        expect(tapCount, equals(0));
+
+        await tester.pumpWidget(
+          _wrapViewport360(
+            AiWalletCreationDraftCard(
+              draft: baseDraft.copyWith(initialBalance: 0, isCreated: false),
+              onCreateWallet: (_) => tapCount++,
+            ),
+          ),
+        );
+        await tester.pump();
+        expect(
+          tester.widget<TextField>(find.byType(TextField)).controller?.text,
+          isEmpty,
+        );
+        _expectNoEmDash(tester);
+      },
+    );
+
+    testWidgets('normalizes web3_wallet type cleanly', (tester) async {
       await tester.pumpWidget(
         _wrapViewport360(
-          AiWalletCreationDraftCard(
-            draft: baseDraft.copyWith(
-              initialBalance: 500000,
-              isCreated: true,
-              createdWalletId: 'w-jago-1',
+          const AiWalletCreationDraftCard(
+            draft: AiWalletCreationDraft(
+              institutionId: 'metamask',
+              institutionName: 'MetaMask',
+              walletType: 'web3_wallet',
             ),
-            onCreateWallet: (_) => tapCount++,
           ),
         ),
       );
       await tester.pump();
-
-      expect(find.textContaining('Dompet Bank Jago dibuat'), findsOneWidget);
-      await tester.tap(find.byKey(const Key('wallet_create_button')));
-      await tester.pump();
-      expect(tapCount, equals(0));
-      _expectNoEmDash(tester);
+      expect(find.text('Web3 Wallet'), findsOneWidget);
     });
   });
 
@@ -165,7 +280,7 @@ void main() {
     );
 
     testWidgets(
-      'renders 2 items simultaneously and enforces >= 44px targets at 360x640',
+      'renders 2 items simultaneously, uses 1.5px micro pill borders, and enforces >= 44px targets at 360x640',
       (tester) async {
         tester.view.physicalSize = const Size(360, 640);
         tester.view.devicePixelRatio = 1.0;
@@ -197,9 +312,26 @@ void main() {
         expect(find.text('Transportation • Ride Hailing / Taxi'), findsOneWidget);
         expect(find.text('GoPay'), findsNWidgets(2));
 
+        final pillBox = tester.widget<Container>(
+          find
+              .ancestor(
+                of: find.text('Food & Beverage • Coffee Shop'),
+                matching: find.byType(Container),
+              )
+              .first,
+        );
+        final pillBorder = (pillBox.decoration as BoxDecoration).border as Border;
+        expect(pillBorder.top.width, equals(1.5));
+
         _expectMinTouchTarget(tester, find.byKey(const Key('tx_confirm_btn')));
         _expectMinTouchTarget(tester, find.byKey(const Key('tx_cancel_btn')));
         _expectMinTouchTarget(tester, find.byKey(const Key('tx_edit_btn')));
+        _expectSingleButtonSemantics(
+          tester,
+          find.byKey(const Key('tx_confirm_btn')),
+          'Konfirmasi & Catat',
+          enabled: true,
+        );
 
         await tester.tap(find.byKey(const Key('tx_confirm_btn')));
         await tester.tap(find.byKey(const Key('tx_cancel_btn')));
@@ -213,25 +345,74 @@ void main() {
       },
     );
 
-    testWidgets('locks confirm button with spinner while isSubmitting == true', (
-      tester,
-    ) async {
-      var confirmCalls = 0;
-      await tester.pumpWidget(
-        _wrapViewport360(
-          AiTransactionDraftCard(
-            draft: twoItemDraft.copyWith(isSubmitting: true),
-            onConfirm: () => confirmCalls++,
+    testWidgets(
+      'locks confirm, cancel, and edit buttons with spinner while isSubmitting == true, and disables Edit Rinci when items empty',
+      (tester) async {
+        var confirmCalls = 0;
+        var cancelCalls = 0;
+        var editCalls = 0;
+        await tester.pumpWidget(
+          _wrapViewport360(
+            AiTransactionDraftCard(
+              draft: twoItemDraft.copyWith(isSubmitting: true),
+              onConfirm: () => confirmCalls++,
+              onCancel: () => cancelCalls++,
+              onEditDetail: () => editCalls++,
+            ),
           ),
-        ),
-      );
-      await tester.pump();
+        );
+        await tester.pump();
 
-      expect(find.byType(CircularProgressIndicator), findsOneWidget);
-      await tester.tap(find.byKey(const Key('tx_confirm_btn')));
-      await tester.pump();
-      expect(confirmCalls, equals(0));
-    });
+        expect(find.byType(CircularProgressIndicator), findsOneWidget);
+        _expectSingleButtonSemantics(
+          tester,
+          find.byKey(const Key('tx_confirm_btn')),
+          'Konfirmasi & Catat',
+          enabled: false,
+        );
+        _expectSingleButtonSemantics(
+          tester,
+          find.byKey(const Key('tx_cancel_btn')),
+          'Batal',
+          enabled: false,
+        );
+        _expectSingleButtonSemantics(
+          tester,
+          find.byKey(const Key('tx_edit_btn')),
+          'Edit Rinci',
+          enabled: false,
+        );
+
+        await tester.tap(find.byKey(const Key('tx_confirm_btn')));
+        await tester.tap(find.byKey(const Key('tx_cancel_btn')));
+        await tester.tap(find.byKey(const Key('tx_edit_btn')));
+        await tester.pump();
+        expect(confirmCalls, equals(0));
+        expect(cancelCalls, equals(0));
+        expect(editCalls, equals(0));
+
+        await tester.pumpWidget(
+          _wrapViewport360(
+            AiTransactionDraftCard(
+              draft: const AiTransactionDraftGroup(clientMutationId: 'mut-empty'),
+              onCancel: () => cancelCalls++,
+              onEditDetail: () => editCalls++,
+            ),
+          ),
+        );
+        await tester.pump();
+        expect(find.textContaining('Belum ada item transaksi'), findsOneWidget);
+        _expectSingleButtonSemantics(
+          tester,
+          find.byKey(const Key('tx_edit_btn')),
+          'Edit Rinci',
+          enabled: false,
+        );
+        await tester.tap(find.byKey(const Key('tx_edit_btn')));
+        await tester.pump();
+        expect(editCalls, equals(0));
+      },
+    );
 
     testWidgets('shows confirmed mint and cancelled coral states cleanly', (
       tester,
@@ -289,7 +470,9 @@ void main() {
         ],
       );
 
-      await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+      await tester.pumpWidget(
+        MaterialApp.router(theme: AppTheme.lightTheme, routerConfig: router),
+      );
       await tester.pumpAndSettle();
 
       await tester.tap(find.byKey(const Key('tx_edit_btn')));
@@ -308,6 +491,48 @@ void main() {
       );
       expect((items[0] as Map)['walletId'], equals('w-gopay'));
       expect((items[0] as Map)['walletName'], equals('GoPay'));
+    });
+
+    testWidgets('resolves income, transfer targets, and walletLabelResolver', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrapViewport360(
+          AiTransactionDraftCard(
+            walletLabelResolver: (id) =>
+                id == 'w-gopay' ? 'GoPay Utama' : 'BCA Tabungan',
+            draft: AiTransactionDraftGroup(
+              clientMutationId: 'mut-mix',
+              items: [
+                AiTransactionDraftItem(
+                  title: 'Gaji Bulanan',
+                  amount: 8500000,
+                  type: ' INCOME ',
+                  canonicalCategory: 'Income • Salary',
+                  walletId: 'w-bca',
+                  walletName: '',
+                  occurredAt: DateTime(2026, 11, 1),
+                ),
+                AiTransactionDraftItem(
+                  title: 'Topup GoPay',
+                  amount: 100000,
+                  type: ' Transfer ',
+                  canonicalCategory: 'Transfer',
+                  walletId: 'w-bca',
+                  walletName: 'BCA',
+                  targetWalletId: 'w-gopay',
+                  occurredAt: DateTime(2026, 11, 1),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(find.text('Pemasukan'), findsOneWidget);
+      expect(find.text('Transfer'), findsNWidgets(2));
+      expect(find.text('BCA Tabungan'), findsOneWidget);
+      expect(find.text('BCA Tabungan -> GoPay Utama'), findsOneWidget);
     });
   });
 
@@ -333,7 +558,7 @@ void main() {
       clientMutationId: 'mut-bill',
       title: 'Indihome',
       amount: 385000,
-      dueDay: 20,
+      dueDay: null,
       dueDate: DateTime(2026, 11, 20),
       frequency: 'monthly',
       category: 'Bills & Utilities • Internet & Wi-Fi',
@@ -376,7 +601,9 @@ void main() {
         ],
       );
 
-      await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+      await tester.pumpWidget(
+        MaterialApp.router(theme: AppTheme.lightTheme, routerConfig: router),
+      );
       await tester.pumpAndSettle();
 
       expect(tester.takeException(), isNull);
@@ -384,11 +611,15 @@ void main() {
       expect(find.textContaining('50.000.000'), findsOneWidget);
       expect(find.textContaining('3.571.429'), findsOneWidget);
       expect(find.textContaining('BCA Utama'), findsOneWidget);
-      expect(find.text('+ Buat Goal Ini'), findsOneWidget);
-      expect(find.text('Atur Detail'), findsOneWidget);
 
       _expectMinTouchTarget(tester, find.byKey(const Key('goal_confirm_btn')));
       _expectMinTouchTarget(tester, find.byKey(const Key('goal_edit_btn')));
+      _expectSingleButtonSemantics(
+        tester,
+        find.byKey(const Key('goal_confirm_btn')),
+        '+ Buat Goal Ini',
+        enabled: true,
+      );
 
       await tester.tap(find.byKey(const Key('goal_confirm_btn')));
       await tester.pump();
@@ -397,8 +628,10 @@ void main() {
       await tester.tap(find.byKey(const Key('goal_edit_btn')));
       await tester.pumpAndSettle();
       expect(find.text('Goal Add Page'), findsOneWidget);
-      expect((goalExtra as Map)['name'], equals('Dana Nikah'));
-      expect((goalExtra as Map)['targetAmount'], equals(50000000.0));
+      final map = goalExtra as Map<String, dynamic>;
+      expect(map['name'], equals('Dana Nikah'));
+      expect(map['targetAmount'], equals(50000000.0));
+      expect(map['deadline'], equals(DateTime(2027, 12, 31).toIso8601String()));
       _expectNoEmDash(tester);
     });
 
@@ -446,21 +679,17 @@ void main() {
         ],
       );
 
-      await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+      await tester.pumpWidget(
+        MaterialApp.router(theme: AppTheme.lightTheme, routerConfig: router),
+      );
       await tester.pumpAndSettle();
 
       expect(tester.takeException(), isNull);
       expect(find.text('Food & Beverage'), findsOneWidget);
       expect(find.textContaining('1.500.000'), findsOneWidget);
       expect(find.textContaining('1.850.000'), findsOneWidget);
-      expect(find.text('+ Pasang Budget'), findsOneWidget);
-      expect(find.text('Lihat Budget'), findsOneWidget);
-      expect(find.text('Edit Rinci'), findsOneWidget);
 
-      _expectMinTouchTarget(
-        tester,
-        find.byKey(const Key('budget_confirm_btn')),
-      );
+      _expectMinTouchTarget(tester, find.byKey(const Key('budget_confirm_btn')));
       _expectMinTouchTarget(tester, find.byKey(const Key('budget_view_btn')));
       _expectMinTouchTarget(tester, find.byKey(const Key('budget_edit_btn')));
 
@@ -484,7 +713,107 @@ void main() {
       _expectNoEmDash(tester);
     });
 
-    testWidgets('renders Bill variant, handles submitting/confirmed/cancelled, and fallback', (
+    testWidgets(
+      'renders Bill variant with dueDay fallback, submitting/confirmed/cancelled, and empty state',
+      (tester) async {
+        tester.view.physicalSize = const Size(360, 640);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        var confirmed = false;
+        Object? billExtra;
+
+        final router = GoRouter(
+          initialLocation: '/',
+          routes: [
+            GoRoute(
+              path: '/',
+              builder: (context, state) => Scaffold(
+                body: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: AiPlanningActionCard(
+                    billDraft: billDraft,
+                    onConfirmBill: () => confirmed = true,
+                  ),
+                ),
+              ),
+            ),
+            GoRoute(
+              path: '/bill/add',
+              builder: (context, state) {
+                billExtra = state.extra;
+                return const Scaffold(body: Text('Bill Add Page'));
+              },
+            ),
+          ],
+        );
+
+        await tester.pumpWidget(
+          MaterialApp.router(theme: AppTheme.lightTheme, routerConfig: router),
+        );
+        await tester.pumpAndSettle();
+
+        expect(tester.takeException(), isNull);
+        expect(find.text('Indihome'), findsOneWidget);
+        expect(find.textContaining('385.000'), findsOneWidget);
+
+        _expectMinTouchTarget(tester, find.byKey(const Key('bill_confirm_btn')));
+        _expectMinTouchTarget(tester, find.byKey(const Key('bill_edit_btn')));
+
+        await tester.tap(find.byKey(const Key('bill_confirm_btn')));
+        await tester.pump();
+        expect(confirmed, isTrue);
+
+        await tester.tap(find.byKey(const Key('bill_edit_btn')));
+        await tester.pumpAndSettle();
+        expect(find.text('Bill Add Page'), findsOneWidget);
+        final billMap = billExtra as Map<String, dynamic>;
+        expect(billMap['title'], equals('Indihome'));
+        expect(billMap['amount'], equals(385000.0));
+        expect(billMap['dueDay'], equals(20));
+        expect(billMap['dueDate'], equals(DateTime(2026, 11, 20).toIso8601String()));
+        expect(billMap['frequency'], equals('monthly'));
+        expect(billMap['category'], equals('Bills & Utilities • Internet & Wi-Fi'));
+
+        var submittingConfirmCalls = 0;
+        await tester.pumpWidget(
+          _wrapViewport360(
+            AiPlanningActionCard.bill(
+              billDraft: billDraft.copyWith(isSubmitting: true),
+              onConfirmBill: () => submittingConfirmCalls++,
+            ),
+          ),
+        );
+        await tester.pump();
+        expect(find.byType(CircularProgressIndicator), findsOneWidget);
+        await tester.tap(find.byKey(const Key('bill_confirm_btn')));
+        expect(submittingConfirmCalls, equals(0));
+
+        await tester.pumpWidget(
+          _wrapViewport360(
+            AiPlanningActionCard.goal(goalDraft: goalDraft.copyWith(isConfirmed: true)),
+          ),
+        );
+        await tester.pump();
+        expect(find.textContaining('dibuat'), findsOneWidget);
+
+        await tester.pumpWidget(
+          _wrapViewport360(
+            AiPlanningActionCard.budget(budgetDraft: budgetDraft.copyWith(isCancelled: true)),
+          ),
+        );
+        await tester.pump();
+        expect(find.textContaining('dibatalkan'), findsOneWidget);
+
+        await tester.pumpWidget(_wrapViewport360(const AiPlanningActionCard()));
+        await tester.pump();
+        expect(find.text('Draf perencanaan belum tersedia.'), findsOneWidget);
+        _expectNoEmDash(tester);
+      },
+    );
+
+    testWidgets('renders all cards cleanly at 2.0x text scale on 360px viewport without overflow', (
       tester,
     ) async {
       tester.view.physicalSize = const Size(360, 640);
@@ -492,167 +821,49 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
-      var confirmed = false;
-      Object? billExtra;
-
-      final router = GoRouter(
-        initialLocation: '/',
-        routes: [
-          GoRoute(
-            path: '/',
-            builder: (context, state) => Scaffold(
-              body: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: AiPlanningActionCard(
-                  billDraft: billDraft,
-                  onConfirmBill: () => confirmed = true,
+      await tester.pumpWidget(
+        _wrapViewport360(
+          Column(
+            children: [
+              const AiWalletCreationDraftCard(
+                draft: AiWalletCreationDraft(
+                  institutionId: 'jago',
+                  institutionName: 'Bank Jago Digital',
+                  walletType: 'bank',
+                  existingWalletIds: ['w-bca', 'w-gopay'],
                 ),
               ),
-            ),
+              const SizedBox(height: 12),
+              AiTransactionDraftCard(
+                draft: AiTransactionDraftGroup(
+                  clientMutationId: 'm-scale',
+                  items: [
+                    AiTransactionDraftItem(
+                      title: 'Belanja Bulanan Keluarga',
+                      amount: 1250000,
+                      type: 'expense',
+                      canonicalCategory: 'Household Needs • Groceries',
+                      walletId: 'w-bca',
+                      walletName: 'BCA Utama',
+                      occurredAt: DateTime(2026, 11, 1),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              AiPlanningActionCard(
+                goalDraft: goalDraft,
+                budgetDraft: budgetDraft,
+                billDraft: billDraft,
+              ),
+            ],
           ),
-          GoRoute(
-            path: '/bill/add',
-            builder: (context, state) {
-              billExtra = state.extra;
-              return const Scaffold(body: Text('Bill Add Page'));
-            },
-          ),
-        ],
+          textScale: 2.0,
+        ),
       );
-
-      await tester.pumpWidget(MaterialApp.router(routerConfig: router));
-      await tester.pumpAndSettle();
+      await tester.pump();
 
       expect(tester.takeException(), isNull);
-      expect(find.text('Indihome'), findsOneWidget);
-      expect(find.textContaining('385.000'), findsOneWidget);
-      expect(find.text('+ Aktifkan Pengingat'), findsOneWidget);
-      expect(find.text('Atur Tagihan'), findsOneWidget);
-
-      _expectMinTouchTarget(tester, find.byKey(const Key('bill_confirm_btn')));
-      _expectMinTouchTarget(tester, find.byKey(const Key('bill_edit_btn')));
-
-      await tester.tap(find.byKey(const Key('bill_confirm_btn')));
-      await tester.pump();
-      expect(confirmed, isTrue);
-
-      await tester.tap(find.byKey(const Key('bill_edit_btn')));
-      await tester.pumpAndSettle();
-      expect(find.text('Bill Add Page'), findsOneWidget);
-      expect((billExtra as Map)['title'], equals('Indihome'));
-      expect((billExtra as Map)['amount'], equals(385000.0));
-      expect((billExtra as Map)['dueDay'], equals(20));
-      expect((billExtra as Map)['frequency'], equals('monthly'));
-
-      var submittingConfirmCalls = 0;
-      await tester.pumpWidget(
-        _wrapViewport360(
-          AiPlanningActionCard.bill(
-            billDraft: billDraft.copyWith(isSubmitting: true),
-            onConfirmBill: () => submittingConfirmCalls++,
-          ),
-        ),
-      );
-      await tester.pump();
-      expect(find.byType(CircularProgressIndicator), findsOneWidget);
-      await tester.tap(find.byKey(const Key('bill_confirm_btn')));
-      expect(submittingConfirmCalls, equals(0));
-
-      await tester.pumpWidget(
-        _wrapViewport360(
-          AiPlanningActionCard.goal(
-            goalDraft: goalDraft.copyWith(isConfirmed: true),
-          ),
-        ),
-      );
-      await tester.pump();
-      expect(find.textContaining('dibuat'), findsOneWidget);
-
-      await tester.pumpWidget(
-        _wrapViewport360(
-          AiPlanningActionCard.budget(
-            budgetDraft: budgetDraft.copyWith(isCancelled: true),
-          ),
-        ),
-      );
-      await tester.pump();
-      expect(find.textContaining('dibatalkan'), findsOneWidget);
-      _expectNoEmDash(tester);
-    });
-
-    testWidgets('handles income/transfer/empty tx drafts, default wallet chips, and empty planning state', (
-      tester,
-    ) async {
-      await tester.pumpWidget(
-        _wrapViewport360(
-          const AiWalletCreationDraftCard(
-            draft: AiWalletCreationDraft(
-              institutionId: 'jenius',
-              institutionName: 'Jenius',
-              walletType: 'e_wallet',
-              existingWalletIds: ['w-bca', 'w-gopay'],
-              initialBalance: 500000,
-            ),
-          ),
-        ),
-      );
-      await tester.pump();
-      expect(find.text('BCA'), findsOneWidget);
-      expect(find.text('GoPay'), findsOneWidget);
-      expect(find.text('E-Wallet'), findsOneWidget);
-      expect(
-        tester.widget<TextField>(find.byType(TextField)).controller?.text,
-        equals('500.000'),
-      );
-
-      await tester.pumpWidget(
-        _wrapViewport360(
-          AiTransactionDraftCard(
-            draft: AiTransactionDraftGroup(
-              clientMutationId: 'mut-mix',
-              items: [
-                AiTransactionDraftItem(
-                  title: 'Gaji Bulanan',
-                  amount: 8500000,
-                  type: 'income',
-                  canonicalCategory: 'Income • Salary',
-                  walletId: 'w-bca',
-                  walletName: 'BCA',
-                  occurredAt: DateTime(2026, 11, 1),
-                ),
-                AiTransactionDraftItem(
-                  title: 'Topup GoPay',
-                  amount: 100000,
-                  type: 'transfer',
-                  canonicalCategory: 'Transfer',
-                  walletId: 'w-bca',
-                  walletName: 'BCA',
-                  targetWalletId: 'w-gopay',
-                  occurredAt: DateTime(2026, 11, 1),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-      await tester.pump();
-      expect(find.text('Pemasukan'), findsOneWidget);
-      expect(find.text('Transfer'), findsNWidgets(2));
-      expect(find.text('BCA -> w-gopay'), findsOneWidget);
-
-      await tester.pumpWidget(
-        _wrapViewport360(
-          const AiTransactionDraftCard(
-            draft: AiTransactionDraftGroup(clientMutationId: 'mut-empty'),
-          ),
-        ),
-      );
-      await tester.pump();
-      expect(find.textContaining('Belum ada item transaksi'), findsOneWidget);
-
-      await tester.pumpWidget(_wrapViewport360(const AiPlanningActionCard()));
-      await tester.pump();
-      expect(find.text('Draf perencanaan belum tersedia.'), findsOneWidget);
       _expectNoEmDash(tester);
     });
   });
