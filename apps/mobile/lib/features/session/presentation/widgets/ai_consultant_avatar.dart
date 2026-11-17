@@ -21,13 +21,19 @@ class AiConsultantAvatar extends StatelessWidget {
     Widget fallback() => ColoredBox(
       color: NeoBrutalism.primaryLight,
       child: Center(
-        child: Text(
-          initials,
-          style: aiCardTextStyle(
-            context,
-            fontSize: 15,
-            fontWeight: FontWeight.w900,
-            color: NeoBrutalism.dark,
+        child: Padding(
+          padding: const EdgeInsets.all(6),
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              initials,
+              style: aiCardTextStyle(
+                context,
+                fontSize: 15,
+                fontWeight: FontWeight.w900,
+                color: NeoBrutalism.dark,
+              ),
+            ),
           ),
         ),
       ),

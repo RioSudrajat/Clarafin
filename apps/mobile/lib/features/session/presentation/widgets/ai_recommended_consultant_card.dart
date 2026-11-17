@@ -9,8 +9,8 @@ export 'ai_recommendation_primitives.dart' show AiNeoActionButton, AiNeoBadge;
 /// Displays a recommended practitioner card with safe avatar fallback and actions.
 class AiRecommendedConsultantCard extends StatelessWidget {
   final AiConsultantRecommendation consultant;
-  final VoidCallback onViewProfile;
-  final VoidCallback onSchedule;
+  final VoidCallback? onViewProfile;
+  final VoidCallback? onSchedule;
 
   const AiRecommendedConsultantCard({
     super.key,
@@ -21,7 +21,11 @@ class AiRecommendedConsultantCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasCerts = consultant.certifications.isNotEmpty;
+    final certifications = consultant.certifications
+        .map((c) => c.trim())
+        .where((c) => c.isNotEmpty)
+        .toList();
+    final hasCerts = certifications.isNotEmpty;
     final hasTier = consultant.tierLabel.trim().isNotEmpty;
     final hasReason = consultant.matchReason.trim().isNotEmpty;
     final hasStats =
@@ -65,7 +69,7 @@ class AiRecommendedConsultantCard extends StatelessWidget {
                     if (hasCerts) ...[
                       const SizedBox(height: 2),
                       Text(
-                        consultant.certifications.join(' • '),
+                        certifications.join(' • '),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: aiCardTextStyle(
@@ -203,17 +207,18 @@ class AiRecommendedConsultantCard extends StatelessWidget {
 
   Widget _buildActionButtons(BuildContext context) {
     final textScale = aiEffectiveTextScale(context);
+    final hasValidId = consultant.consultantId.trim().isNotEmpty;
     return LayoutBuilder(
       builder: (context, constraints) {
         final viewBtn = AiNeoActionButton(
           label: 'Lihat Profil',
           backgroundColor: Colors.white,
-          onTap: onViewProfile,
+          onTap: hasValidId ? onViewProfile : null,
         );
         final scheduleBtn = AiNeoActionButton(
           label: 'Pilih & Jadwalkan',
           backgroundColor: NeoBrutalism.lime,
-          onTap: onSchedule,
+          onTap: hasValidId ? onSchedule : null,
         );
         if (constraints.maxWidth < 260 || textScale >= 1.35) {
           return Column(

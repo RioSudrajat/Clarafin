@@ -27,17 +27,17 @@ double aiEffectiveTextScale(BuildContext context) {
   return MediaQuery.textScalerOf(context).scale(14.0) / 14.0;
 }
 
-/// Formats nearest consultant schedule slot using explicit label or local date.
+/// Formats nearest consultant schedule slot using explicit label or UTC+7 WIB.
 String aiResolveSlotLabel(AiConsultantRecommendation consultant) {
   final explicit = consultant.nextAvailableSlotLabel.trim();
   if (explicit.isNotEmpty) return explicit;
   final slotAt = consultant.nextAvailableSlotAt;
   if (slotAt != null) {
-    final local = slotAt.toLocal();
-    final dd = local.day.toString().padLeft(2, '0');
-    final mm = local.month.toString().padLeft(2, '0');
-    final hh = local.hour.toString().padLeft(2, '0');
-    final min = local.minute.toString().padLeft(2, '0');
+    final wib = slotAt.toUtc().add(const Duration(hours: 7));
+    final dd = wib.day.toString().padLeft(2, '0');
+    final mm = wib.month.toString().padLeft(2, '0');
+    final hh = wib.hour.toString().padLeft(2, '0');
+    final min = wib.minute.toString().padLeft(2, '0');
     return '$dd/$mm, $hh:$min WIB';
   }
   return 'Cek jadwal di profil';
@@ -101,7 +101,7 @@ class AiNeoBadge extends StatelessWidget {
 class AiNeoActionButton extends StatefulWidget {
   final String label;
   final Color backgroundColor;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   const AiNeoActionButton({
     super.key,
@@ -120,13 +120,20 @@ class _AiNeoActionButtonState extends State<AiNeoActionButton> {
 
   @override
   Widget build(BuildContext context) {
+    final isEnabled = widget.onTap != null;
     // High-contrast #0E6976 ring (6.36:1 on white, 6.07:1 on warm surface).
     final focusRingColor =
-        _isFocused ? NeoBrutalism.darkTeal : Colors.transparent;
+        (_isFocused && isEnabled) ? NeoBrutalism.darkTeal : Colors.transparent;
+    final fillColor =
+        isEnabled ? widget.backgroundColor : const Color(0xFFE5E7EB);
+    // #4B5563 on #E5E7EB passes WCAG AA at 6.10:1 when disabled.
+    final labelColor =
+        isEnabled ? NeoBrutalism.dark : const Color(0xFF4B5563);
 
     return MergeSemantics(
       child: Semantics(
         button: true,
+        enabled: isEnabled,
         child: Container(
           padding: const EdgeInsets.all(2),
           decoration: BoxDecoration(
@@ -134,13 +141,15 @@ class _AiNeoActionButtonState extends State<AiNeoActionButton> {
             border: Border.all(color: focusRingColor, width: 2.5),
           ),
           child: Transform.translate(
-            offset: Offset(0, _isPressed ? 2.0 : 0.0),
+            offset: Offset(0, (_isPressed && isEnabled) ? 2.0 : 0.0),
             child: Container(
               decoration: BoxDecoration(
-                color: widget.backgroundColor,
+                color: fillColor,
                 borderRadius: BorderRadius.circular(NeoBrutalism.radiusSm),
                 border: NeoBrutalism.border(width: 2.0),
-                boxShadow: _isPressed ? null : NeoBrutalism.shadow(yOffset: 2.0),
+                boxShadow: (_isPressed || !isEnabled)
+                    ? null
+                    : NeoBrutalism.shadow(yOffset: 2.0),
               ),
               child: Material(
                 color: Colors.transparent,
@@ -148,12 +157,16 @@ class _AiNeoActionButtonState extends State<AiNeoActionButton> {
                   borderRadius: BorderRadius.circular(10),
                   focusColor: NeoBrutalism.darkTeal.withValues(alpha: 0.14),
                   hoverColor: NeoBrutalism.darkTeal.withValues(alpha: 0.08),
-                  onFocusChange: (focused) {
-                    if (mounted) setState(() => _isFocused = focused);
-                  },
-                  onHighlightChanged: (pressed) {
-                    if (mounted) setState(() => _isPressed = pressed);
-                  },
+                  onFocusChange: isEnabled
+                      ? (focused) {
+                          if (mounted) setState(() => _isFocused = focused);
+                        }
+                      : null,
+                  onHighlightChanged: isEnabled
+                      ? (pressed) {
+                          if (mounted) setState(() => _isPressed = pressed);
+                        }
+                      : null,
                   onTap: widget.onTap,
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(
@@ -175,7 +188,7 @@ class _AiNeoActionButtonState extends State<AiNeoActionButton> {
                             context,
                             fontSize: 12,
                             fontWeight: FontWeight.w800,
-                            color: NeoBrutalism.dark,
+                            color: labelColor,
                             height: 1.2,
                           ),
                         ),

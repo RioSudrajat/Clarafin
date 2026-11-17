@@ -9,6 +9,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:mobile/core/theme/neo_brutalism_decorations.dart';
 import 'package:mobile/features/consult/presentation/providers/booking_provider.dart';
 import 'package:mobile/features/session/domain/models/ai_chat_models.dart';
+import 'package:mobile/features/session/presentation/widgets/ai_recommendation_primitives.dart';
 import 'package:mobile/features/session/presentation/widgets/ai_recommended_consultant_card.dart';
 import 'package:mobile/features/session/presentation/widgets/ai_recommended_consultants_section.dart';
 
@@ -74,6 +75,7 @@ void main() {
         tester.view.physicalSize = const Size(360, 640);
         tester.view.devicePixelRatio = 1.0;
         addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
 
         final overflowErrors = <FlutterErrorDetails>[];
         final previousOnError = FlutterError.onError;
@@ -163,6 +165,7 @@ void main() {
         tester.view.physicalSize = const Size(360, 640);
         tester.view.devicePixelRatio = 1.0;
         addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
 
         final container = ProviderContainer();
         addTearDown(container.dispose);
@@ -226,6 +229,7 @@ void main() {
         tester.view.physicalSize = const Size(360, 640);
         tester.view.devicePixelRatio = 1.0;
         addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
 
         final container = ProviderContainer();
         addTearDown(container.dispose);
@@ -335,6 +339,7 @@ void main() {
         tester.view.physicalSize = const Size(360, 640);
         tester.view.devicePixelRatio = 1.0;
         addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
 
         final overflowErrors = <FlutterErrorDetails>[];
         final previousOnError = FlutterError.onError;
@@ -353,7 +358,7 @@ void main() {
             consultantId: 'c4',
             name: 'Dr. Hendra Wijaya, MBA, CFA®, CFP®',
             tierLabel: 'Premium',
-            nextAvailableSlotAt: DateTime(2026, 11, 20, 10, 30),
+            nextAvailableSlotAt: DateTime.utc(2026, 11, 20, 3, 30),
           ),
           const AiConsultantRecommendation(
             consultantId: 'c6',
@@ -440,6 +445,7 @@ void main() {
         tester.view.physicalSize = const Size(360, 640);
         tester.view.devicePixelRatio = 1.0;
         addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
 
         final overflowErrors = <FlutterErrorDetails>[];
         final previousOnError = FlutterError.onError;
@@ -614,6 +620,204 @@ void main() {
 
         expect(find.byType(AiRecommendedConsultantCard), findsNothing);
         expect(find.text('Belum ada konsultan tersedia'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'navigates to /consult via go() on StatefulShellRoute without duplicate GlobalKey error and supports onBrowseConsultants',
+      (tester) async {
+        final rootKey = GlobalKey<NavigatorState>(debugLabel: 'testRoot');
+        final homeBranchKey = GlobalKey<NavigatorState>(debugLabel: 'testHome');
+        final consultBranchKey = GlobalKey<NavigatorState>(
+          debugLabel: 'testConsult',
+        );
+
+        final shellRouter = GoRouter(
+          navigatorKey: rootKey,
+          initialLocation: '/ai-chat',
+          routes: [
+            StatefulShellRoute.indexedStack(
+              builder: (context, state, shell) => Scaffold(body: shell),
+              branches: [
+                StatefulShellBranch(
+                  navigatorKey: homeBranchKey,
+                  routes: [
+                    GoRoute(
+                      path: '/home',
+                      builder: (context, state) =>
+                          const Scaffold(body: Text('Home Shell Branch')),
+                    ),
+                  ],
+                ),
+                StatefulShellBranch(
+                  navigatorKey: consultBranchKey,
+                  routes: [
+                    GoRoute(
+                      path: '/consult',
+                      builder: (context, state) =>
+                          const Scaffold(body: Text('Consult Shell Branch')),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            GoRoute(
+              path: '/ai-chat',
+              parentNavigatorKey: rootKey,
+              builder: (context, state) => const Scaffold(
+                body: SingleChildScrollView(
+                  padding: EdgeInsets.all(16),
+                  child: AiRecommendedConsultantsSection(
+                    recommendedPackage: samplePackage,
+                    consultants: [],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+
+        await tester.pumpWidget(
+          ProviderScope(
+            child: MaterialApp.router(routerConfig: shellRouter),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final browseBtn = find.widgetWithText(
+          InkWell,
+          'Lihat Semua Konsultan',
+        );
+        await tester.tap(browseBtn);
+        await tester.pumpAndSettle();
+
+        expect(find.text('Consult Shell Branch'), findsOneWidget);
+        expect(shellRouter.routeInformationProvider.value.uri.path, '/consult');
+
+        var customBrowseCalled = false;
+        await tester.pumpWidget(
+          ProviderScope(
+            child: MaterialApp(
+              home: Scaffold(
+                body: AiRecommendedConsultantsSection(
+                  recommendedPackage: samplePackage,
+                  consultants: const [],
+                  onBrowseConsultants: () => customBrowseCalled = true,
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text('Lihat Semua Konsultan'));
+        await tester.pump();
+        expect(customBrowseCalled, isTrue);
+      },
+    );
+
+    testWidgets(
+      'guards blank consultantId, filters blank certifications, normalizes UTC slot to WIB, and scales wide initials at 2.0x',
+      (tester) async {
+        tester.view.physicalSize = const Size(360, 640);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        // UTC instant -> WIB (UTC+7), including cross-midnight date rollover.
+        expect(
+          aiResolveSlotLabel(
+            AiConsultantRecommendation(
+              consultantId: 'c1',
+              name: 'Test',
+              nextAvailableSlotAt: DateTime.utc(2026, 11, 20, 3, 30),
+            ),
+          ),
+          equals('20/11, 10:30 WIB'),
+        );
+        expect(
+          aiResolveSlotLabel(
+            AiConsultantRecommendation(
+              consultantId: 'c1',
+              name: 'Test',
+              nextAvailableSlotAt: DateTime.utc(2026, 11, 20, 20, 15),
+            ),
+          ),
+          equals('21/11, 03:15 WIB'),
+        );
+
+        final container = ProviderContainer();
+        addTearDown(container.dispose);
+
+        var viewCalled = false;
+        var scheduleCalled = false;
+
+        const blankIdConsultant = AiConsultantRecommendation(
+          consultantId: '   ',
+          name: 'Maulana Wijaya',
+          certifications: ['', '  ', 'CFP®', ''],
+          tierLabel: 'Basic',
+        );
+        const allBlankCertsConsultant = AiConsultantRecommendation(
+          consultantId: 'c9',
+          name: 'Wulan Sari',
+          certifications: ['', '   '],
+          tierLabel: 'Medium',
+        );
+
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: MaterialApp(
+              builder: (context, child) {
+                final mq = MediaQuery.of(context);
+                return MediaQuery(
+                  data: mq.copyWith(textScaler: const TextScaler.linear(2.0)),
+                  child: child!,
+                );
+              },
+              home: Scaffold(
+                body: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: AiRecommendedConsultantsSection(
+                    recommendedPackage: samplePackage,
+                    consultants: const [
+                      blankIdConsultant,
+                      allBlankCertsConsultant,
+                    ],
+                    onViewProfile: (_) => viewCalled = true,
+                    onSchedule: (_) => scheduleCalled = true,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Blank certification tokens filtered cleanly.
+        expect(find.text('CFP®'), findsOneWidget);
+        expect(find.textContaining('•  •'), findsNothing);
+
+        // Wide initials ('MW') rendered cleanly inside FittedBox at 2.0x scale.
+        expect(find.text('MW'), findsOneWidget);
+        expect(find.byType(FittedBox), findsWidgets);
+
+        // Blank consultantId disables action buttons & prevents callbacks/prefill.
+        final firstViewBtn = find.text('Lihat Profil').first;
+        await tester.ensureVisible(firstViewBtn);
+        await tester.pumpAndSettle();
+        await tester.tap(firstViewBtn);
+
+        final firstScheduleBtn = find.text('Pilih & Jadwalkan').first;
+        await tester.ensureVisible(firstScheduleBtn);
+        await tester.pumpAndSettle();
+        await tester.tap(firstScheduleBtn);
+        await tester.pump();
+
+        expect(viewCalled, isFalse);
+        expect(scheduleCalled, isFalse);
+        expect(container.read(bookingProvider).isPrefilledFromAi, isFalse);
       },
     );
   });

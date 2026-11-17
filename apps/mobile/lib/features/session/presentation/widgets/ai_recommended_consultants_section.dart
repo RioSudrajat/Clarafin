@@ -14,6 +14,7 @@ class AiRecommendedConsultantsSection extends ConsumerWidget {
   final List<AiConsultantRecommendation> consultants;
   final void Function(String consultantId)? onViewProfile;
   final void Function(AiConsultantRecommendation consultant)? onSchedule;
+  final VoidCallback? onBrowseConsultants;
 
   const AiRecommendedConsultantsSection({
     super.key,
@@ -21,6 +22,7 @@ class AiRecommendedConsultantsSection extends ConsumerWidget {
     required this.consultants,
     this.onViewProfile,
     this.onSchedule,
+    this.onBrowseConsultants,
   });
 
   @override
@@ -38,20 +40,24 @@ class AiRecommendedConsultantsSection extends ConsumerWidget {
           const SizedBox(height: 12),
         ],
         if (visibleConsultants.isEmpty)
-          const _EmptyConsultantsCard()
+          _EmptyConsultantsCard(onBrowseConsultants: onBrowseConsultants)
         else
           for (var i = 0; i < visibleConsultants.length; i++) ...[
             AiRecommendedConsultantCard(
               consultant: visibleConsultants[i],
-              onViewProfile: () => _handleViewProfile(
-                context,
-                visibleConsultants[i].consultantId,
-              ),
-              onSchedule: () => _handleSchedule(
-                context,
-                ref,
-                visibleConsultants[i],
-              ),
+              onViewProfile: visibleConsultants[i].consultantId.trim().isNotEmpty
+                  ? () => _handleViewProfile(
+                      context,
+                      visibleConsultants[i].consultantId,
+                    )
+                  : null,
+              onSchedule: visibleConsultants[i].consultantId.trim().isNotEmpty
+                  ? () => _handleSchedule(
+                      context,
+                      ref,
+                      visibleConsultants[i],
+                    )
+                  : null,
             ),
             if (i < visibleConsultants.length - 1) const SizedBox(height: 12),
           ],
@@ -60,11 +66,13 @@ class AiRecommendedConsultantsSection extends ConsumerWidget {
   }
 
   void _handleViewProfile(BuildContext context, String consultantId) {
+    final trimmedId = consultantId.trim();
+    if (trimmedId.isEmpty) return;
     if (onViewProfile != null) {
-      onViewProfile!(consultantId);
+      onViewProfile!(trimmedId);
       return;
     }
-    GoRouter.maybeOf(context)?.push('/consult/$consultantId');
+    GoRouter.maybeOf(context)?.push('/consult/$trimmedId');
   }
 
   void _handleSchedule(
@@ -72,6 +80,8 @@ class AiRecommendedConsultantsSection extends ConsumerWidget {
     WidgetRef ref,
     AiConsultantRecommendation consultant,
   ) {
+    final trimmedId = consultant.consultantId.trim();
+    if (trimmedId.isEmpty) return;
     final pkg = recommendedPackage;
     final resolvedPackageCode = consultant.selectedPackageCode.trim().isNotEmpty
         ? consultant.selectedPackageCode.trim()
@@ -98,12 +108,14 @@ class AiRecommendedConsultantsSection extends ConsumerWidget {
       onSchedule!(consultant);
       return;
     }
-    GoRouter.maybeOf(context)?.push('/booking/${consultant.consultantId}/service');
+    GoRouter.maybeOf(context)?.push('/booking/$trimmedId/service');
   }
 }
 
 class _EmptyConsultantsCard extends StatelessWidget {
-  const _EmptyConsultantsCard();
+  final VoidCallback? onBrowseConsultants;
+
+  const _EmptyConsultantsCard({this.onBrowseConsultants});
 
   @override
   Widget build(BuildContext context) {
@@ -142,7 +154,9 @@ class _EmptyConsultantsCard extends StatelessWidget {
           AiNeoActionButton(
             label: 'Lihat Semua Konsultan',
             backgroundColor: NeoBrutalism.lime,
-            onTap: () => GoRouter.maybeOf(context)?.push('/consult'),
+            onTap:
+                onBrowseConsultants ??
+                () => GoRouter.maybeOf(context)?.go('/consult'),
           ),
         ],
       ),
