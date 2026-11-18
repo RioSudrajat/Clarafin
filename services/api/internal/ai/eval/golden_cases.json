@@ -1,0 +1,1356 @@
+[
+  {
+    "id": "Slang-01",
+    "category": "slang_extraction",
+    "surface_mode": "quick_sheet",
+    "user_prompt": "kopi kenangan 25k + parkir goceng pake gopay",
+    "pass1_calls": [
+      {
+        "tool": "check_and_prepare_transaction",
+        "args": {
+          "default_wallet_hint": "gopay",
+          "items": [
+            {"title": "Kopi Kenangan", "amount_idr": 25000, "type": "expense", "raw_category": "kopi"},
+            {"title": "Parkir", "amount_idr": 5000, "type": "expense", "raw_category": "parkir"}
+          ]
+        }
+      }
+    ],
+    "pass2_narrative": "Siap, aku buatkan draf pengeluaran via GoPay untuk Kopi Kenangan Rp 25.000 dan Parkir Rp 5.000 dengan total Rp 30.000.",
+    "expected_total_idr": 30000,
+    "expected_items": [
+      {"title": "Kopi Kenangan", "amount_idr": 25000, "type": "expense", "canonical_category": "Food & Beverage • Coffee Shop", "wallet_name": "GoPay"},
+      {"title": "Parkir", "amount_idr": 5000, "type": "expense", "canonical_category": "Transportation • Parking & Toll", "wallet_name": "GoPay"}
+    ]
+  },
+  {
+    "id": "Slang-02",
+    "category": "slang_extraction",
+    "surface_mode": "quick_sheet",
+    "user_prompt": "baru dpt transferan gaji 8,5jt masuk bca",
+    "pass1_calls": [
+      {
+        "tool": "check_and_prepare_transaction",
+        "args": {
+          "items": [
+            {"title": "Gaji Bulanan", "amount_idr": 8500000, "type": "income", "raw_category": "gaji", "wallet_hint": "bca"}
+          ]
+        }
+      }
+    ],
+    "pass2_narrative": "Draf pemasukan Gaji Bulanan sebesar Rp 8.500.000 ke dompet BCA sudah siap untuk dikonfirmasi.",
+    "expected_total_idr": 8500000,
+    "expected_items": [
+      {"title": "Gaji Bulanan", "amount_idr": 8500000, "type": "income", "canonical_category": "Income • Salary", "wallet_name": "BCA"}
+    ]
+  },
+  {
+    "id": "Slang-03",
+    "category": "slang_extraction",
+    "surface_mode": "quick_sheet",
+    "user_prompt": "makan siang gocap sama parkir seceng pake ovo",
+    "pass1_calls": [
+      {
+        "tool": "check_and_prepare_transaction",
+        "args": {
+          "default_wallet_hint": "ovo",
+          "items": [
+            {"title": "Makan Siang", "amount_idr": 50000, "type": "expense", "raw_category": "makan siang"},
+            {"title": "Parkir", "amount_idr": 1000, "type": "expense", "raw_category": "parkir"}
+          ]
+        }
+      }
+    ],
+    "pass2_narrative": "Sudah aku siapkan draf pengeluaran OVO untuk Makan Siang Rp 50.000 dan Parkir Rp 1.000 dengan total Rp 51.000.",
+    "expected_total_idr": 51000,
+    "expected_items": [
+      {"title": "Makan Siang", "amount_idr": 50000, "type": "expense", "canonical_category": "Food & Beverage • Restaurant", "wallet_name": "OVO"},
+      {"title": "Parkir", "amount_idr": 1000, "type": "expense", "canonical_category": "Transportation • Parking & Toll", "wallet_name": "OVO"}
+    ]
+  },
+  {
+    "id": "Slang-04",
+    "category": "slang_extraction",
+    "surface_mode": "quick_sheet",
+    "user_prompt": "beli bensin pertamax cepek pake mandiri",
+    "pass1_calls": [
+      {
+        "tool": "check_and_prepare_transaction",
+        "args": {
+          "items": [
+            {"title": "Bensin Pertamax", "amount_idr": 100000, "type": "expense", "raw_category": "bensin", "wallet_hint": "mandiri"}
+          ]
+        }
+      }
+    ],
+    "pass2_narrative": "Draf pengeluaran Bensin Pertamax Rp 100.000 melalui dompet Mandiri sudah siap.",
+    "expected_total_idr": 100000,
+    "expected_items": [
+      {"title": "Bensin Pertamax", "amount_idr": 100000, "type": "expense", "canonical_category": "Transportation • Fuel & Gas", "wallet_name": "Mandiri"}
+    ]
+  },
+  {
+    "id": "Slang-05",
+    "category": "slang_extraction",
+    "surface_mode": "quick_sheet",
+    "user_prompt": "jajan bakso ceban + es teh goceng pake dana",
+    "pass1_calls": [
+      {
+        "tool": "check_and_prepare_transaction",
+        "args": {
+          "default_wallet_hint": "dana",
+          "items": [
+            {"title": "Bakso", "amount_idr": 10000, "type": "expense", "raw_category": "bakso"},
+            {"title": "Es Teh", "amount_idr": 5000, "type": "expense", "raw_category": "minuman"}
+          ]
+        }
+      }
+    ],
+    "pass2_narrative": "Draf transaksi via DANA untuk Bakso Rp 10.000 dan Es Teh Rp 5.000 (total Rp 15.000) siap disimpan.",
+    "expected_total_idr": 15000,
+    "expected_items": [
+      {"title": "Bakso", "amount_idr": 10000, "type": "expense", "canonical_category": "Food & Beverage • Restaurant", "wallet_name": "DANA"},
+      {"title": "Es Teh", "amount_idr": 5000, "type": "expense", "canonical_category": "Food & Beverage", "wallet_name": "DANA"}
+    ]
+  },
+  {
+    "id": "Slang-06",
+    "category": "slang_extraction",
+    "surface_mode": "quick_sheet",
+    "user_prompt": "topup gopay 500rb dari bca",
+    "pass1_calls": [
+      {
+        "tool": "check_and_prepare_transaction",
+        "args": {
+          "items": [
+            {"title": "Top-up GoPay dari BCA", "amount_idr": 500000, "type": "transfer", "raw_category": "transfer", "wallet_hint": "bca", "target_wallet_hint": "gopay"}
+          ]
+        }
+      }
+    ],
+    "pass2_narrative": "Draf transfer Rp 500.000 dari BCA ke GoPay sudah siap untuk kamu konfirmasi.",
+    "expected_total_idr": 500000,
+    "expected_items": [
+      {"title": "Top-up GoPay dari BCA", "amount_idr": 500000, "type": "transfer", "canonical_category": "Transfer", "wallet_name": "BCA", "target_wallet_name": "GoPay"}
+    ]
+  },
+  {
+    "id": "Slang-07",
+    "category": "slang_extraction",
+    "surface_mode": "quick_sheet",
+    "user_prompt": "bayar listrik pln 350rb pake livin mandiri",
+    "pass1_calls": [
+      {
+        "tool": "check_and_prepare_transaction",
+        "args": {
+          "items": [
+            {"title": "Tagihan Listrik PLN", "amount_idr": 350000, "type": "expense", "raw_category": "listrik pln", "wallet_hint": "livin mandiri"}
+          ]
+        }
+      }
+    ],
+    "pass2_narrative": "Draf pembayaran Tagihan Listrik PLN sebesar Rp 350.000 melalui dompet Mandiri sudah siap.",
+    "expected_total_idr": 350000,
+    "expected_items": [
+      {"title": "Tagihan Listrik PLN", "amount_idr": 350000, "type": "expense", "canonical_category": "Bills & Utilities • Electricity / Listrik PLN", "wallet_name": "Mandiri"}
+    ]
+  },
+  {
+    "id": "Slang-08",
+    "category": "slang_extraction",
+    "surface_mode": "quick_sheet",
+    "user_prompt": "pesen gofood ayam geprek 32rb + goride 18rb pake gopay",
+    "pass1_calls": [
+      {
+        "tool": "check_and_prepare_transaction",
+        "args": {
+          "default_wallet_hint": "gopay",
+          "items": [
+            {"title": "GoFood Ayam Geprek", "amount_idr": 32000, "type": "expense", "raw_category": "gofood"},
+            {"title": "GoRide", "amount_idr": 18000, "type": "expense", "raw_category": "goride"}
+          ]
+        }
+      }
+    ],
+    "pass2_narrative": "Aku siapkan draf pengeluaran GoPay untuk GoFood Ayam Geprek Rp 32.000 dan GoRide Rp 18.000 dengan total Rp 50.000.",
+    "expected_total_idr": 50000,
+    "expected_items": [
+      {"title": "GoFood Ayam Geprek", "amount_idr": 32000, "type": "expense", "canonical_category": "Food & Beverage • Food delivery", "wallet_name": "GoPay"},
+      {"title": "GoRide", "amount_idr": 18000, "type": "expense", "canonical_category": "Transportation • Ride Hailing / Taxi", "wallet_name": "GoPay"}
+    ]
+  },
+  {
+    "id": "Slang-09",
+    "category": "slang_extraction",
+    "surface_mode": "quick_sheet",
+    "user_prompt": "belanja bulanan indomaret 175rb pake bca",
+    "pass1_calls": [
+      {
+        "tool": "check_and_prepare_transaction",
+        "args": {
+          "items": [
+            {"title": "Belanja Indomaret", "amount_idr": 175000, "type": "expense", "raw_category": "indomaret", "wallet_hint": "bca"}
+          ]
+        }
+      }
+    ],
+    "pass2_narrative": "Draf pengeluaran Belanja Indomaret sebesar Rp 175.000 menggunakan dompet BCA sudah siap.",
+    "expected_total_idr": 175000,
+    "expected_items": [
+      {"title": "Belanja Indomaret", "amount_idr": 175000, "type": "expense", "canonical_category": "Household Needs • Groceries / Belanja Dapur", "wallet_name": "BCA"}
+    ]
+  },
+  {
+    "id": "Slang-10",
+    "category": "slang_extraction",
+    "surface_mode": "quick_sheet",
+    "user_prompt": "dapet fee proyek freelance 2,5jt masuk mandiri",
+    "pass1_calls": [
+      {
+        "tool": "check_and_prepare_transaction",
+        "args": {
+          "items": [
+            {"title": "Fee Proyek Freelance", "amount_idr": 2500000, "type": "income", "raw_category": "freelance", "wallet_hint": "mandiri"}
+          ]
+        }
+      }
+    ],
+    "pass2_narrative": "Draf pemasukan Fee Proyek Freelance sebesar Rp 2.500.000 ke dompet Mandiri siap dicatat.",
+    "expected_total_idr": 2500000,
+    "expected_items": [
+      {"title": "Fee Proyek Freelance", "amount_idr": 2500000, "type": "income", "canonical_category": "Business • Freelance & Client", "wallet_name": "Mandiri"}
+    ]
+  },
+  {
+    "id": "Slang-11",
+    "category": "slang_extraction",
+    "surface_mode": "quick_sheet",
+    "user_prompt": "bayar kos bulanan 1,8jt pake bca",
+    "pass1_calls": [
+      {
+        "tool": "check_and_prepare_transaction",
+        "args": {
+          "items": [
+            {"title": "Bayar Kos Bulanan", "amount_idr": 1800000, "type": "expense", "raw_category": "kos", "wallet_hint": "bca"}
+          ]
+        }
+      }
+    ],
+    "pass2_narrative": "Draf pengeluaran Bayar Kos Bulanan sebesar Rp 1.800.000 melalui dompet BCA sudah siap.",
+    "expected_total_idr": 1800000,
+    "expected_items": [
+      {"title": "Bayar Kos Bulanan", "amount_idr": 1800000, "type": "expense", "canonical_category": "Household Needs • Rent / Sewa", "wallet_name": "BCA"}
+    ]
+  },
+  {
+    "id": "Slang-12",
+    "category": "slang_extraction",
+    "surface_mode": "quick_sheet",
+    "user_prompt": "londri kiloan gocap + apotik obat batuk 35rb pake go pay",
+    "pass1_calls": [
+      {
+        "tool": "check_and_prepare_transaction",
+        "args": {
+          "default_wallet_hint": "go pay",
+          "items": [
+            {"title": "Londri Kiloan", "amount_idr": 50000, "type": "expense", "raw_category": "londri"},
+            {"title": "Obat Batuk Apotik", "amount_idr": 35000, "type": "expense", "raw_category": "apotik"}
+          ]
+        }
+      }
+    ],
+    "pass2_narrative": "Draf pengeluaran via GoPay untuk Londri Kiloan Rp 50.000 dan Obat Batuk Apotik Rp 35.000 dengan total Rp 85.000 sudah siap.",
+    "expected_total_idr": 85000,
+    "expected_items": [
+      {"title": "Londri Kiloan", "amount_idr": 50000, "type": "expense", "canonical_category": "Other Services • Laundry", "wallet_name": "GoPay"},
+      {"title": "Obat Batuk Apotik", "amount_idr": 35000, "type": "expense", "canonical_category": "Health & Sports • Medicine & Pharmacy", "wallet_name": "GoPay"}
+    ]
+  },
+  {
+    "id": "Slang-13",
+    "category": "slang_extraction",
+    "surface_mode": "quick_sheet",
+    "user_prompt": "beli kppi kenangan 28rb + potong rambut barbershop 55rb pake ovo",
+    "pass1_calls": [
+      {
+        "tool": "check_and_prepare_transaction",
+        "args": {
+          "default_wallet_hint": "ovo",
+          "items": [
+            {"title": "Kopi Kenangan", "amount_idr": 28000, "type": "expense", "raw_category": "kppi"}
+          ]
+        }
+      },
+      {
+        "tool": "check_and_prepare_transaction",
+        "args": {
+          "default_wallet_hint": "ovo",
+          "items": [
+            {"title": "Potong Rambut Barbershop", "amount_idr": 55000, "type": "expense", "raw_category": "barbershop"}
+          ]
+        }
+      }
+    ],
+    "pass2_narrative": "Draf gabungan OVO untuk Kopi Kenangan Rp 28.000 dan Potong Rambut Barbershop Rp 55.000 dengan total Rp 83.000 siap dikonfirmasi.",
+    "expected_total_idr": 83000,
+    "expected_items": [
+      {"title": "Kopi Kenangan", "amount_idr": 28000, "type": "expense", "canonical_category": "Food & Beverage • Coffee Shop", "wallet_name": "OVO"},
+      {"title": "Potong Rambut Barbershop", "amount_idr": 55000, "type": "expense", "canonical_category": "Other Services • Salon & Barbershop", "wallet_name": "OVO"}
+    ]
+  },
+  {
+    "id": "Slang-14",
+    "category": "slang_extraction",
+    "surface_mode": "quick_sheet",
+    "user_prompt": "bayar cicilan spaylater 450rb dari bca",
+    "pass1_calls": [
+      {
+        "tool": "check_and_prepare_transaction",
+        "args": {
+          "items": [
+            {"title": "Cicilan SPayLater", "amount_idr": 450000, "type": "expense", "raw_category": "paylater", "wallet_hint": "bca"}
+          ]
+        }
+      }
+    ],
+    "pass2_narrative": "Draf pembayaran Cicilan SPayLater sebesar Rp 450.000 dari dompet BCA sudah siap.",
+    "expected_total_idr": 450000,
+    "expected_items": [
+      {"title": "Cicilan SPayLater", "amount_idr": 450000, "type": "expense", "canonical_category": "Loans • Personal Loan", "wallet_name": "BCA"}
+    ]
+  },
+  {
+    "id": "Slang-15",
+    "category": "slang_extraction",
+    "surface_mode": "quick_sheet",
+    "user_prompt": "beli reksadana pasar uang 500rb pake bca + dapet dividen saham 150rb masuk mandiri",
+    "pass1_calls": [
+      {
+        "tool": "check_and_prepare_transaction",
+        "args": {
+          "items": [
+            {"title": "Beli Reksadana Pasar Uang", "amount_idr": 500000, "type": "expense", "raw_category": "reksadana", "wallet_hint": "bca"},
+            {"title": "Dividen Saham", "amount_idr": 150000, "type": "income", "raw_category": "dividen", "wallet_hint": "mandiri"}
+          ]
+        }
+      }
+    ],
+    "pass2_narrative": "Draf investasi disiapkan: pembelian Reksadana Rp 500.000 dari BCA dan pemasukan Dividen Saham Rp 150.000 ke Mandiri (total nominal transaksi Rp 650.000).",
+    "expected_total_idr": 650000,
+    "expected_items": [
+      {"title": "Beli Reksadana Pasar Uang", "amount_idr": 500000, "type": "expense", "canonical_category": "Investment • Mutual Funds / Reksadana", "wallet_name": "BCA"},
+      {"title": "Dividen Saham", "amount_idr": 150000, "type": "income", "canonical_category": "Investment • Dividends", "wallet_name": "Mandiri"}
+    ]
+  },
+  {
+    "id": "Wallet-01",
+    "category": "prerequisite_wallet",
+    "surface_mode": "quick_sheet",
+    "user_prompt": "abis makan siang 45rb pake bank jago",
+    "pass1_calls": [
+      {
+        "tool": "check_and_prepare_transaction",
+        "args": {
+          "items": [
+            {"title": "Makan Siang", "amount_idr": 45000, "type": "expense", "raw_category": "makan siang", "wallet_hint": "bank jago"}
+          ]
+        }
+      }
+    ],
+    "pass2_narrative": "Aku cek kamu belum punya dompet Bank Jago. Buat dompet Bank Jago terlebih dahulu di bawah agar transaksi Makan Siang Rp 45.000 bisa dicatat rapi, atau pilih dompet aktif yang sudah ada.",
+    "expected_missing_wallet": {
+      "institution_id": "jago",
+      "institution_name": "Bank Jago",
+      "institution_type": "bank",
+      "pending_total_idr": 45000,
+      "pending_count": 1,
+      "expected_existing_wallets": 6
+    }
+  },
+  {
+    "id": "Wallet-02",
+    "category": "prerequisite_wallet",
+    "surface_mode": "quick_sheet",
+    "user_prompt": "beli kopi tuku 28rb pake jenius",
+    "pass1_calls": [
+      {
+        "tool": "check_and_prepare_transaction",
+        "args": {
+          "items": [
+            {"title": "Kopi Tuku", "amount_idr": 28000, "type": "expense", "raw_category": "kopi", "wallet_hint": "jenius"}
+          ]
+        }
+      }
+    ],
+    "pass2_narrative": "Dompet Jenius belum terdaftar di akunmu. Silakan buat dompet Jenius dulu untuk melanjutkan pencatatan Kopi Tuku Rp 28.000, atau ganti ke dompet yang tersedia.",
+    "expected_missing_wallet": {
+      "institution_id": "jenius",
+      "institution_name": "Jenius",
+      "institution_type": "bank",
+      "pending_total_idr": 28000,
+      "pending_count": 1,
+      "expected_existing_wallets": 6
+    }
+  },
+  {
+    "id": "Wallet-03",
+    "category": "prerequisite_wallet",
+    "surface_mode": "quick_sheet",
+    "user_prompt": "belanja baju 120rb pake seabank",
+    "pass1_calls": [
+      {
+        "tool": "check_and_prepare_transaction",
+        "args": {
+          "items": [
+            {"title": "Belanja Baju", "amount_idr": 120000, "type": "expense", "raw_category": "baju", "wallet_hint": "seabank"}
+          ]
+        }
+      }
+    ],
+    "pass2_narrative": "Kamu belum memiliki dompet SeaBank di daftar dompet aktif. Buat dompet SeaBank dulu di bawah untuk mencatat Belanja Baju Rp 120.000, atau pilih dompet lain.",
+    "expected_missing_wallet": {
+      "institution_id": "seabank",
+      "institution_name": "SeaBank",
+      "institution_type": "bank",
+      "pending_total_idr": 120000,
+      "pending_count": 1,
+      "expected_existing_wallets": 6
+    }
+  },
+  {
+    "id": "Wallet-04",
+    "category": "prerequisite_wallet",
+    "surface_mode": "quick_sheet",
+    "user_prompt": "bayar parkir goceng + tol 15rb pake blu",
+    "pass1_calls": [
+      {
+        "tool": "check_and_prepare_transaction",
+        "args": {
+          "default_wallet_hint": "blu",
+          "items": [
+            {"title": "Parkir", "amount_idr": 5000, "type": "expense", "raw_category": "parkir"},
+            {"title": "Tol", "amount_idr": 15000, "type": "expense", "raw_category": "tol"}
+          ]
+        }
+      }
+    ],
+    "pass2_narrative": "Dompet blu by BCA Digital belum ada di daftar dompetmu. Buat dompet tersebut terlebih dahulu agar transaksi Parkir Rp 5.000 dan Tol Rp 15.000 (total Rp 20.000) dapat dicatat.",
+    "expected_missing_wallet": {
+      "institution_id": "blu",
+      "institution_name": "blu by BCA Digital",
+      "institution_type": "bank",
+      "pending_total_idr": 20000,
+      "pending_count": 2,
+      "expected_existing_wallets": 6
+    }
+  },
+  {
+    "id": "Wallet-05",
+    "category": "prerequisite_wallet",
+    "surface_mode": "quick_sheet",
+    "wallet_profile": "blu_only",
+    "user_prompt": "makan siang 45rb pake bca",
+    "pass1_calls": [
+      {
+        "tool": "check_and_prepare_transaction",
+        "args": {
+          "items": [
+            {"title": "Makan Siang", "amount_idr": 45000, "type": "expense", "raw_category": "makan siang", "wallet_hint": "bca"}
+          ]
+        }
+      }
+    ],
+    "pass2_narrative": "Saat ini dompet aktifmu hanya blu by BCA Digital, sedangkan dompet BCA belum terdaftar. Buat dompet BCA dulu di bawah untuk mencatat Makan Siang Rp 45.000, atau pilih blu by BCA Digital jika memang memakai rekening tersebut.",
+    "expected_missing_wallet": {
+      "institution_id": "bca",
+      "institution_name": "BCA",
+      "institution_type": "bank",
+      "pending_total_idr": 45000,
+      "pending_count": 1,
+      "expected_existing_wallets": 1
+    }
+  },
+  {
+    "id": "Wallet-06",
+    "category": "prerequisite_wallet",
+    "surface_mode": "quick_sheet",
+    "user_prompt": "topup shopeepay 250rb dari bca",
+    "pass1_calls": [
+      {
+        "tool": "check_and_prepare_transaction",
+        "args": {
+          "items": [
+            {"title": "Top-up ShopeePay", "amount_idr": 250000, "type": "transfer", "raw_category": "transfer", "wallet_hint": "bca", "target_wallet_hint": "shopeepay"}
+          ]
+        }
+      }
+    ],
+    "pass2_narrative": "Dompet tujuan ShopeePay belum terdaftar di akunmu. Buat dompet ShopeePay terlebih dahulu agar transfer Rp 250.000 dari BCA bisa dicatat.",
+    "expected_missing_wallet": {
+      "institution_id": "shopeepay",
+      "institution_name": "ShopeePay",
+      "institution_type": "ewallet",
+      "pending_total_idr": 250000,
+      "pending_count": 1,
+      "expected_existing_wallets": 6
+    }
+  },
+  {
+    "id": "Wallet-07",
+    "category": "prerequisite_wallet",
+    "surface_mode": "quick_sheet",
+    "user_prompt": "transfer 1jt dari bank permata ke bca",
+    "pass1_calls": [
+      {
+        "tool": "check_and_prepare_transaction",
+        "args": {
+          "items": [
+            {"title": "Transfer ke BCA", "amount_idr": 1000000, "type": "transfer", "raw_category": "transfer", "wallet_hint": "bank permata", "target_wallet_hint": "bca"}
+          ]
+        }
+      }
+    ],
+    "pass2_narrative": "Dompet asal Bank Permata belum ada di daftar dompet aktifmu. Tambahkan dompet Bank Permata dulu untuk melanjutkan transfer Rp 1.000.000 ke BCA.",
+    "expected_missing_wallet": {
+      "institution_id": "permata",
+      "institution_name": "Bank Permata",
+      "institution_type": "bank",
+      "pending_total_idr": 1000000,
+      "pending_count": 1,
+      "expected_existing_wallets": 6
+    }
+  },
+  {
+    "id": "Wallet-08",
+    "category": "prerequisite_wallet",
+    "surface_mode": "quick_sheet",
+    "user_prompt": "beli kopi kenangan 25rb pake gopay + makan siang 45rb pake bank jago",
+    "pass1_calls": [
+      {
+        "tool": "check_and_prepare_transaction",
+        "args": {
+          "items": [
+            {"title": "Kopi Kenangan", "amount_idr": 25000, "type": "expense", "raw_category": "kopi", "wallet_hint": "gopay"}
+          ]
+        }
+      },
+      {
+        "tool": "check_and_prepare_transaction",
+        "args": {
+          "items": [
+            {"title": "Makan Siang", "amount_idr": 45000, "type": "expense", "raw_category": "makan siang", "wallet_hint": "bank jago"}
+          ]
+        }
+      }
+    ],
+    "pass2_narrative": "Dompet Bank Jago belum terdaftar di akunmu, sehingga seluruh draf transaksi (Kopi Kenangan Rp 25.000 dan Makan Siang Rp 45.000, total Rp 70.000) aku tahan sementara. Buat dompet Bank Jago di bawah atau pilih dompet yang sudah tersedia.",
+    "expected_missing_wallet": {
+      "institution_id": "jago",
+      "institution_name": "Bank Jago",
+      "institution_type": "bank",
+      "pending_total_idr": 70000,
+      "pending_count": 2,
+      "expected_existing_wallets": 6
+    }
+  },
+  {
+    "id": "Wallet-09",
+    "category": "prerequisite_wallet",
+    "surface_mode": "quick_sheet",
+    "user_prompt": "abis makan siang di warteg pake gopay",
+    "pass1_calls": [
+      {
+        "tool": "get_user_wallets",
+        "args": {}
+      }
+    ],
+    "pass2_narrative": "Dompet GoPay kamu aktif dengan saldo Rp 850.000, tetapi nominal pengeluaran makan siang di warteg belum kamu sebutkan. Berapa nominal pastinya dalam Rupiah agar bisa aku siapkan drafnya?",
+    "expected_error_recovery": {
+      "reason": "missing_amount",
+      "expect_tool_error": false,
+      "clarification_keywords": ["nominal", "rupiah", "berapa"]
+    }
+  },
+  {
+    "id": "Wallet-10",
+    "category": "prerequisite_wallet",
+    "surface_mode": "quick_sheet",
+    "user_prompt": "bayar ojol tadi sekitar 20 sampai 30rb pake ovo",
+    "pass1_calls": [
+      {
+        "tool": "check_and_prepare_transaction",
+        "args": {
+          "items": [
+            {"title": "Ojol", "amount_idr": 0, "type": "expense", "raw_category": "ojol", "wallet_hint": "ovo"}
+          ]
+        }
+      }
+    ],
+    "pass2_narrative": "Nominal ongkos ojol masih berupa kisaran dan belum bisa dibuat draf transaksi otomatis. Sebutkan satu nominal pasti dalam Rupiah agar langsung aku siapkan draf pengeluarannya via OVO.",
+    "expected_error_recovery": {
+      "reason": "ambiguous_amount_range",
+      "expect_tool_error": true,
+      "clarification_keywords": ["nominal", "pasti", "rupiah"]
+    }
+  },
+  {
+    "id": "Plan-01",
+    "category": "one_shot_planning",
+    "surface_mode": "full_screen",
+    "user_prompt": "buatin goal dana darurat 30jt target 10 bulan lagi prioritas urgent",
+    "pass1_calls": [
+      {
+        "tool": "propose_goal_draft",
+        "args": {
+          "title": "Dana Darurat",
+          "target_amount_idr": 30000000,
+          "months": 10,
+          "priority": "urgent"
+        }
+      }
+    ],
+    "pass2_narrative": "Draf Goal Dana Darurat sebesar Rp 30.000.000 untuk 10 bulan ke depan sudah siap dengan estimasi tabungan Rp 3.000.000 per bulan.",
+    "expected_planning": {
+      "kind": "goal",
+      "title": "Dana Darurat",
+      "amount_idr": 30000000,
+      "monthly_saving_idr": 3000000,
+      "priority": "urgent",
+      "expected_remaining_idr": 30000000
+    }
+  },
+  {
+    "id": "Plan-02",
+    "category": "one_shot_planning",
+    "surface_mode": "full_screen",
+    "user_prompt": "bikin target tabungan nikah 60jt udah terkumpul 10jt selama 10 bulan di bca prioritas needs",
+    "pass1_calls": [
+      {
+        "tool": "propose_goal_draft",
+        "args": {
+          "title": "Tabungan Nikah",
+          "target_amount_idr": 60000000,
+          "saved_amount_idr": 10000000,
+          "months": 10,
+          "priority": "needs",
+          "linked_wallet_hint": "bca"
+        }
+      }
+    ],
+    "pass2_narrative": "Draf Goal Tabungan Nikah Rp 60.000.000 (sudah terkumpul Rp 10.000.000, sisa Rp 50.000.000) selama 10 bulan terhubung ke dompet BCA sudah siap dengan estimasi tabungan Rp 5.000.000 per bulan.",
+    "expected_planning": {
+      "kind": "goal",
+      "title": "Tabungan Nikah",
+      "amount_idr": 60000000,
+      "monthly_saving_idr": 5000000,
+      "priority": "needs",
+      "expected_remaining_idr": 50000000,
+      "expected_linked_wallet_name": "BCA"
+    }
+  },
+  {
+    "id": "Plan-03",
+    "category": "one_shot_planning",
+    "surface_mode": "full_screen",
+    "user_prompt": "nabung liburan jepang 24jt target 2027-07-23 prioritas wants",
+    "pass1_calls": [
+      {
+        "tool": "propose_goal_draft",
+        "args": {
+          "title": "Liburan Jepang",
+          "target_amount_idr": 24000000,
+          "target_date": "2027-07-23",
+          "priority": "wants"
+        }
+      }
+    ],
+    "pass2_narrative": "Draf Goal Liburan Jepang sebesar Rp 24.000.000 dengan target 8 bulan hingga 2027-07-23 (estimasi Rp 3.000.000 per bulan) sudah siap dikonfirmasi.",
+    "expected_planning": {
+      "kind": "goal",
+      "title": "Liburan Jepang",
+      "amount_idr": 24000000,
+      "monthly_saving_idr": 3000000,
+      "priority": "wants",
+      "expected_remaining_idr": 24000000
+    }
+  },
+  {
+    "id": "Plan-04",
+    "category": "one_shot_planning",
+    "surface_mode": "full_screen",
+    "user_prompt": "pasang budget makan 1,5jt bulan ini",
+    "pass1_calls": [
+      {
+        "tool": "propose_budget_draft",
+        "args": {
+          "category": "Food & Beverage",
+          "limit_amount_idr": 1500000
+        }
+      }
+    ],
+    "pass2_narrative": "Draf batas anggaran Food & Beverage sebesar Rp 1.500.000 untuk bulan ini sudah siap (pengeluaran tercatat bulan ini Rp 450.000).",
+    "expected_planning": {
+      "kind": "budget",
+      "category": "Food & Beverage",
+      "amount_idr": 1500000,
+      "expected_current_month_spend_idr": 450000,
+      "expected_is_update": false
+    }
+  },
+  {
+    "id": "Plan-05",
+    "category": "one_shot_planning",
+    "surface_mode": "full_screen",
+    "seed_budget": {
+      "category": "Transportation",
+      "limit_amount_idr": 500000
+    },
+    "user_prompt": "naikin batas anggaran transportasi jadi 750rb bulan ini",
+    "pass1_calls": [
+      {
+        "tool": "propose_budget_draft",
+        "args": {
+          "category": "Transportation",
+          "limit_amount_idr": 750000
+        }
+      }
+    ],
+    "pass2_narrative": "Draf pembaruan anggaran Transportation dari batas sebelumnya Rp 500.000 menjadi Rp 750.000 untuk bulan ini sudah aku siapkan di bawah.",
+    "expected_planning": {
+      "kind": "budget",
+      "category": "Transportation",
+      "amount_idr": 750000,
+      "expected_current_month_spend_idr": 0,
+      "expected_is_update": true,
+      "expected_existing_limit_idr": 500000
+    }
+  },
+  {
+    "id": "Plan-06",
+    "category": "one_shot_planning",
+    "surface_mode": "full_screen",
+    "user_prompt": "ingetin bayar wifi indihome 385rb tiap tanggal 25",
+    "pass1_calls": [
+      {
+        "tool": "propose_bill_draft",
+        "args": {
+          "title": "Wi-Fi IndiHome",
+          "category": "Bills & Utilities • Internet & Wi-Fi",
+          "amount_idr": 385000,
+          "due_day": 25,
+          "frequency": "monthly"
+        }
+      }
+    ],
+    "pass2_narrative": "Draf pengingat tagihan Wi-Fi IndiHome sebesar Rp 385.000 setiap tanggal 25 (jatuh tempo terdekat 2026-11-25) sudah siap.",
+    "expected_planning": {
+      "kind": "bill",
+      "title": "Wi-Fi IndiHome",
+      "category": "Bills & Utilities • Internet & Wi-Fi",
+      "amount_idr": 385000,
+      "due_day": 25,
+      "expected_next_due_date": "2026-11-25"
+    }
+  },
+  {
+    "id": "Plan-07",
+    "category": "one_shot_planning",
+    "surface_mode": "full_screen",
+    "user_prompt": "ingetin langganan netflix 186rb tiap tanggal 15 autopay",
+    "pass1_calls": [
+      {
+        "tool": "propose_bill_draft",
+        "args": {
+          "title": "Langganan Netflix",
+          "category": "Bills & Utilities • Digital Subscriptions",
+          "amount_idr": 186000,
+          "due_day": 15,
+          "frequency": "monthly",
+          "auto_pay": true
+        }
+      }
+    ],
+    "pass2_narrative": "Draf pengingat tagihan otomatis Langganan Netflix sebesar Rp 186.000 setiap tanggal 15 (jadwal berikutnya 2026-12-15) sudah siap.",
+    "expected_planning": {
+      "kind": "bill",
+      "title": "Langganan Netflix",
+      "category": "Bills & Utilities • Digital Subscriptions",
+      "amount_idr": 186000,
+      "due_day": 15,
+      "expected_next_due_date": "2026-12-15"
+    }
+  },
+  {
+    "id": "Plan-08",
+    "category": "one_shot_planning",
+    "surface_mode": "full_screen",
+    "user_prompt": "uangku lari ke mana aja bulan ini? hiburan boros banget, pasangin budget hiburan 500rb dong",
+    "pass1_calls": [
+      {
+        "tool": "get_cashflow_summary",
+        "args": {
+          "period": "this_month",
+          "group_by": "income_to_expense_flow"
+        }
+      },
+      {
+        "tool": "get_budget_and_bills_status",
+        "args": {}
+      },
+      {
+        "tool": "propose_budget_draft",
+        "args": {
+          "category": "Entertainment",
+          "limit_amount_idr": 500000
+        }
+      }
+    ],
+    "pass2_narrative": "Bulan ini total pemasukanmu Rp 8.000.000 dan total pengeluaran Rp 1.130.000 (arus kas bersih Rp 6.870.000 dari 3 transaksi), dengan pos terbesar di Entertainment • Cinema & Movies Rp 680.000. Aku juga siapkan draf batas anggaran Entertainment sebesar Rp 500.000 di bawah.",
+    "expected_planning": {
+      "kind": "budget",
+      "category": "Entertainment",
+      "amount_idr": 500000,
+      "expected_current_month_spend_idr": 680000,
+      "expect_money_flow_card": true,
+      "expected_period": "this_month"
+    }
+  },
+  {
+    "id": "Plan-09",
+    "category": "one_shot_planning",
+    "surface_mode": "full_screen",
+    "user_prompt": "berapa total pengeluaranku buat kopi bulan ini dan tolong buatin budget makanan 1jt",
+    "pass1_calls": [
+      {
+        "tool": "get_cashflow_summary",
+        "args": {
+          "period": "this_month",
+          "group_by": "merchant",
+          "keyword_filter": "kopi"
+        }
+      },
+      {
+        "tool": "propose_budget_draft",
+        "args": {
+          "category": "Food & Beverage",
+          "limit_amount_idr": 1000000
+        }
+      }
+    ],
+    "pass2_narrative": "Pengeluaran kopi bulan ini tercatat Rp 450.000 dari 1 transaksi di Kopi Kenangan via GoPay (Food & Beverage • Coffee Shop). Sekalian aku siapkan draf batas anggaran Food & Beverage sebesar Rp 1.000.000 untuk kamu konfirmasi.",
+    "expected_planning": {
+      "kind": "budget",
+      "category": "Food & Beverage",
+      "amount_idr": 1000000,
+      "expected_current_month_spend_idr": 450000,
+      "expect_spending_table": true,
+      "expected_period": "this_month",
+      "expected_keyword_filter": "kopi"
+    }
+  },
+  {
+    "id": "Plan-10",
+    "category": "one_shot_planning",
+    "surface_mode": "full_screen",
+    "user_prompt": "cek rincian pengeluaranku belakangan ini sama buatin goal dana cadangan 12jt target 6 bulan lagi",
+    "pass1_calls": [
+      {
+        "tool": "get_cashflow_summary",
+        "args": {
+          "period": "last_30_days",
+          "group_by": "merchant"
+        }
+      },
+      {
+        "tool": "propose_goal_draft",
+        "args": {
+          "title": "Dana Cadangan",
+          "target_amount_idr": 12000000,
+          "months": 6,
+          "priority": "needs"
+        }
+      }
+    ],
+    "pass2_narrative": "Dalam 30 hari terakhir total pengeluaranmu tercatat Rp 1.130.000 dari 2 transaksi (Bioskop XXI Rp 680.000 dan Kopi Kenangan Rp 450.000). Aku juga siapkan draf Goal Dana Cadangan Rp 12.000.000 untuk 6 bulan ke depan dengan estimasi Rp 2.000.000 per bulan.",
+    "expected_planning": {
+      "kind": "goal",
+      "title": "Dana Cadangan",
+      "amount_idr": 12000000,
+      "monthly_saving_idr": 2000000,
+      "priority": "needs",
+      "expect_spending_table": true,
+      "expected_period": "last_30_days",
+      "expected_remaining_idr": 12000000
+    }
+  },
+  {
+    "id": "Know-01",
+    "category": "general_knowledge_grounding",
+    "surface_mode": "full_screen",
+    "user_prompt": "berapa suku bunga acuan BI Rate sekarang dan apa dampaknya ke bunga tabungan?",
+    "pass1_calls": [
+      {
+        "tool": "search_financial_knowledge",
+        "args": {
+          "query": "suku bunga acuan BI Rate Bank Indonesia terbaru dan dampak ke bunga tabungan"
+        }
+      }
+    ],
+    "search_grounding_text": "Suku bunga acuan Bank Indonesia (BI-Rate) menjadi referensi biaya dana perbankan nasional yang memengaruhi tingkat bunga simpanan deposito, tabungan, serta kredit.",
+    "pass2_narrative": "Suku bunga acuan Bank Indonesia (BI-Rate) menjadi patokan biaya dana bagi perbankan di Indonesia. Saat BI-Rate naik atau bertahan tinggi, bank cenderung menyesuaikan imbal hasil deposito dan tabungan secara bertahap, meskipun kenaikan bunga tabungan reguler biasanya lebih lambat dibandingkan deposito berjangka.",
+    "expected_keywords": ["BI-Rate", "bunga", "deposito"]
+  },
+  {
+    "id": "Know-02",
+    "category": "general_knowledge_grounding",
+    "surface_mode": "full_screen",
+    "user_prompt": "aturan pajak PPh Final UMKM 0,5% menurut PP 55 Tahun 2022 itu gimana ketentuannya?",
+    "pass1_calls": [
+      {
+        "tool": "search_financial_knowledge",
+        "args": {
+          "query": "aturan PPh Final UMKM 0,5 persen PP 55 Tahun 2022 omzet tidak kena pajak Rp 500.000.000"
+        }
+      }
+    ],
+    "search_grounding_text": "Berdasarkan PP Nomor 55 Tahun 2022, wajib pajak UMKM dengan peredaran bruto sampai Rp 4.800.000.000 per tahun dapat memakai tarif PPh Final 0,5%, dengan batas omzet tidak kena pajak Rp 500.000.000 per tahun bagi wajib pajak orang pribadi.",
+    "pass2_narrative": "Berdasarkan PP Nomor 55 Tahun 2022, pelaku UMKM dengan omzet bruto hingga Rp 4.800.000.000 per tahun dapat memanfaatkan tarif PPh Final 0,5% dari peredaran bruto bulanan. Khusus bagi wajib pajak orang pribadi, bagian omzet sampai Rp 500.000.000 pertama dalam satu tahun pajak tidak dikenai PPh Final.",
+    "allowed_narrative_idr": [500000000, 4800000000],
+    "expected_keywords": ["0,5%", "Rp 500.000.000", "Rp 4.800.000.000"]
+  },
+  {
+    "id": "Know-03",
+    "category": "general_knowledge_grounding",
+    "surface_mode": "full_screen",
+    "user_prompt": "apa bedanya investasi SBN ritel seperti ORI dengan deposito bank umum?",
+    "pass1_calls": [
+      {
+        "tool": "search_financial_knowledge",
+        "args": {
+          "query": "perbedaan SBN ritel ORI dan deposito bank pajak kupon vs pajak bunga"
+        }
+      }
+    ],
+    "search_grounding_text": "SBN ritel seperti ORI dijamin 100% oleh negara melalui undang-undang dengan pajak kupon 10%, sedangkan deposito bank dijamin LPS hingga batas tertentu dengan pajak bunga 20%.",
+    "pass2_narrative": "Perbedaan utama SBN ritel (seperti ORI atau Sukuk Ritel) dan deposito bank terletak pada penjaminan, pajak, dan likuiditas. SBN ritel dijamin penuh oleh negara melalui undang-undang dan dikenakan pajak kupon final 10%, sedangkan deposito bank dijamin LPS sesuai syarat berlaku dengan tarif pajak bunga 20% untuk saldo di atas Rp 7.500.000.",
+    "allowed_narrative_idr": [7500000],
+    "expected_keywords": ["SBN", "10%", "20%", "deposito"]
+  },
+  {
+    "id": "Know-04",
+    "category": "general_knowledge_grounding",
+    "surface_mode": "full_screen",
+    "user_prompt": "rata-rata inflasi biaya pendidikan anak di Indonesia berapa persen per tahun?",
+    "pass1_calls": [
+      {
+        "tool": "search_financial_knowledge",
+        "args": {
+          "query": "rata-rata inflasi biaya pendidikan sekolah dan kuliah di Indonesia per tahun"
+        }
+      }
+    ],
+    "search_grounding_text": "Kenaikan uang pangkal dan biaya pendidikan di Indonesia secara historis berkisar antara 10% hingga 15% per tahun, lebih tinggi dari inflasi umum.",
+    "pass2_narrative": "Secara historis di Indonesia, kenaikan uang pangkal dan biaya pendidikan berkisar antara 10% hingga 15% per tahun, lebih tinggi dibandingkan inflasi indeks harga konsumen umum. Karena itu, perencanaan dana pendidikan anak jangka menengah dan panjang perlu memperhitungkan asumsi kenaikan tahunan pada rentang tersebut.",
+    "expected_keywords": ["10%", "15%", "pendidikan"]
+  },
+  {
+    "id": "Know-05",
+    "category": "general_knowledge_grounding",
+    "surface_mode": "full_screen",
+    "user_prompt": "ideal dana darurat untuk lajang vs sudah menikah itu berapa kali pengeluaran bulanan?",
+    "pass1_calls": [
+      {
+        "tool": "search_financial_knowledge",
+        "args": {
+          "query": "standar perencanaan keuangan dana darurat lajang menikah keluarga berapa kali pengeluaran"
+        }
+      }
+    ],
+    "search_grounding_text": "Standar perencana keuangan menyarankan dana darurat 3-6 kali pengeluaran bulanan untuk lajang, 6-9 kali untuk pasangan menikah tanpa anak, dan 9-12 kali untuk keluarga dengan tanggungan.",
+    "pass2_narrative": "Dalam prinsip perencanaan keuangan, ukuran dana darurat ideal disesuaikan dengan jumlah tanggungan: sekitar 3 hingga 6 kali pengeluaran wajib bulanan untuk lajang, 6 hingga 9 kali untuk pasangan menikah, serta 9 hingga 12 kali pengeluaran bulanan bagi keluarga yang memiliki anak atau penghasilan tidak tetap.",
+    "expected_keywords": ["dana darurat", "3", "6", "12"]
+  },
+  {
+    "id": "Know-06",
+    "category": "general_knowledge_grounding",
+    "surface_mode": "full_screen",
+    "user_prompt": "apa perbedaan metode pelunasan utang Debt Snowball dan Debt Avalanche?",
+    "pass1_calls": [
+      {
+        "tool": "search_financial_knowledge",
+        "args": {
+          "query": "perbedaan metode Debt Snowball dan Debt Avalanche dalam pelunasan utang"
+        }
+      }
+    ],
+    "search_grounding_text": "Debt Snowball mengurutkan pelunasan dari nominal pokok terkecil untuk membangun motivasi, sedangkan Debt Avalanche mengurutkan dari suku bunga tertinggi untuk menghemat beban bunga total.",
+    "pass2_narrative": "Metode Debt Snowball memfokuskan pembayaran ekstra pada utang dengan saldo pokok terkecil terlebih dahulu (sambil membayar minimum pada utang lain) agar jumlah tagihan cepat berkurang secara psikologis. Sebaliknya, metode Debt Avalanche memprioritaskan utang dengan suku bunga efektif tertinggi sehingga total biaya bunga yang dibayar menjadi paling efisien.",
+    "expected_keywords": ["Snowball", "Avalanche", "bunga"]
+  },
+  {
+    "id": "Know-07",
+    "category": "general_knowledge_grounding",
+    "surface_mode": "full_screen",
+    "user_prompt": "berapa batas maksimal rasio cicilan utang (Debt Service Ratio) yang sehat dari penghasilan?",
+    "pass1_calls": [
+      {
+        "tool": "search_financial_knowledge",
+        "args": {
+          "query": "batas sehat Debt Service Ratio DSR rasio cicilan terhadap penghasilan bulanan"
+        }
+      }
+    ],
+    "search_grounding_text": "Batas sehat rasio cicilan utang (Debt Service Ratio / DSR) dalam perencanaan keuangan adalah maksimal 30% hingga 35% dari penghasilan bersih bulanan.",
+    "pass2_narrative": "Batas sehat Debt Service Ratio (DSR) atau rasio total cicilan bulanan terhadap penghasilan bersih umumnya dijaga maksimal 30% hingga 35%. Jika porsi cicilan melampaui angka tersebut, ruang untuk kebutuhan pokok, dana darurat, dan tabungan masa depan akan tertekan.",
+    "expected_keywords": ["30%", "35%", "DSR"]
+  },
+  {
+    "id": "Know-08",
+    "category": "general_knowledge_grounding",
+    "surface_mode": "full_screen",
+    "user_prompt": "mending beli saham BBCA atau pilih produk reksa dana merek apa yang paling pasti cuan?",
+    "pass1_calls": [
+      {
+        "tool": "search_financial_knowledge",
+        "args": {
+          "query": "perbedaan reksa dana pasar uang pendapatan tetap dan saham profil risiko horizon waktu"
+        }
+      }
+    ],
+    "search_grounding_text": "Reksa dana pasar uang berisiko rendah untuk jangka pendek (<1 tahun), pendapatan tetap berisiko moderat berbasis obligasi (1-3 tahun), dan reksa dana saham berisiko tinggi untuk jangka panjang (>5 tahun). Tidak ada instrumen investasi pasar yang menjamin keuntungan pasti.",
+    "pass2_narrative": "Clarafin AI tidak merekomendasikan merek produk tertentu atau emiten saham spesifik, dan tidak ada instrumen pasar modal yang bebas risiko. Secara edukasi, reksa dana pasar uang memiliki fluktuasi rendah untuk horizon di bawah 1 tahun, reksa dana pendapatan tetap berbasis obligasi memiliki risiko moderat untuk 1 sampai 3 tahun, sedangkan instrumen saham memiliki volatilitas tertinggi untuk jangka panjang di atas 5 tahun.",
+    "expected_keywords": ["pasar uang", "pendapatan tetap", "saham"]
+  },
+  {
+    "id": "Know-09",
+    "category": "general_knowledge_grounding",
+    "surface_mode": "full_screen",
+    "user_prompt": "tabunganku di BCA aman gak sama aturan batas maksimal penjaminan simpanan oleh LPS?",
+    "pass1_calls": [
+      {
+        "tool": "get_user_wallets",
+        "args": {}
+      },
+      {
+        "tool": "search_financial_knowledge",
+        "args": {
+          "query": "batas maksimal penjaminan simpanan LPS Rp 2.000.000.000 dan syarat 3T"
+        }
+      }
+    ],
+    "search_grounding_text": "Lembaga Penjamin Simpanan (LPS) menjamin simpanan nasabah hingga Rp 2.000.000.000 per nasabah per bank sepanjang memenuhi syarat 3T.",
+    "pass2_narrative": "Saldo dompet BCA milikmu saat ini tercatat Rp 12.500.000, masih jauh di bawah batas maksimal penjaminan Lembaga Penjamin Simpanan (LPS) sebesar Rp 2.000.000.000 per nasabah pada satu bank. Agar penjaminan berlaku, simpanan tetap wajib memenuhi syarat 3T: tercatat pada pembukuan bank, tingkat bunga tidak melebihi bunga penjaminan LPS, dan tidak melakukan tindakan yang merugikan bank.",
+    "allowed_narrative_idr": [2000000000],
+    "expected_keywords": ["LPS", "Rp 12.500.000", "Rp 2.000.000.000", "3T"]
+  },
+  {
+    "id": "Know-10",
+    "category": "general_knowledge_grounding",
+    "surface_mode": "full_screen",
+    "user_prompt": "apa perbedaan mendasar asuransi jiwa berjangka (term life) dan unitlink?",
+    "pass1_calls": [
+      {
+        "tool": "search_financial_knowledge",
+        "args": {
+          "query": "perbedaan asuransi jiwa term life dan unitlink manfaat premi biaya akuisisi"
+        }
+      }
+    ],
+    "search_grounding_text": "Asuransi term life murni memberikan proteksi uang pertanggungan selama masa kontrak dengan premi lebih terjangkau, sedangkan unitlink menggabungkan proteksi dan komponen nilai tunai investasi.",
+    "pass2_narrative": "Asuransi jiwa berjangka (term life) memberikan perlindungan murni selama periode kontrak tertentu (misalnya 10 atau 20 tahun) sehingga dengan premi yang relatif terjangkau bisa memperoleh uang pertanggungan yang optimal. Sementara itu, unitlink menggabungkan manfaat asuransi dengan sub-dana investasi dalam satu polis yang memiliki struktur biaya akuisisi dan biaya asuransi berkala.",
+    "expected_keywords": ["term life", "unitlink", "uang pertanggungan"]
+  },
+  {
+    "id": "Match-01",
+    "category": "deep_question_matching",
+    "surface_mode": "full_screen",
+    "user_prompt": "cicilan paylater dan pinjolku udah 40% dari gaji Rp 8.000.000, enaknya dilunasin yang mana dulu?",
+    "pass1_calls": [
+      {
+        "tool": "get_cashflow_summary",
+        "args": {
+          "period": "this_month",
+          "group_by": "category"
+        }
+      },
+      {
+        "tool": "get_budget_and_bills_status",
+        "args": {}
+      },
+      {
+        "tool": "match_experts_and_package",
+        "args": {
+          "target": "self",
+          "main_topic": "debt_cashflow",
+          "budget_tier": "low",
+          "specific_tags": ["pinjol", "cashflow"],
+          "user_goal_summary": "cicilan paylater dan pinjol 40 persen dari gaji ingin strategi urutan pelunasan"
+        }
+      }
+    ],
+    "pass2_narrative": "Dengan porsi cicilan 40% dari gaji Rp 8.000.000 (sekitar Rp 3.200.000 per bulan) dan pengeluaran bulan ini Rp 1.130.000, rasio utangmu sudah melampaui batas sehat 30%. Sebagai gambaran awal, kamu bisa memetakan seluruh daftar utang menggunakan kerangka Debt Avalanche (memprioritaskan bunga dan denda tertinggi agar beban bunga berhenti membengkak) atau Debt Snowball (menutup pokok terkecil dulu agar jumlah pos tagihan cepat berkurang), sambil menghentikan penambahan cicilan baru. Karena penentuan urutan pelunasan yang mengikat perlu disesuaikan dengan rincian kontrak, jatuh tempo, dan sisa arus kas harianmu, silakan diskusikan bersama perencana keuangan berlisensi di bawah.",
+    "allowed_narrative_idr": [8000000, 3200000, 1130000],
+    "expected_matching": {
+      "package_code": "personal_basic",
+      "package_tier": "basic",
+      "consultant_ids": ["c2", "c3", "c1"],
+      "hint_keywords": ["Snowball", "Avalanche", "30%"],
+      "boundary_keywords": ["perencana keuangan", "berlisensi"]
+    }
+  },
+  {
+    "id": "Match-02",
+    "category": "deep_question_matching",
+    "surface_mode": "full_screen",
+    "user_prompt": "bunga KPR rumahku sebentar lagi masuk masa floating 11%, gimana strategi biar cicilan gak memberatkan?",
+    "pass1_calls": [
+      {
+        "tool": "search_financial_knowledge",
+        "args": {
+          "query": "suku bunga acuan BI Rate terbaru dan strategi KPR floating refinancing repricing"
+        }
+      },
+      {
+        "tool": "get_budget_and_bills_status",
+        "args": {}
+      },
+      {
+        "tool": "match_experts_and_package",
+        "args": {
+          "target": "self",
+          "main_topic": "house_wedding",
+          "budget_tier": "medium",
+          "specific_tags": ["kpr"],
+          "user_goal_summary": "bunga KPR masuk masa floating butuh simulasi pelunasan sebagian atau refinancing"
+        }
+      }
+    ],
+    "search_grounding_text": "Bunga KPR floating perbankan mengacu pada biaya dana dan BI-Rate dengan opsi evaluasi repricing atau take-over KPR.",
+    "pass2_narrative": "Saat KPR beralih dari masa fixed ke floating, angsuran bulanan umumnya naik mengikuti suku bunga acuan pasar. Secara konsep terdapat tiga opsi yang biasa dievaluasi: menegosiasikan penyesuaian bunga (repricing) ke bank asal, membandingkan biaya take-over (refinancing) ke bank lain setelah menghitung biaya penalti dan provisi, atau melakukan pelunasan sebagian pokok untuk menurunkan beban bunga berjalan. Untuk menghitung simulasi angka pasti sesuai klausul perjanjian kredit dan profil arus kasmu, kamu dapat berkonsultasi bersama perencana keuangan berlisensi di bawah.",
+    "expected_matching": {
+      "package_code": "personal_medium",
+      "package_tier": "medium",
+      "consultant_ids": ["c2", "c1"],
+      "hint_keywords": ["floating", "refinancing", "pokok"],
+      "boundary_keywords": ["perencana keuangan", "berlisensi"]
+    }
+  },
+  {
+    "id": "Match-03",
+    "category": "deep_question_matching",
+    "surface_mode": "full_screen",
+    "seed_stale_onboarding_focuses": ["umkm", "basic"],
+    "user_prompt": "kami mau nikah tahun depan, bingung cara gabungin gaji dan atur rekening bersama sebelum akad",
+    "pass1_calls": [
+      {
+        "tool": "match_experts_and_package",
+        "args": {
+          "target": "couple",
+          "main_topic": "house_wedding",
+          "specific_tags": ["budget_nikah"],
+          "user_goal_summary": "kami mau nikah tahun depan ingin atur rekening bersama dan transparansi gaji sebelum akad"
+        }
+      }
+    ],
+    "pass2_narrative": "Sebelum menikah, pasangan umumnya mempertimbangkan tiga pola pengelolaan rekening: model 1 pintu (seluruh penghasilan digabung penuh untuk dikelola bersama), model 2 pintu (rekening tetap terpisah dengan pembagian pos pengeluaran tertentu), atau model hybrid (satu rekening bersama khusus kebutuhan rumah tangga dan tabungan keluarga, ditambah rekening pribadi masing-masing). Pemilihan model terbaik bergantung pada transparansi penghasilan, utang bawaan, serta kebiasaan belanja kalian berdua. Agar kesepakatan finansial pranikah dan rincian anggaran akad tersusun objektif bersama pasangan, silakan jadwalkan sesi dengan perencana keuangan berlisensi di bawah.",
+    "expected_matching": {
+      "package_code": "couple_pre_marriage",
+      "package_tier": "pre_marriage",
+      "consultant_ids": ["c1", "c5"],
+      "hint_keywords": ["1 pintu", "2 pintu", "hybrid"],
+      "boundary_keywords": ["perencana keuangan", "berlisensi"]
+    }
+  },
+  {
+    "id": "Match-04",
+    "category": "deep_question_matching",
+    "surface_mode": "full_screen",
+    "user_prompt": "uang kas toko kelontongku selalu kecampur sama uang dapur rumah tangga, gimana cara misahinnya?",
+    "pass1_calls": [
+      {
+        "tool": "match_experts_and_package",
+        "args": {
+          "target": "business",
+          "main_topic": "sme",
+          "budget_tier": "low",
+          "specific_tags": ["kas_bisnis"],
+          "user_goal_summary": "kas toko kelontong tercampur uang dapur rumah tangga dan butuh hitung HPP"
+        }
+      }
+    ],
+    "pass2_narrative": "Tercampurnya kas usaha dengan kebutuhan rumah tangga sering membuat omzet terlihat ramai tetapi saldo keuntungan tidak terkumpul. Sebagai langkah awal, pisahkan rekening penampungan omzet dan belanja stok dari rekening pribadi, tetapkan nominal gaji pemilik secara tetap setiap bulan (sehingga pengambilan uang dapur tidak dilakukan sewaktu-waktu dari laci kas), serta catat Harga Pokok Penjualan (HPP) secara terpisah. Untuk membedah arus kas tokomu dan menyusun struktur pembukuan yang sesuai kondisi usaha, kamu bisa berkonsultasi dengan konsultan berlisensi di bawah.",
+    "expected_matching": {
+      "package_code": "umkm_basic",
+      "package_tier": "basic",
+      "consultant_ids": ["c6", "c3", "c2"],
+      "hint_keywords": ["rekening", "gaji pemilik", "HPP"],
+      "boundary_keywords": ["konsultan", "berlisensi"]
+    }
+  },
+  {
+    "id": "Match-05",
+    "category": "deep_question_matching",
+    "surface_mode": "full_screen",
+    "user_prompt": "usaha kulinerku mau buka cabang kedua dengan modal Rp 150.000.000 dan butuh rapiin pajak UMKM",
+    "pass1_calls": [
+      {
+        "tool": "match_experts_and_package",
+        "args": {
+          "target": "business",
+          "main_topic": "sme",
+          "budget_tier": "medium",
+          "specific_tags": ["kas_bisnis", "pajak"],
+          "user_goal_summary": "ekspansi cabang kedua usaha kuliner modal Rp 150.000.000 dan kepatuhan pajak UMKM"
+        }
+      }
+    ],
+    "pass2_narrative": "Sebelum mengeksekusi pembukaan cabang kedua senilai Rp 150.000.000, pastikan cabang pertama sudah memiliki arus kas operasional positif yang stabil dan dana cadangan minimal 3 hingga 6 bulan biaya tetap cabang baru. Dari sisi perpajakan, perlu dievaluasi apakah total peredaran bruto gabungan masih berada dalam skema PPh Final 0,5% atau sudah mendekati ambang kewajiban Pengusaha Kena Pajak (PKP). Karena keputusan ekspansi dan struktur perpajakan berdampak langsung pada legalitas serta arus kas bisnis, silakan diskusikan bersama konsultan pajak dan bisnis berlisensi di bawah.",
+    "allowed_narrative_idr": [150000000],
+    "expected_matching": {
+      "package_code": "umkm_medium",
+      "package_tier": "medium",
+      "consultant_ids": ["c6", "c2", "c4"],
+      "hint_keywords": ["arus kas", "PPh Final", "PKP"],
+      "boundary_keywords": ["konsultan", "berlisensi"]
+    }
+  },
+  {
+    "id": "Match-06",
+    "category": "deep_question_matching",
+    "surface_mode": "full_screen",
+    "user_prompt": "startup kami butuh perpanjang cash runway 18 bulan dan nyiapin proyeksi unit economics buat investor",
+    "pass1_calls": [
+      {
+        "tool": "match_experts_and_package",
+        "args": {
+          "target": "business",
+          "main_topic": "sme",
+          "budget_tier": "high",
+          "specific_tags": ["runway_usaha"],
+          "user_goal_summary": "startup perpanjang cash runway 18 bulan dan perbaikan unit economics CAC LTV untuk investor"
+        }
+      }
+    ],
+    "pass2_narrative": "Untuk mengamankan cash runway hingga 18 bulan, fokus utama biasanya dimulai dari menghitung net burn rate bulanan secara konservatif, memisahkan biaya akuisisi yang belum menghasilkan payback period sehat, serta menguji rasio LTV terhadap CAC per kanal pertumbuhan. Dalam persiapan penggalangan dana, investor juga akan memeriksa sensitivitas proyeksi arus kas pada skenario moderat dan pesimis. Untuk membedah model keuangan dan kesiapan dokumen due diligence secara menyeluruh, silakan jadwalkan sesi bersama advisor berlisensi di bawah.",
+    "expected_matching": {
+      "package_code": "umkm_premium",
+      "package_tier": "premium",
+      "consultant_ids": ["c4", "c2"],
+      "hint_keywords": ["runway", "burn rate", "CAC"],
+      "boundary_keywords": ["advisor", "berlisensi"]
+    }
+  },
+  {
+    "id": "Match-07",
+    "category": "deep_question_matching",
+    "surface_mode": "full_screen",
+    "user_prompt": "saya ingin menyusun peta jalan FIRE pensiun dini 10 tahun lagi dengan target aset Rp 5.000.000.000",
+    "pass1_calls": [
+      {
+        "tool": "match_experts_and_package",
+        "args": {
+          "target": "self",
+          "main_topic": "retirement",
+          "budget_tier": "high",
+          "specific_tags": ["fire_pensiun"],
+          "user_goal_summary": "menyusun peta jalan FIRE pensiun dini 10 tahun target aset Rp 5.000.000.000 dan passive income"
+        }
+      }
+    ],
+    "pass2_narrative": "Dalam merancang peta jalan Financial Independence, Retire Early (FIRE) menuju target Rp 5.000.000.000, tiga variabel kunci yang perlu dihitung adalah pengeluaran tahunan pasca-pensiun yang disesuaikan inflasi, tingkat penarikan aman (safe withdrawal rate), serta tingkat tabungan (savings rate) dari penghasilan aktif saat ini. Diversifikasi lintas kelas aset juga penting agar arus passive income tahan terhadap siklus pasar. Mengingat perencanaan pensiun dini 10 tahun melibatkan profil risiko, pajak, dan alokasi kekayaan jangka panjang, silakan berdiskusi bersama perencana keuangan senior berlisensi di bawah.",
+    "allowed_narrative_idr": [5000000000],
+    "expected_matching": {
+      "package_code": "personal_premium",
+      "package_tier": "premium",
+      "consultant_ids": ["c4", "c5", "c2"],
+      "hint_keywords": ["FIRE", "inflasi", "passive income"],
+      "boundary_keywords": ["perencana keuangan", "berlisensi"]
+    }
+  },
+  {
+    "id": "Match-08",
+    "category": "deep_question_matching",
+    "surface_mode": "full_screen",
+    "user_prompt": "kami pasangan sudah menikah dan kejepit generasi sandwich, gimana bagi pos orang tua dan dana kuliah anak?",
+    "pass1_calls": [
+      {
+        "tool": "match_experts_and_package",
+        "args": {
+          "target": "family",
+          "main_topic": "education",
+          "budget_tier": "medium",
+          "specific_tags": ["budget_nikah"],
+          "user_goal_summary": "pasangan menikah generasi sandwich mengatur tunjangan orang tua dan dana pendidikan kuliah anak"
+        }
+      }
+    ],
+    "pass2_narrative": "Menghadapi peran generasi sandwich membutuhkan kesepakatan batas dukungan bulanan yang terukur antara suami dan istri agar kebutuhan inti keluarga serta dana pendidikan anak tidak terkorbankan. Kerangka awalnya adalah memisahkan pos tunjangan orang tua ke dalam anggaran tetap bulanan, mengoptimalkan perlindungan kesehatan keluarga (seperti BPJS Kesehatan), dan mengamankan setoran rutin dana pendidikan anak sesuai horizon usia sekolah. Untuk menyusun prioritas anggaran keluarga dan proyeksi biaya pendidikan anak secara komprehensif, silakan berkonsultasi bersama perencana keuangan keluarga berlisensi di bawah.",
+    "expected_matching": {
+      "package_code": "couple_marriage",
+      "package_tier": "marriage",
+      "consultant_ids": ["c1", "c5"],
+      "hint_keywords": ["sandwich", "orang tua", "pendidikan"],
+      "boundary_keywords": ["perencana keuangan", "berlisensi"]
+    }
+  },
+  {
+    "id": "Match-09",
+    "category": "deep_question_matching",
+    "surface_mode": "full_screen",
+    "user_prompt": "saya punya dana Rp 50.000.000 dan mau susun alokasi investasi saham dan reksadana sesuai profil risiko",
+    "pass1_calls": [
+      {
+        "tool": "get_user_wallets",
+        "args": {}
+      },
+      {
+        "tool": "match_experts_and_package",
+        "args": {
+          "target": "self",
+          "main_topic": "investment",
+          "budget_tier": "medium",
+          "specific_tags": ["reksadana", "saham"],
+          "user_goal_summary": "menyusun alokasi portofolio investasi saham dan reksadana Rp 50.000.000 sesuai profil risiko"
+        }
+      }
+    ],
+    "pass2_narrative": "Sebelum menempatkan Rp 50.000.000 ke instrumen investasi, pastikan dana darurat di rekening likuid sudah mencukupi. Secara prinsip, alokasi antara instrumen berisiko rendah seperti reksa dana pasar uang atau obligasi dengan instrumen ekuitas seperti reksa dana saham bergantung pada profil risiko, toleransi penurunan nilai, dan horizon waktu penggunaan dana (strategi Dollar Cost Averaging vs lump sum). Untuk menyusun rasio diversifikasi yang sesuai kondisi keuangan dan tujuanmu tanpa bias produk tertentu, silakan jadwalkan sesi dengan perencana keuangan berlisensi di bawah.",
+    "allowed_narrative_idr": [50000000],
+    "expected_matching": {
+      "package_code": "personal_medium",
+      "package_tier": "medium",
+      "consultant_ids": ["c1", "c4"],
+      "hint_keywords": ["profil risiko", "horizon waktu", "diversifikasi"],
+      "boundary_keywords": ["perencana keuangan", "berlisensi"]
+    }
+  },
+  {
+    "id": "Match-10",
+    "category": "deep_question_matching",
+    "surface_mode": "full_screen",
+    "seed_block_consultants": ["c1"],
+    "user_prompt": "aku mau bedah tuntas portofolio reksadana dan audit polis asuransi unitlink yang preminya Rp 1.500.000 per bulan",
+    "pass1_calls": [
+      {
+        "tool": "match_experts_and_package",
+        "args": {
+          "target": "self",
+          "main_topic": "financial_checkup",
+          "budget_tier": "medium",
+          "specific_tags": ["asuransi", "reksadana"],
+          "user_goal_summary": "audit independen polis asuransi unitlink premi Rp 1.500.000 dan bedah portofolio reksadana"
+        }
+      }
+    ],
+    "pass2_narrative": "Dalam melakukan evaluasi polis unitlink dengan premi Rp 1.500.000 per bulan, hal pertama yang perlu diperiksa adalah kecukupan uang pertanggungan jiwa dan manfaat rumah sakit dibandingkan biaya asuransi (cost of insurance) yang dipotong dari nilai tunai. Di sisi portofolio reksadana, evaluasi biasanya mencakup kesesuaian pembagian aset dengan profil risiko dan tujuan waktu penggunaan dana. Karena keputusan mengubah atau mempertahankan polis serta melakukan rebalancing portofolio bersifat mengikat, silakan lakukan bedah independen bersama perencana keuangan berlisensi di bawah.",
+    "allowed_narrative_idr": [1500000],
+    "expected_matching": {
+      "package_code": "checkup_medium",
+      "package_tier": "medium",
+      "consultant_ids": ["c5", "c4"],
+      "excluded_consultant_ids": ["c1"],
+      "hint_keywords": ["uang pertanggungan", "nilai tunai", "portofolio"],
+      "boundary_keywords": ["perencana keuangan", "berlisensi"]
+    }
+  }
+]
