@@ -8,9 +8,11 @@ import 'package:uuid/uuid.dart';
 import '../../features/budget/domain/models/bill_model.dart';
 import '../../features/budget/domain/models/budget_category_model.dart';
 import '../../features/budget/domain/models/goal_model.dart';
+import '../../features/profile/presentation/providers/user_profile_provider.dart';
 import '../institutions/institution_registry.dart';
 import '../models/transaction_model.dart';
 import '../models/wallet_model.dart';
+import '../services/local_storage_service.dart';
 import '../utils/ai_category_normalizer.dart';
 import 'clarafin_api_client.dart';
 import 'tracker_remote_models.dart';
@@ -103,6 +105,49 @@ class TrackerRemoteSyncService {
       await _persistWalletMap();
     }
     return result;
+  }
+
+  Future<RemoteWalletResult> updateWallet({
+    required String walletId,
+    required String name,
+    required String type,
+    String? institutionCode,
+    required double balance,
+    bool? isAutoSync,
+    String? customColorHex,
+    String? accountNumberMasked,
+    bool? isVolatile,
+    double? returnPercentage,
+    DateTime? dividendDropDate,
+    bool? hasClaimedDividend,
+    CancelToken? cancelToken,
+  }) async {
+    final resolvedWalletId = resolveRemoteWalletId(walletId) ?? walletId.trim();
+    final resolvedInst = _trimOrNull(institutionCode) ??
+        InstitutionRegistry.findByWallet(name: name, type: type).id;
+    final masked = _trimOrNull(accountNumberMasked);
+    final customHex = _trimOrNull(customColorHex);
+    final dropDateStr =
+        dividendDropDate != null ? formatWibRfc3339(dividendDropDate) : null;
+    final payload = <String, dynamic>{
+      'name': name.trim(),
+      'type': normalizeWalletTypeForApi(type),
+      'institution_code': resolvedInst,
+      'account_number_masked': ?masked,
+      'balance': balance.round(),
+      'is_auto_sync': ?isAutoSync,
+      'custom_color_hex': ?customHex,
+      'return_percentage': ?returnPercentage,
+      'dividend_drop_date': ?dropDateStr,
+      'is_volatile': ?isVolatile,
+      'has_claimed_dividend': ?hasClaimedDividend,
+    };
+    final data = await _client.patchJson(
+      '/v1/wallets/$resolvedWalletId',
+      data: payload,
+      cancelToken: cancelToken,
+    );
+    return RemoteWalletResult.fromJson(data);
   }
 
   Future<RemoteTransactionResult> createTransaction({
@@ -262,6 +307,9 @@ class TrackerRemoteSyncService {
       transactions,
       cancelToken: cancelToken,
     );
+    if (txCount > 0 || walletCount > 0) {
+      await _reconcileWalletBalances(wallets, cancelToken: cancelToken);
+    }
     var budgetCount = 0;
     for (final b in budgets) {
       if (b.totalAmount <= 0) continue;
@@ -366,6 +414,31 @@ class TrackerRemoteSyncService {
       synced++;
     }
     return synced;
+  }
+
+  Future<void> _reconcileWalletBalances(
+    List<WalletModel> localWallets, {
+    CancelToken? cancelToken,
+  }) async {
+    for (final w in localWallets) {
+      final remoteId = resolveRemoteWalletId(w.id);
+      if (remoteId == null) continue;
+      await updateWallet(
+        walletId: remoteId,
+        name: w.name,
+        type: w.type,
+        institutionCode: w.institutionId,
+        balance: w.balance,
+        isAutoSync: w.isAutoSync,
+        customColorHex: w.customColorHex,
+        accountNumberMasked: w.maskedCardNumber,
+        isVolatile: w.isVolatile,
+        returnPercentage: w.returnPercentage,
+        dividendDropDate: w.dividendDropDate,
+        hasClaimedDividend: w.hasClaimedDividend,
+        cancelToken: cancelToken,
+      );
+    }
   }
 
   Future<int> _syncGoals(
@@ -535,5 +608,25 @@ class TrackerRemoteSyncService {
 }
 
 final trackerRemoteSyncServiceProvider = Provider<TrackerRemoteSyncService>((ref) {
-  return TrackerRemoteSyncService(client: ref.watch(clarafinApiClientProvider));
+  SharedPreferences? prefs;
+  try {
+    prefs = ref.watch(sharedPreferencesProvider);
+  } catch (_) {
+    prefs = null;
+  }
+  String email = 'default';
+  try {
+    final userEmail =
+        ref.watch(userProfileProvider.select((u) => u.email)).trim();
+    if (userEmail.isNotEmpty) {
+      email = userEmail;
+    }
+  } catch (_) {
+    email = 'default';
+  }
+  return TrackerRemoteSyncService(
+    client: ref.watch(clarafinApiClientProvider),
+    prefs: prefs,
+    storageScopeKey: email,
+  );
 });

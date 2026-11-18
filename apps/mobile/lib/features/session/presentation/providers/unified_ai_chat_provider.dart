@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../../core/institutions/institution_registry.dart';
 import '../../../../core/models/transaction_model.dart';
 import '../../../../core/models/wallet_model.dart';
 import '../../../../core/network/clarafin_api_client.dart';
@@ -212,6 +213,13 @@ class UnifiedAiChatNotifier extends Notifier<UnifiedAiChatState> {
     );
 
     var receivedTerminalEvent = false;
+    await _ensureInitialTrackerSynced(cancelToken);
+    if (_isStaleStream(requestSessionId, clientRequestId, cancelToken)) {
+      _clearActiveStreamRefs(clientRequestId);
+      if (!completer.isCompleted) completer.complete();
+      return;
+    }
+
     final Stream<AiSseEvent> stream;
     try {
       stream = ref.read(aiChatRepositoryProvider).streamChat(
@@ -492,11 +500,42 @@ class UnifiedAiChatNotifier extends Notifier<UnifiedAiChatState> {
     );
     if (pendingItems.isEmpty) return;
 
+    final localWallets = ref.read(walletsProvider);
+    final walletNames =
+        targetMsg.walletCreationDraft?.existingWalletNames ?? const {};
+    final hintName = walletNames[existingWallet.id]?.trim();
+    final candidateName =
+        (hintName != null && hintName.isNotEmpty) ? hintName : existingWallet.name;
+    final resolvedWallet =
+        localWallets.where((w) => w.id == existingWallet.id).firstOrNull ??
+        localWallets
+            .where(
+              (w) =>
+                  w.name.trim().toLowerCase() ==
+                  candidateName.trim().toLowerCase(),
+            )
+            .firstOrNull ??
+        localWallets.where((w) {
+          if (candidateName.trim().isEmpty) return false;
+          final wInst = InstitutionRegistry.findByWallet(
+            institutionId: w.institutionId,
+            name: w.name,
+            type: w.type,
+          ).id;
+          final cInst = InstitutionRegistry.findByWallet(
+            institutionId: existingWallet.institutionId,
+            name: candidateName,
+            type: w.type,
+          ).id;
+          return wInst == cInst;
+        }).firstOrNull ??
+        existingWallet;
+
     final reboundItems = pendingItems
         .map(
           (item) => item.copyWith(
-            walletId: existingWallet.id,
-            walletName: existingWallet.name,
+            walletId: resolvedWallet.id,
+            walletName: resolvedWallet.name,
           ),
         )
         .toList();
@@ -1115,15 +1154,18 @@ class UnifiedAiChatNotifier extends Notifier<UnifiedAiChatState> {
 
     var resolvedTxGroup = event.message.transactionDraftGroup;
     final walletDraft = event.message.walletCreationDraft;
+    final pendingAfterWallet = event.message.pendingTransactionAfterWallet;
     if (walletDraft != null && !walletDraft.isCreated) {
       final withheldItems =
           resolvedTxGroup != null && resolvedTxGroup.items.isNotEmpty
           ? resolvedTxGroup.items
-          : UnifiedAiChatMutationHelpers.extractPendingTxItemsFromPrompt(
-              userPrompt,
-              fallbackWalletName: walletDraft.institutionName,
-              now: event.message.timestamp,
-            );
+          : (pendingAfterWallet != null && pendingAfterWallet.items.isNotEmpty
+              ? pendingAfterWallet.items
+              : UnifiedAiChatMutationHelpers.extractPendingTxItemsFromPrompt(
+                  userPrompt,
+                  fallbackWalletName: walletDraft.institutionName,
+                  now: event.message.timestamp,
+                ));
       if (withheldItems.isNotEmpty) {
         _pendingWalletTxItems[msgId] = withheldItems;
       }
@@ -1149,6 +1191,7 @@ class UnifiedAiChatNotifier extends Notifier<UnifiedAiChatState> {
       spendingTableCard: event.message.spendingTableCard,
       walletCreationDraft: walletDraft,
       transactionDraftGroup: resolvedTxGroup,
+      pendingTransactionAfterWallet: pendingAfterWallet,
       goalDraft: event.message.goalDraft,
       budgetDraft: event.message.budgetDraft,
       billDraft: event.message.billDraft,
@@ -1231,6 +1274,10 @@ class UnifiedAiChatNotifier extends Notifier<UnifiedAiChatState> {
         targetMsg.transactionDraftGroup!.items.isNotEmpty) {
       return targetMsg.transactionDraftGroup!.items;
     }
+    if (targetMsg.pendingTransactionAfterWallet != null &&
+        targetMsg.pendingTransactionAfterWallet!.items.isNotEmpty) {
+      return targetMsg.pendingTransactionAfterWallet!.items;
+    }
 
     for (var i = messageIndex - 1; i >= 0; i--) {
       final candidate = state.messages[i];
@@ -1250,6 +1297,23 @@ class UnifiedAiChatNotifier extends Notifier<UnifiedAiChatState> {
       fallbackWalletName: fallbackWalletName,
       now: targetMsg.timestamp,
     );
+  }
+
+  Future<void> _ensureInitialTrackerSynced(CancelToken cancelToken) async {
+    if (!ref.read(clarafinApiConfigProvider).isRemoteEnabled) return;
+    try {
+      final syncService = ref.read(trackerRemoteSyncServiceProvider);
+      await syncService.syncInitialSnapshot(
+        wallets: ref.read(walletsProvider),
+        transactions: ref.read(transactionsProvider),
+        budgets: ref.read(syncedBudgetsProvider),
+        goals: ref.read(goalsProvider),
+        bills: ref.read(billsProvider),
+        cancelToken: cancelToken,
+      );
+    } catch (_) {
+      // Non-fatal pre-chat sync so mocked repositories or offline tests proceed without interruption.
+    }
   }
 
   bool _isStaleStream(

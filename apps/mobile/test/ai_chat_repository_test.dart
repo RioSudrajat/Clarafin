@@ -378,6 +378,31 @@ void main() {
           );
         }
 
+        if (options.method == 'PATCH' &&
+            options.path == '/v1/wallets/$walletUuid') {
+          final body = jsonDecode(jsonEncode(options.data)) as Map<String, dynamic>;
+          expect(body['type'], equals('ewallet'));
+          expect(body['institution_code'], equals('gopay'));
+          expect(body['balance'], equals(250000));
+          return ResponseBody.fromString(
+            jsonEncode({
+              'data': {
+                'id': walletUuid,
+                'user_id': '11111111-1111-4111-8111-111111111111',
+                'name': body['name'],
+                'type': body['type'],
+                'institution_code': body['institution_code'],
+                'balance': body['balance'],
+              },
+              'meta': {'request_id': 'req_uw'},
+            }),
+            200,
+            headers: {
+              Headers.contentTypeHeader: ['application/json'],
+            },
+          );
+        }
+
         if (options.method == 'POST' && options.path == '/v1/transactions') {
           final body = jsonDecode(jsonEncode(options.data)) as Map<String, dynamic>;
           sentTxPayloads.add(body);
@@ -579,6 +604,10 @@ void main() {
       expect(summary.goalsSynced, equals(1));
       expect(summary.billsSynced, equals(1));
       expect(calls.where((c) => c == 'POST /v1/dev/token').length, equals(1));
+      expect(
+        calls.where((c) => c == 'PATCH /v1/wallets/$walletUuid').length,
+        equals(1),
+      );
       expect(sentTxPayloads.first['occurred_at'], endsWith('+07:00'));
 
       // Re-running without force returns skipped summary cleanly.

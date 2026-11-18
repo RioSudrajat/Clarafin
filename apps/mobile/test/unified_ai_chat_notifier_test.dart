@@ -6,6 +6,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mobile/core/models/transaction_model.dart';
 import 'package:mobile/core/models/wallet_model.dart';
 import 'package:mobile/core/network/clarafin_api_client.dart';
 import 'package:mobile/core/network/tracker_remote_sync_service.dart';
@@ -18,6 +19,7 @@ import 'package:mobile/features/match_expert/presentation/providers/match_expert
 import 'package:mobile/features/session/data/ai_chat_repository.dart';
 import 'package:mobile/features/session/domain/models/ai_chat_models.dart';
 import 'package:mobile/features/session/presentation/providers/unified_ai_chat_provider.dart';
+import 'package:mobile/features/session/presentation/widgets/unified_ai_chat_panel_chrome.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 typedef _AdapterHandler = Future<ResponseBody> Function(
@@ -714,6 +716,9 @@ void main() {
       () async {
         var shouldFail = true;
         final adapter = _FakeHttpClientAdapter((options, _, _) async {
+          if (options.method == 'GET') {
+            throw StateError('Initial pre-chat sync skipped');
+          }
           if (shouldFail) {
             return ResponseBody.fromString(
               jsonEncode({
@@ -838,11 +843,14 @@ void main() {
 
         // Emit all 5 draft types from controllable stream.
         Future<String> emitAssistantMsg(UnifiedAiChatMessage msg) async {
+          final prevCount = fakeRepo.calls.length;
           final sendFut = notifier.sendMessage(
             'test prompt ${msg.id}',
             surfaceMode: AiSurfaceMode.quickSheet,
           );
-          await Future<void>.delayed(Duration.zero);
+          while (fakeRepo.calls.length <= prevCount) {
+            await Future<void>.delayed(const Duration(milliseconds: 5));
+          }
           final call = fakeRepo.calls.last;
           call.controller.add(
             AiFinalResponseEvent(
@@ -1408,6 +1416,9 @@ void main() {
         final postedMutationIds = <String>[];
 
         final adapter = _FakeHttpClientAdapter((options, _, _) async {
+          if (options.method != 'POST' || options.path != '/v1/transactions') {
+            throw StateError('Initial pre-chat sync skipped');
+          }
           expect(options.path, equals('/v1/transactions'));
           txPostCount++;
           final body = jsonDecode(jsonEncode(options.data)) as Map<String, dynamic>;
@@ -1478,7 +1489,7 @@ void main() {
           'kopi 25k + parkir 5k pake gopay',
           surfaceMode: AiSurfaceMode.quickSheet,
         );
-        await Future<void>.delayed(Duration.zero);
+        await Future<void>.delayed(const Duration(milliseconds: 10));
         final call = fakeRepo.calls.single;
         call.controller.add(
           AiFinalResponseEvent(
@@ -1878,6 +1889,9 @@ void main() {
       () async {
         var remoteCalls = 0;
         final adapter = _FakeHttpClientAdapter((options, _, _) async {
+          if (options.method == 'GET' && options.path == '/v1/wallets') {
+            throw StateError('Pre-chat initial sync skipped in invalid-draft test');
+          }
           remoteCalls++;
           throw StateError(
             'Remote sync must not be called for invalid draft: ${options.path}',
@@ -1917,7 +1931,7 @@ void main() {
             'draft ${msg.id}',
             surfaceMode: AiSurfaceMode.quickSheet,
           );
-          await Future<void>.delayed(Duration.zero);
+          await Future<void>.delayed(const Duration(milliseconds: 10));
           final call = fakeRepo.calls.last;
           call.controller.add(
             AiFinalResponseEvent(
@@ -2146,6 +2160,324 @@ void main() {
           wallets.singleWhere((w) => w.id == 'w-bca').balance,
           equals(1050000.0),
         );
+      },
+    );
+  });
+
+  group('Review Focus #8: Go-Flutter Wire Contract & Pre-Chat Snapshot Sync', () {
+    test(
+      'tapping remote UUID typo-recovery wallet chip resolves local BCA wallet by name/institution and rebinds Go pending_items',
+      () async {
+        const remoteBcaUuid = '11111111-2222-4333-8444-555555555555';
+        final localBca = WalletModel(
+          id: 'w-local-bca',
+          name: 'BCA Tabungan',
+          type: 'Bank',
+          balance: 2000000,
+          institutionId: 'bca',
+        );
+        final fakeRepo = _ControllableAiChatRepository();
+        final container = await _createTestContainer(
+          repository: fakeRepo,
+          initialWallets: [localBca],
+        );
+        addTearDown(container.dispose);
+
+        final notifier = container.read(unifiedAiChatProvider.notifier);
+        final sendFuture = notifier.sendMessage(
+          'makan siang pake bank jago',
+          surfaceMode: AiSurfaceMode.quickSheet,
+        );
+        await Future<void>.delayed(Duration.zero);
+
+        final call = fakeRepo.calls.single;
+        final rawGoResponse = UnifiedAiChatMessage.fromJson({
+          'id': 'msg-go-missing-wallet',
+          'session_id': call.sessionId,
+          'narrative': 'Dompet Bank Jago belum terdaftar di akunmu.',
+          'thinking_summary': [
+            {
+              'step_number': 1,
+              'title': 'Cek dompet Bank Jago',
+              'detail': 'Tidak ditemukan, menampilkan opsi dompet aktif',
+              'status': 'completed',
+            },
+          ],
+          'wallet_creation_draft': {
+            'institution_id': 'jago',
+            'institution_name': 'Bank Jago',
+            'institution_type': 'bank',
+            'existing_wallets': [
+              {
+                'id': remoteBcaUuid,
+                'name': 'BCA',
+                'type': 'bank',
+                'institution_code': 'bca',
+                'balance_idr': 2000000,
+              },
+            ],
+            'pending_items': [
+              {
+                'title': 'Makan Siang Spesial',
+                'amount_idr': 65000,
+                'type': 'expense',
+                'canonical_category': 'Food & Beverage • Restaurant / Dining',
+                'canonical_main_category': 'Food & Beverage',
+              },
+            ],
+          },
+          'transaction_draft': null,
+        });
+
+        call.controller.add(
+          AiFinalResponseEvent(
+            sessionId: call.sessionId,
+            clientRequestId: call.clientRequestId,
+            surfaceMode: AiSurfaceMode.quickSheet,
+            message: rawGoResponse,
+          ),
+        );
+        await call.controller.close();
+        await sendFuture;
+
+        final assistantMsg = container
+            .read(unifiedAiChatProvider)
+            .messages
+            .lastWhere((m) => !m.isUser);
+        expect(assistantMsg.transactionDraftGroup, isNull);
+        expect(assistantMsg.walletCreationDraft, isNotNull);
+
+        final existingNames =
+            assistantMsg.walletCreationDraft!.existingWalletNames;
+        expect(existingNames[remoteBcaUuid], equals('BCA'));
+
+        // Verify resolveChatWalletLabel returns local wallet name instead of raw UUID.
+        final label = resolveChatWalletLabel(
+          container.read(walletsProvider),
+          remoteBcaUuid,
+          existingWalletNames: existingNames,
+        );
+        expect(label, equals('BCA Tabungan'));
+
+        // Simulate tapping the remote UUID chip via matchChatLocalWallet or remote WalletModel.
+        final matchedLocal = matchChatLocalWallet(
+          container.read(walletsProvider),
+          remoteBcaUuid,
+          existingWalletNames: existingNames,
+        );
+        expect(matchedLocal, isNotNull);
+        expect(matchedLocal!.id, equals('w-local-bca'));
+
+        notifier.selectExistingWalletForPendingTx(
+          assistantMsg.id,
+          WalletModel(
+            id: remoteBcaUuid,
+            name: 'BCA',
+            type: 'Bank',
+            balance: 2000000,
+          ),
+        );
+
+        final reboundMsg = container
+            .read(unifiedAiChatProvider)
+            .messages
+            .lastWhere((m) => !m.isUser);
+        expect(reboundMsg.transactionDraftGroup, isNotNull);
+        final reboundItem = reboundMsg.transactionDraftGroup!.items.single;
+        expect(reboundItem.title, equals('Makan Siang Spesial'));
+        expect(reboundItem.amount, equals(65000.0));
+        expect(
+          reboundItem.canonicalCategory,
+          equals('Food & Beverage • Restaurant / Dining'),
+        );
+        expect(reboundItem.walletId, equals('w-local-bca'));
+        expect(reboundItem.walletName, equals('BCA Tabungan'));
+      },
+    );
+
+    test(
+      'pre-chat syncInitialSnapshot runs when isRemoteEnabled is true and reconciles wallet balances after syncing transactions',
+      () async {
+        const remoteWalletUuid = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
+        final localBca = WalletModel(
+          id: 'w-bca-local',
+          name: 'BCA',
+          type: 'Bank',
+          balance: 1950000,
+          institutionId: 'bca',
+        );
+        final httpCalls = <String>[];
+        int? patchedBalance;
+
+        final adapter = _FakeHttpClientAdapter((options, _, _) async {
+          httpCalls.add('${options.method} ${options.path}');
+          if (options.method == 'GET' && options.path == '/v1/wallets') {
+            return ResponseBody.fromString(
+              jsonEncode({
+                'data': {'wallets': <dynamic>[], 'total_balance_idr': 0},
+              }),
+              200,
+              headers: {
+                Headers.contentTypeHeader: ['application/json'],
+              },
+            );
+          }
+          if (options.method == 'POST' && options.path == '/v1/wallets') {
+            final body =
+                jsonDecode(jsonEncode(options.data)) as Map<String, dynamic>;
+            return ResponseBody.fromString(
+              jsonEncode({
+                'data': {
+                  'id': remoteWalletUuid,
+                  'name': body['name'],
+                  'type': body['type'],
+                  'institution_code': body['institution_code'],
+                  'balance': body['balance'],
+                },
+              }),
+              201,
+              headers: {
+                Headers.contentTypeHeader: ['application/json'],
+              },
+            );
+          }
+          if (options.method == 'POST' && options.path == '/v1/transactions') {
+            final body =
+                jsonDecode(jsonEncode(options.data)) as Map<String, dynamic>;
+            return ResponseBody.fromString(
+              jsonEncode({
+                'data': {
+                  'transaction': {
+                    'id': '77777777-7777-4777-8777-777777777777',
+                    'wallet_id': remoteWalletUuid,
+                    'type': body['type'],
+                    'category': body['category'],
+                    'amount': body['amount'],
+                    'title': body['title'],
+                  },
+                  'idempotent_replay': false,
+                  'wallet_balance_idr': 1900000,
+                },
+              }),
+              201,
+              headers: {
+                Headers.contentTypeHeader: ['application/json'],
+              },
+            );
+          }
+          if (options.method == 'PATCH' &&
+              options.path == '/v1/wallets/$remoteWalletUuid') {
+            final body =
+                jsonDecode(jsonEncode(options.data)) as Map<String, dynamic>;
+            patchedBalance = (body['balance'] as num?)?.toInt();
+            return ResponseBody.fromString(
+              jsonEncode({
+                'data': {
+                  'id': remoteWalletUuid,
+                  'name': body['name'],
+                  'type': body['type'],
+                  'institution_code': body['institution_code'],
+                  'balance': body['balance'],
+                },
+              }),
+              200,
+              headers: {
+                Headers.contentTypeHeader: ['application/json'],
+              },
+            );
+          }
+          if (options.method == 'GET' && options.path == '/v1/goals') {
+            return ResponseBody.fromString(
+              jsonEncode({
+                'data': {'goals': <dynamic>[]},
+              }),
+              200,
+              headers: {
+                Headers.contentTypeHeader: ['application/json'],
+              },
+            );
+          }
+          if (options.method == 'GET' && options.path == '/v1/bills') {
+            return ResponseBody.fromString(
+              jsonEncode({
+                'data': {'bills': <dynamic>[]},
+              }),
+              200,
+              headers: {
+                Headers.contentTypeHeader: ['application/json'],
+              },
+            );
+          }
+          throw StateError('Unexpected request: ${options.method} ${options.path}');
+        });
+
+        final apiConfig = ClarafinApiConfig.fromUrl('http://127.0.0.1:8080');
+        final dio = Dio(BaseOptions(baseUrl: apiConfig.normalizedBaseUrl));
+        dio.httpClientAdapter = adapter;
+        final apiClient = ClarafinApiClient(
+          config: apiConfig,
+          dio: dio,
+          accessToken: 'jwt_prechat_test',
+        );
+        final syncService = TrackerRemoteSyncService(
+          client: apiClient,
+          storageScopeKey: 'raka@clarafin.test',
+        );
+
+        final fakeRepo = _ControllableAiChatRepository();
+        final container = await _createTestContainer(
+          repository: fakeRepo,
+          initialWallets: [localBca],
+          apiConfig: apiConfig,
+          remoteSyncService: syncService,
+        );
+        addTearDown(container.dispose);
+
+        container.read(transactionsProvider.notifier).addTransaction(
+              TransactionModel(
+                id: 'tx_hist_1',
+                title: 'Kopi Pagi',
+                category: 'Food & Beverage • Coffee Shop',
+                amount: 50000,
+                date: DateTime(2026, 11, 18, 8, 0),
+                type: 'expense',
+                walletId: 'w-bca-local',
+              ),
+            );
+
+        final notifier = container.read(unifiedAiChatProvider.notifier);
+        final sendFuture = notifier.sendMessage(
+          'cek saldo dompetku',
+          surfaceMode: AiSurfaceMode.quickSheet,
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+
+        expect(fakeRepo.calls.length, equals(1));
+        final call = fakeRepo.calls.single;
+        call.controller.add(
+          AiFinalResponseEvent(
+            sessionId: call.sessionId,
+            clientRequestId: call.clientRequestId,
+            surfaceMode: AiSurfaceMode.quickSheet,
+            message: UnifiedAiChatMessage(
+              id: 'm-synced-reply',
+              sessionId: call.sessionId,
+              text: 'Saldo BCA kamu Rp 1.950.000.',
+              isUser: false,
+            ),
+          ),
+        );
+        await call.controller.close();
+        await sendFuture;
+
+        expect(httpCalls, contains('GET /v1/wallets'));
+        expect(httpCalls, contains('POST /v1/wallets'));
+        expect(httpCalls, contains('POST /v1/transactions'));
+        expect(
+          httpCalls,
+          contains('PATCH /v1/wallets/$remoteWalletUuid'),
+        );
+        expect(patchedBalance, equals(1900000));
       },
     );
   });

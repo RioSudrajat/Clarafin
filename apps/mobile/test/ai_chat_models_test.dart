@@ -386,6 +386,184 @@ void main() {
       expect(goCompatible.recommendedConsultants.first.name, equals('Rian Pratama, S.Ak., QWP®, AWP®'));
       expect(goCompatible.recommendedConsultants.first.recommendedTopics, equals(['Arus Kas', 'Utang']));
     });
+
+    test(
+      'deserializes raw Go SSEEventFinalResponse JSON with wallet_creation_draft.pending_items, existing_wallets UUIDs+names, recommended_package.prefilled_intake_summary, spending_breakdown_table footnote synthesis, and thinking_summary step_number+status',
+      () {
+        const bcaUuid = '11111111-2222-4333-8444-555555555555';
+        const gopayUuid = '66666666-7777-4888-8999-000000000000';
+        final rawGoFinalResponse = <String, dynamic>{
+          'session_id': 'sess-go-live',
+          'client_request_id': 'req-go-live',
+          'surface_mode': 'full_screen',
+          'plan_type': 'free',
+          'quota_total': 40,
+          'quota_used': 2,
+          'quota_remaining': 38,
+          'narrative':
+              'Dompet Bank Jago belum ada. Ini juga rincian kopi dan rekomendasi praktisi.',
+          'thinking_summary': [
+            {
+              'step_number': 1,
+              'title': 'Memeriksa dompet aktif',
+              'detail': 'BCA dan GoPay ditemukan',
+              'status': 'completed',
+            },
+            {
+              'step_number': 2,
+              'title': 'Menyiapkan draf & ringkasan',
+              'detail': 'Menahan transaksi Bank Jago',
+              'status': 'in_progress',
+            },
+          ],
+          'spending_breakdown_table': {
+            'title': 'Rincian pengeluaran kopi (Nov 2026)',
+            'period': 'this_month',
+            'period_label': 'Nov 2026',
+            'total_amount_idr': 110000,
+            'transaction_count': 3,
+            'rows': [
+              {
+                'merchant': 'Kopi Kenangan',
+                'tx_count': 2,
+                'total_amount': 75000,
+              },
+              {
+                'merchant': 'Fore Coffee',
+                'tx_count': 1,
+                'total_amount': 35000,
+              },
+            ],
+            'source_wallets': ['BCA', 'GoPay'],
+            'categories_used': ['Food & Beverage • Coffee Shop'],
+          },
+          'wallet_creation_draft': {
+            'institution_id': 'jago',
+            'institution_name': 'Bank Jago',
+            'institution_type': 'bank',
+            'missing_wallet_hint': 'bank jago',
+            'existing_wallets': [
+              {
+                'id': bcaUuid,
+                'name': 'BCA',
+                'type': 'bank',
+                'institution_code': 'bca',
+                'balance_idr': 2000000,
+              },
+              {
+                'id': gopayUuid,
+                'name': 'GoPay',
+                'type': 'ewallet',
+                'institution_code': 'gopay',
+                'balance_idr': 250000,
+              },
+            ],
+            'pending_items': [
+              {
+                'title': 'Makan Siang',
+                'amount_idr': 45000,
+                'type': 'expense',
+                'canonical_category': 'Food & Beverage • Restaurant / Dining',
+                'canonical_main_category': 'Food & Beverage',
+              },
+            ],
+          },
+          'transaction_draft': null,
+          'recommended_package': {
+            'id': '99999999-9999-4999-8999-999999999999',
+            'package_code': 'personal_basic',
+            'service_category': 'Personal Advisory',
+            'category_tag': 'Personal Advisory • Basic',
+            'tier': 'Basic',
+            'selected_tier_label': 'Personal Advisory • Basic',
+            'package_title': 'Fondasi Arus Kas & Utang',
+            'online_price_idr': 199000,
+            'offline_price_idr': 299000,
+            'recommended_method': 'Online',
+            'prefilled_intake_summary': {
+              'recommended_topics': ['Manajemen Utang', 'Paylater'],
+              'prefilled_description':
+                  'Cicilan paylater mencapai 40% dari gaji bulanan.',
+              'prefilled_expectations':
+                  'Strategi pelunasan snowball vs avalanche.',
+            },
+          },
+          'recommended_consultants': [
+            {
+              'consultant_id': 'c2',
+              'display_name': 'Budi Santoso, CFP®',
+              'tier': 'Basic',
+              'rating': 4.92,
+              'total_sessions_completed': 210,
+              'match_reason': 'Ahli restrukturisasi utang konsumtif',
+              'next_available_slot_label': 'Besok, 14:00 WIB',
+              'next_available_slot_iso': '2026-11-19T14:00:00+07:00',
+              'package_code': 'personal_basic',
+              'online_price_idr': 199000,
+            },
+          ],
+        };
+
+        final msg = UnifiedAiChatMessage.fromJson(rawGoFinalResponse);
+
+        // 1. thinking_summary step_number -> step-1 and status: completed -> isDone: true
+        expect(msg.thinkingTrace, isNotNull);
+        expect(msg.thinkingTrace!.steps.length, equals(2));
+        expect(msg.thinkingTrace!.steps[0].id, equals('step-1'));
+        expect(msg.thinkingTrace!.steps[0].isDone, isTrue);
+        expect(msg.thinkingTrace!.steps[1].id, equals('step-2'));
+        expect(msg.thinkingTrace!.steps[1].isDone, isFalse);
+
+        // 2. spending_breakdown_table footnote synthesized from source_wallets & categories_used
+        expect(msg.spendingTableCard, isNotNull);
+        expect(
+          msg.spendingTableCard!.footnote,
+          equals('Sumber: BCA, GoPay • Kategori: Food & Beverage • Coffee Shop'),
+        );
+
+        // 3. wallet_creation_draft existing_wallets UUIDs + existingWalletNames + pending_items
+        expect(msg.walletCreationDraft, isNotNull);
+        expect(
+          msg.walletCreationDraft!.existingWalletIds,
+          equals([bcaUuid, gopayUuid]),
+        );
+        expect(
+          msg.walletCreationDraft!.existingWalletNames,
+          equals({bcaUuid: 'BCA', gopayUuid: 'GoPay'}),
+        );
+        expect(msg.transactionDraftGroup, isNull);
+        expect(msg.pendingTransactionAfterWallet, isNotNull);
+        expect(msg.pendingTransactionAfterWallet!.items.length, equals(1));
+        expect(
+          msg.pendingTransactionAfterWallet!.items.first.title,
+          equals('Makan Siang'),
+        );
+        expect(
+          msg.pendingTransactionAfterWallet!.items.first.amount,
+          equals(45000.0),
+        );
+        expect(
+          msg.pendingTransactionAfterWallet!.items.first.canonicalCategory,
+          equals('Food & Beverage • Restaurant / Dining'),
+        );
+
+        // 4. recommended_package.prefilled_intake_summary propagated to consultants
+        expect(msg.recommendedConsultants.length, equals(1));
+        final consultant = msg.recommendedConsultants.single;
+        expect(
+          consultant.recommendedTopics,
+          equals(['Manajemen Utang', 'Paylater']),
+        );
+        expect(
+          consultant.prefilledDescription,
+          equals('Cicilan paylater mencapai 40% dari gaji bulanan.'),
+        );
+        expect(
+          consultant.prefilledExpectations,
+          equals('Strategi pelunasan snowball vs avalanche.'),
+        );
+      },
+    );
   });
 
   group('copyWith and toJson round-trip', () {

@@ -6,6 +6,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../features/profile/presentation/providers/user_profile_provider.dart';
+import '../services/local_storage_service.dart';
+
 /// Build-time and runtime configuration for Clarafin Go API access.
 class ClarafinApiConfig {
   static const String envBaseUrl = String.fromEnvironment(
@@ -40,6 +43,7 @@ class ClarafinApiConfig {
   }
 
   bool get isConfigured => baseUrl.trim().isNotEmpty;
+  bool get isRemoteEnabled => isConfigured;
 
   String get normalizedBaseUrl =>
       baseUrl.trim().replaceAll(RegExp(r'/+$'), '');
@@ -476,5 +480,22 @@ final clarafinApiConfigProvider = Provider<ClarafinApiConfig>((ref) {
 });
 
 final clarafinApiClientProvider = Provider<ClarafinApiClient>((ref) {
-  return ClarafinApiClient(config: ref.watch(clarafinApiConfigProvider));
+  SharedPreferences? prefs;
+  try {
+    prefs = ref.watch(sharedPreferencesProvider);
+  } catch (_) {
+    prefs = null;
+  }
+  String? devEmail;
+  String? devFullName;
+  try {
+    devEmail = ref.watch(userProfileProvider.select((u) => u.email));
+    devFullName = ref.watch(userProfileProvider.select((u) => u.name));
+  } catch (_) {}
+  return ClarafinApiClient(
+    config: ref.watch(clarafinApiConfigProvider),
+    prefs: prefs,
+    devEmail: devEmail,
+    devFullName: devFullName,
+  );
 });

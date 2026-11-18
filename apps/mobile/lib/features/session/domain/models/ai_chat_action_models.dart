@@ -30,11 +30,18 @@ class AiThinkingStep {
   }
 
   factory AiThinkingStep.fromJson(Map<String, dynamic> json) {
+    final stepNum = json['step_number'] ?? json['stepNumber'];
+    final fallbackId = stepNum != null ? 'step-$stepNum' : '';
+    final rawDone = json['is_done'] ?? json['isDone'] ?? json['done'];
+    final status = _asString(json['status']).toLowerCase();
+    final isDone = rawDone != null
+        ? _asBool(rawDone)
+        : (status == 'completed' || status == 'done');
     return AiThinkingStep(
-      id: _firstNonEmpty([json['id'], json['step_id']]),
+      id: _firstNonEmpty([json['id'], json['step_id']], fallback: fallbackId),
       label: _firstNonEmpty([json['label'], json['title'], json['message']]),
       detail: _asNullableString(json['detail'] ?? json['description']),
-      isDone: _asBool(json['is_done'] ?? json['isDone'] ?? json['done']),
+      isDone: isDone,
     );
   }
 
@@ -338,6 +345,22 @@ class AiSpendingTableData {
         ? _asInt(rawCount)
         : rows.fold<int>(0, (sum, r) => sum + r.transactionCount);
 
+    var footnote = _firstNonEmpty([json['footnote'], json['note']]);
+    if (footnote.isEmpty) {
+      final sourceWallets = _asStringList(
+        json['source_wallets'] ?? json['sourceWallets'],
+      );
+      final categoriesUsed = _asStringList(
+        json['categories_used'] ?? json['categoriesUsed'],
+      );
+      final parts = <String>[
+        if (sourceWallets.isNotEmpty) 'Sumber: ${sourceWallets.join(', ')}',
+        if (categoriesUsed.isNotEmpty)
+          'Kategori: ${categoriesUsed.join(', ')}',
+      ];
+      footnote = parts.join(' • ');
+    }
+
     return AiSpendingTableData(
       title: _firstNonEmpty([
         json['title'],
@@ -347,7 +370,7 @@ class AiSpendingTableData {
       rows: rows,
       totalAmount: totalAmount,
       totalTransactions: totalTransactions,
-      footnote: _firstNonEmpty([json['footnote'], json['note']]),
+      footnote: footnote,
     );
   }
 
@@ -366,6 +389,7 @@ class AiWalletCreationDraft {
   final String institutionName;
   final String walletType;
   final List<String> existingWalletIds;
+  final Map<String, String> existingWalletNames;
   final double initialBalance;
   final bool isCreated;
   final String? createdWalletId;
@@ -375,6 +399,7 @@ class AiWalletCreationDraft {
     required this.institutionName,
     required this.walletType,
     this.existingWalletIds = const [],
+    this.existingWalletNames = const {},
     this.initialBalance = 0.0,
     this.isCreated = false,
     this.createdWalletId,
@@ -385,6 +410,7 @@ class AiWalletCreationDraft {
     String? institutionName,
     String? walletType,
     List<String>? existingWalletIds,
+    Map<String, String>? existingWalletNames,
     double? initialBalance,
     bool? isCreated,
     String? createdWalletId,
@@ -395,6 +421,7 @@ class AiWalletCreationDraft {
       institutionName: institutionName ?? this.institutionName,
       walletType: walletType ?? this.walletType,
       existingWalletIds: existingWalletIds ?? this.existingWalletIds,
+      existingWalletNames: existingWalletNames ?? this.existingWalletNames,
       initialBalance: initialBalance ?? this.initialBalance,
       isCreated: isCreated ?? this.isCreated,
       createdWalletId:
@@ -406,14 +433,43 @@ class AiWalletCreationDraft {
     var walletIds = _asStringList(
       json['existing_wallet_ids'] ?? json['existingWalletIds'],
     );
-    if (walletIds.isEmpty && json['existing_wallets'] is List) {
-      walletIds = (json['existing_wallets'] as List)
-          .map((item) {
-            if (item is Map) return _asString(item['id']);
-            return _asString(item);
-          })
-          .where((id) => id.isNotEmpty)
-          .toList();
+    final walletNames = <String, String>{};
+    final rawNamesMap =
+        json['existing_wallet_names'] ?? json['existingWalletNames'];
+    if (rawNamesMap is Map) {
+      for (final entry in rawNamesMap.entries) {
+        final k = _asString(entry.key);
+        final v = _asString(entry.value);
+        if (k.isNotEmpty && v.isNotEmpty) {
+          walletNames[k] = v;
+        }
+      }
+    }
+    final rawExistingList =
+        json['existing_wallets'] ?? json['existingWallets'];
+    if (rawExistingList is List) {
+      final parsedIds = <String>[];
+      for (final item in rawExistingList) {
+        if (item is Map) {
+          final rawId = _asString(item['id']);
+          final rawName = _asString(item['name']);
+          final key = rawId.isNotEmpty ? rawId : rawName;
+          if (key.isNotEmpty) {
+            parsedIds.add(key);
+            if (rawName.isNotEmpty) {
+              walletNames[key] = rawName;
+            }
+          }
+        } else {
+          final str = _asString(item);
+          if (str.isNotEmpty) {
+            parsedIds.add(str);
+          }
+        }
+      }
+      if (walletIds.isEmpty) {
+        walletIds = parsedIds;
+      }
     }
 
     return AiWalletCreationDraft(
@@ -433,6 +489,7 @@ class AiWalletCreationDraft {
         json['type'],
       ], fallback: 'other'),
       existingWalletIds: walletIds,
+      existingWalletNames: walletNames,
       initialBalance: _asDouble(
         json['initial_balance'] ??
             json['initial_balance_idr'] ??
@@ -450,6 +507,8 @@ class AiWalletCreationDraft {
     'institution_name': institutionName,
     'wallet_type': walletType,
     'existing_wallet_ids': existingWalletIds,
+    if (existingWalletNames.isNotEmpty)
+      'existing_wallet_names': existingWalletNames,
     'initial_balance': initialBalance,
     'is_created': isCreated,
     if (createdWalletId != null) 'created_wallet_id': createdWalletId,
@@ -1390,6 +1449,7 @@ String _compactTxGroup(AiTransactionDraftGroup group) {
 }
 
 String _formatIdr(double amount) {
+  if (!amount.isFinite) return 'Rp 0';
   final rounded = amount.round();
   final sign = rounded < 0 ? '-' : '';
   final digits = rounded.abs().toString();

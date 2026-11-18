@@ -33,6 +33,7 @@ class UnifiedAiChatMessage {
   final AiSpendingTableData? spendingTableCard;
   final AiWalletCreationDraft? walletCreationDraft;
   final AiTransactionDraftGroup? transactionDraftGroup;
+  final AiTransactionDraftGroup? pendingTransactionAfterWallet;
   final AiGoalDraft? goalDraft;
   final AiBudgetDraft? budgetDraft;
   final AiBillDraft? billDraft;
@@ -52,6 +53,7 @@ class UnifiedAiChatMessage {
     this.spendingTableCard,
     this.walletCreationDraft,
     this.transactionDraftGroup,
+    this.pendingTransactionAfterWallet,
     this.goalDraft,
     this.budgetDraft,
     this.billDraft,
@@ -72,6 +74,7 @@ class UnifiedAiChatMessage {
     AiSpendingTableData? spendingTableCard,
     AiWalletCreationDraft? walletCreationDraft,
     AiTransactionDraftGroup? transactionDraftGroup,
+    AiTransactionDraftGroup? pendingTransactionAfterWallet,
     AiGoalDraft? goalDraft,
     AiBudgetDraft? budgetDraft,
     AiBillDraft? billDraft,
@@ -93,6 +96,8 @@ class UnifiedAiChatMessage {
       walletCreationDraft: walletCreationDraft ?? this.walletCreationDraft,
       transactionDraftGroup:
           transactionDraftGroup ?? this.transactionDraftGroup,
+      pendingTransactionAfterWallet:
+          pendingTransactionAfterWallet ?? this.pendingTransactionAfterWallet,
       goalDraft: goalDraft ?? this.goalDraft,
       budgetDraft: budgetDraft ?? this.budgetDraft,
       billDraft: billDraft ?? this.billDraft,
@@ -114,10 +119,54 @@ class UnifiedAiChatMessage {
       root['client_mutation_id'],
       root['clientMutationId'],
     ]);
+    final rawPkg = _asMap(
+      pick(['recommended_package', 'recommendedPackage']),
+    );
     final prefill = _asMap(
-      root['prefilled_intake_summary'] ?? root['prefilledIntakeSummary'],
+      root['prefilled_intake_summary'] ??
+          root['prefilledIntakeSummary'] ??
+          rawPkg['prefilled_intake_summary'] ??
+          rawPkg['prefilledIntakeSummary'],
     );
     final role = _asString(root['role']).toLowerCase();
+
+    final rawWalletDraft = pick([
+      'wallet_creation_draft_card',
+      'wallet_creation_draft',
+      'walletCreationDraft',
+    ]);
+    final walletCreationMap = _asMap(rawWalletDraft);
+    final walletCreationDraft = _parseOpt(
+      rawWalletDraft,
+      AiWalletCreationDraft.fromJson,
+    );
+
+    final parsedTransactionDraft = _parseTransactionDraftGroup(
+      pick([
+        'transaction_draft_card',
+        'transaction_draft',
+        'transaction_draft_group',
+        'transactionDraftGroup',
+      ]),
+      topMutationId,
+    );
+    var pendingTransactionDraft = _parseTransactionDraftGroup(
+      pick([
+        'pending_transaction_after_wallet',
+        'pendingTransactionAfterWallet',
+      ]),
+      topMutationId,
+    );
+    final rawPendingItems =
+        walletCreationMap['pending_items'] ?? walletCreationMap['pendingItems'];
+    if (pendingTransactionDraft == null &&
+        rawPendingItems is List &&
+        rawPendingItems.isNotEmpty) {
+      pendingTransactionDraft = AiTransactionDraftGroup.fromJson(
+        {'items': rawPendingItems},
+        fallbackMutationId: topMutationId,
+      );
+    }
 
     return UnifiedAiChatMessage(
       id: _firstNonEmpty([root['id'], root['message_id']]),
@@ -153,23 +202,9 @@ class UnifiedAiChatMessage {
         ]),
         AiSpendingTableData.fromJson,
       ),
-      walletCreationDraft: _parseOpt(
-        pick([
-          'wallet_creation_draft_card',
-          'wallet_creation_draft',
-          'walletCreationDraft',
-        ]),
-        AiWalletCreationDraft.fromJson,
-      ),
-      transactionDraftGroup: _parseTransactionDraftGroup(
-        pick([
-          'transaction_draft_card',
-          'transaction_draft',
-          'transaction_draft_group',
-          'transactionDraftGroup',
-        ]),
-        topMutationId,
-      ),
+      walletCreationDraft: walletCreationDraft,
+      transactionDraftGroup: parsedTransactionDraft,
+      pendingTransactionAfterWallet: pendingTransactionDraft,
       goalDraft: _parseOpt(
         pick(['goal_draft_card', 'goal_draft', 'goalDraft']),
         (m) => AiGoalDraft.fromJson(m, fallbackMutationId: topMutationId),
@@ -218,6 +253,9 @@ class UnifiedAiChatMessage {
       'wallet_creation_draft': walletCreationDraft!.toJson(),
     if (transactionDraftGroup != null)
       'transaction_draft': transactionDraftGroup!.toJson(),
+    if (pendingTransactionAfterWallet != null)
+      'pending_transaction_after_wallet':
+          pendingTransactionAfterWallet!.toJson(),
     if (goalDraft != null) 'goal_draft': goalDraft!.toJson(),
     if (budgetDraft != null) 'budget_draft': budgetDraft!.toJson(),
     if (billDraft != null) 'bill_draft': billDraft!.toJson(),

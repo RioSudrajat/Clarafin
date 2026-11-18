@@ -13,15 +13,46 @@ import 'ai_action_card_primitives.dart';
 import 'ai_chat_bubble.dart';
 import 'ai_thinking_trace_widget.dart';
 
+/// Matches a local [WalletModel] by ID, remote `existingWalletNames`, name, or institution.
+WalletModel? matchChatLocalWallet(
+  List<WalletModel> wallets,
+  String walletId, {
+  Map<String, String> existingWalletNames = const {},
+}) {
+  final trimmed = walletId.trim();
+  if (trimmed.isEmpty) return null;
+  final byId = wallets.where((w) => w.id == trimmed).firstOrNull;
+  if (byId != null) return byId;
+
+  final namedHint = existingWalletNames[trimmed]?.trim() ?? '';
+  if (namedHint.isNotEmpty) {
+    final lowerHint = namedHint.toLowerCase();
+    final byNamedHint = wallets.where((w) => w.name.trim().toLowerCase() == lowerHint).firstOrNull;
+    if (byNamedHint != null) return byNamedHint;
+    final byInst = wallets.where((w) {
+      return InstitutionRegistry.findByWallet(name: w.name, type: w.type).id ==
+          InstitutionRegistry.findByWallet(name: namedHint, type: w.type).id;
+    }).firstOrNull;
+    if (byInst != null) return byInst;
+  }
+
+  final lowerId = trimmed.toLowerCase();
+  return wallets.where((w) => w.name.trim().toLowerCase() == lowerId).firstOrNull;
+}
+
 /// Resolves a human-readable wallet label from user wallets or [InstitutionRegistry].
-String resolveChatWalletLabel(List<WalletModel> wallets, String walletId) {
+String resolveChatWalletLabel(
+  List<WalletModel> wallets,
+  String walletId, {
+  Map<String, String> existingWalletNames = const {},
+}) {
   final trimmed = walletId.trim();
   if (trimmed.isEmpty) return '';
-  final hit = wallets.where((w) => w.id == trimmed).firstOrNull;
+  final hit = matchChatLocalWallet(wallets, trimmed, existingWalletNames: existingWalletNames);
   if (hit != null && hit.name.trim().isNotEmpty) return hit.name;
-  final clean = trimmed
-      .replaceFirst(RegExp(r'^(wallet[-_]|w[-_])', caseSensitive: false), '')
-      .trim();
+  final namedHint = existingWalletNames[trimmed]?.trim() ?? '';
+  if (namedHint.isNotEmpty) return namedHint;
+  final clean = trimmed.replaceFirst(RegExp(r'^(wallet[-_]|w[-_])', caseSensitive: false), '').trim();
   return (clean.isEmpty ? null : InstitutionRegistry.findById(clean))?.shortName ??
       (clean.isEmpty ? trimmed : clean);
 }
@@ -33,21 +64,17 @@ Widget buildUnifiedChatBubble({
   required List<WalletModel> wallets,
   required UnifiedAiChatNotifier notifier,
   required AiSurfaceMode surfaceMode,
-  required void Function(AiConsultantRecommendation, AiPackageRecommendation?)
-      onSelectConsultant,
+  required void Function(AiConsultantRecommendation, AiPackageRecommendation?) onSelectConsultant,
   required void Function(String route) onNavigateShellBranch,
 }) {
+  final walletNames = msg.walletCreationDraft?.existingWalletNames ?? const {};
   return AiChatBubble(
     message: msg,
-    onRetry: () => unawaited(
-      notifier.retryFailedMessage(msg.id, surfaceMode: surfaceMode),
-    ),
+    onRetry: () => unawaited(notifier.retryFailedMessage(msg.id, surfaceMode: surfaceMode)),
     onUpgradePlan: () => SaasUpgradeBottomSheet.show(context, reason: msg.text),
-    onCreateWallet: (bal) => unawaited(
-      notifier.confirmWalletCreation(msg.id, initialBalance: bal),
-    ),
+    onCreateWallet: (bal) => unawaited(notifier.confirmWalletCreation(msg.id, initialBalance: bal)),
     onSelectExistingWallet: (walletId) {
-      final w = wallets.where((item) => item.id == walletId).firstOrNull;
+      final w = matchChatLocalWallet(wallets, walletId, existingWalletNames: walletNames);
       if (w != null) notifier.selectExistingWalletForPendingTx(msg.id, w);
     },
     onConfirmTransaction: () => unawaited(notifier.confirmTransactionDraft(msg.id)),
@@ -61,7 +88,7 @@ Widget buildUnifiedChatBubble({
     onCancelBill: () => notifier.cancelBillDraft(msg.id),
     onSelectConsultant: onSelectConsultant,
     onBrowseConsultants: () => onNavigateShellBranch('/consult'),
-    walletLabelResolver: (id) => resolveChatWalletLabel(wallets, id),
+    walletLabelResolver: (id) => resolveChatWalletLabel(wallets, id, existingWalletNames: walletNames),
   );
 }
 
@@ -87,10 +114,7 @@ class LiveThinkingTraceRow extends StatelessWidget {
               boxShadow: NeoBrutalism.shadow(yOffset: 1.5),
             ),
             child: Center(
-              child: NotionDoodleWidget(
-                svgString: NotionDoodleIcons.aiChat,
-                size: 19,
-              ),
+              child: NotionDoodleWidget(svgString: NotionDoodleIcons.aiChat, size: 19),
             ),
           ),
           const SizedBox(width: 8),
@@ -107,11 +131,7 @@ class LiveThinkingTraceRow extends StatelessWidget {
 class MutationErrorBanner extends StatelessWidget {
   final String message;
   final VoidCallback onDismiss;
-  const MutationErrorBanner({
-    super.key,
-    required this.message,
-    required this.onDismiss,
-  });
+  const MutationErrorBanner({super.key, required this.message, required this.onDismiss});
 
   @override
   Widget build(BuildContext context) {
@@ -125,12 +145,7 @@ class MutationErrorBanner extends StatelessWidget {
               message,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: aiActionTextStyle(
-                context,
-                11.5,
-                FontWeight.w700,
-                const Color(0xFF9F1239),
-              ),
+              style: aiActionTextStyle(context, 11.5, FontWeight.w700, const Color(0xFF9F1239)),
             ),
           ),
           IconButton(
