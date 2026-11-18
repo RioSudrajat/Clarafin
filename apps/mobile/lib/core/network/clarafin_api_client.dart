@@ -253,21 +253,26 @@ class ClarafinApiClient {
     CancelToken? cancelToken,
     Map<String, dynamic>? headers,
   }) async {
-    final opts = await _authOptions(
-      cancelToken: cancelToken,
-      extraHeaders: {
-        'Accept': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        ...?headers,
+    return _requestWithAuthRetry<ResponseBody>(
+      () async {
+        final opts = await _authOptions(
+          cancelToken: cancelToken,
+          extraHeaders: {
+            'Accept': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            ...?headers,
+          },
+          responseType: ResponseType.stream,
+          receiveTimeout: config.streamReceiveTimeout,
+        );
+        return _dio.post<ResponseBody>(
+          path,
+          data: data,
+          cancelToken: cancelToken,
+          options: opts,
+        );
       },
-      responseType: ResponseType.stream,
-      receiveTimeout: config.streamReceiveTimeout,
-    );
-    return _dio.post<ResponseBody>(
-      path,
-      data: data,
       cancelToken: cancelToken,
-      options: opts,
     );
   }
 
@@ -278,12 +283,19 @@ class ClarafinApiClient {
     try {
       return await execute();
     } on DioException catch (err) {
-      if (err.response?.statusCode == 401 && _explicitToken == null) {
+      if (CancelToken.isCancel(err)) rethrow;
+      final apiErr = await extractApiException(err);
+      final isStaleDevAccount = apiErr.statusCode == 404 &&
+          _explicitToken == null &&
+          _externalTokenProvider == null &&
+          apiErr.message.toLowerCase().contains('user account');
+      if ((apiErr.statusCode == 401 && _explicitToken == null) ||
+          isStaleDevAccount) {
         clearCachedToken();
         await ensureAccessToken(forceRefresh: true, cancelToken: cancelToken);
         return execute();
       }
-      throw await extractApiException(err);
+      throw apiErr;
     }
   }
 

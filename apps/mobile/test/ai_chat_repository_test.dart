@@ -913,5 +913,60 @@ void main() {
         expect(c.matchReason.contains('\u2014'), isFalse);
       }
     });
+
+    test('ClarafinApiClient refreshes dev token automatically on 404 User account not found', () async {
+      var quotaCalls = 0;
+      var devTokenCalls = 0;
+      ResponseBody jsonResp(int status, Map<String, dynamic> body) {
+        return ResponseBody.fromString(
+          jsonEncode(body),
+          status,
+          headers: {
+            Headers.contentTypeHeader: [Headers.jsonContentType],
+          },
+        );
+      }
+
+      final adapter = _FakeHttpClientAdapter((options, _, _) async {
+        if (options.path == '/v1/dev/token') {
+          devTokenCalls++;
+          return jsonResp(200, {
+            'data': {
+              'access_token': 'fresh-dev-jwt-$devTokenCalls',
+              'expires_in': 3600,
+              'user': {'id': 'u-fresh'},
+            },
+          });
+        }
+        if (options.path == '/v1/ai/quota') {
+          quotaCalls++;
+          if (quotaCalls == 1) {
+            return jsonResp(404, {
+              'error': {
+                'code': 'NOT_FOUND',
+                'message': 'User account not found.',
+              },
+            });
+          }
+          expect(options.headers['Authorization'], equals('Bearer fresh-dev-jwt-2'));
+          return jsonResp(200, {
+            'data': {
+              'plan_type': 'free',
+              'quota_total': 40,
+              'quota_used': 0,
+              'quota_remaining': 40,
+              'renewal_date': '2026-12-01T00:00:00+07:00',
+            },
+          });
+        }
+        throw StateError('Unexpected path: ${options.path}');
+      });
+
+      final client = _buildTestClient(adapter);
+      final res = await client.getJson('/v1/ai/quota');
+      expect(devTokenCalls, equals(2));
+      expect(quotaCalls, equals(2));
+      expect(res['quota_remaining'], equals(40));
+    });
   });
 }

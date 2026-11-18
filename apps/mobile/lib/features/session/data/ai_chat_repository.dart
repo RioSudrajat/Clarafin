@@ -207,6 +207,17 @@ class RemoteAiChatRepository implements AiChatRepository {
           yield event;
         }
       }
+    } on ClarafinApiException catch (apiErr) {
+      if (cancelToken?.isCancelled ?? false) return;
+      yield AiErrorEvent(
+        errorCode: apiErr.code,
+        message: apiErr.message,
+        statusCode: apiErr.statusCode,
+        requestId: apiErr.requestId,
+        planType: apiErr.details?['plan_type']?.toString(),
+        quotaRemaining: (apiErr.details?['quota_remaining'] as num?)?.toInt(),
+        quotaTotal: (apiErr.details?['quota_total'] as num?)?.toInt(),
+      );
     } on DioException catch (err) {
       if (CancelToken.isCancel(err) || (cancelToken?.isCancelled ?? false)) {
         return;
