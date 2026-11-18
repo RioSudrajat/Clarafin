@@ -620,6 +620,97 @@ void main() {
       );
       expect(skipped.skippedAlreadySynced, isTrue);
     });
+
+    test(
+      'syncInitialSnapshot maps matching existing remote GoPay from GET /v1/wallets instead of calling POST /v1/wallets twice',
+      () async {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('clarafin_remote_synced_dup_scope', true);
+
+        const remoteGopayUuid = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+        final calls = <String>[];
+        final adapter = _FakeHttpClientAdapter((options, _, _) async {
+          calls.add('${options.method} ${options.path}');
+          if (options.method == 'POST' && options.path == '/v1/dev/token') {
+            return ResponseBody.fromString(
+              jsonEncode({
+                'data': {
+                  'access_token': 'tok_dup',
+                  'token_type': 'Bearer',
+                  'expires_in': 3600,
+                  'expires_at': DateTime.now()
+                      .toUtc()
+                      .add(const Duration(hours: 1))
+                      .toIso8601String(),
+                  'user': {
+                    'id': '11111111-1111-4111-8111-111111111111',
+                    'email': 'dup@clarafin.id',
+                  },
+                },
+                'meta': {'request_id': 'req_tok_dup'},
+              }),
+              200,
+              headers: {
+                Headers.contentTypeHeader: ['application/json'],
+              },
+            );
+          }
+          if (options.method == 'GET' && options.path == '/v1/wallets') {
+            return ResponseBody.fromString(
+              jsonEncode({
+                'data': {
+                  'wallets': [
+                    {
+                      'id': remoteGopayUuid,
+                      'name': 'GoPay',
+                      'type': 'e_wallet',
+                      'balance': 250000,
+                    },
+                  ],
+                },
+                'meta': {'request_id': 'req_gw_dup'},
+              }),
+              200,
+              headers: {
+                Headers.contentTypeHeader: ['application/json'],
+              },
+            );
+          }
+          throw StateError('Unexpected call: ${options.method} ${options.path}');
+        });
+
+        final client = _buildTestClient(adapter, prefs: prefs);
+        final syncService = TrackerRemoteSyncService(
+          client: client,
+          prefs: prefs,
+          storageScopeKey: 'dup_scope',
+        );
+
+        final summary = await syncService.syncInitialSnapshot(
+          wallets: [
+            WalletModel(
+              id: 'w_local_new_gopay',
+              name: 'gopay',
+              type: 'E-Wallet',
+              balance: 250000,
+              institutionId: 'gopay',
+            ),
+          ],
+          transactions: const [],
+          budgets: const [],
+          goals: const [],
+          bills: const [],
+        );
+
+        expect(summary.walletsSynced, equals(0));
+        expect(calls.where((c) => c == 'GET /v1/wallets').length, equals(1));
+        expect(calls.where((c) => c == 'POST /v1/wallets'), isEmpty);
+        expect(
+          syncService.resolveRemoteWalletId('w_local_new_gopay'),
+          equals(remoteGopayUuid),
+        );
+      },
+    );
   });
 
   group('LocalFallbackAiChatRepository', () {

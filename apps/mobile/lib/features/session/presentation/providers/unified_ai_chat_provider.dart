@@ -378,35 +378,61 @@ class UnifiedAiChatNotifier extends Notifier<UnifiedAiChatState> {
     state = state.copyWith(isMutating: true, clearErrorMessage: true);
 
     try {
-      final newWalletId = 'w_${_uuid.v4()}';
       final walletName = draft.institutionName.trim().isNotEmpty
           ? draft.institutionName.trim()
           : 'Dompet Baru';
       final displayType =
           UnifiedAiChatMutationHelpers.resolveDisplayWalletType(draft);
-
-      final newWallet = WalletModel(
-        id: newWalletId,
-        name: walletName,
-        type: displayType,
-        balance: initialBalance,
-        institutionId:
-            draft.institutionId.trim().isEmpty ? null : draft.institutionId,
+      final localWallets = ref.read(walletsProvider);
+      final existingLocal = _findMatchingLocalWallet(
+        localWallets,
+        draft,
+        walletName,
+        displayType,
       );
 
-      if (syncService != null) {
-        await syncService.createWallet(
-          name: newWallet.name,
-          type: newWallet.type,
-          institutionCode: newWallet.institutionId,
-          balance: newWallet.balance,
-          localWalletId: newWallet.id,
+      final WalletModel resolvedWallet;
+      final double resolvedBalance;
+      if (existingLocal != null) {
+        resolvedWallet = existingLocal;
+        resolvedBalance = existingLocal.balance;
+        if (syncService != null &&
+            syncService.resolveRemoteWalletId(existingLocal.id) == null) {
+          await syncService.syncInitialSnapshot(
+            wallets: localWallets,
+            transactions: ref.read(transactionsProvider),
+            budgets: ref.read(syncedBudgetsProvider),
+            goals: ref.read(goalsProvider),
+            bills: ref.read(billsProvider),
+          );
+        }
+        if (!_canMutateState) return;
+      } else {
+        final newWallet = WalletModel(
+          id: 'w_${_uuid.v4()}',
+          name: walletName,
+          type: displayType,
+          balance: initialBalance,
+          institutionId:
+              draft.institutionId.trim().isEmpty ? null : draft.institutionId,
         );
+
+        if (syncService != null) {
+          await syncService.createWallet(
+            name: newWallet.name,
+            type: newWallet.type,
+            institutionCode: newWallet.institutionId,
+            balance: newWallet.balance,
+            localWalletId: newWallet.id,
+          );
+        }
+
+        if (!_canMutateState) return;
+
+        ref.read(walletsProvider.notifier).addWallet(newWallet);
+        resolvedWallet = newWallet;
+        resolvedBalance = initialBalance;
       }
-
-      if (!_canMutateState) return;
-
-      ref.read(walletsProvider.notifier).addWallet(newWallet);
 
       if (state.sessionId == requestSessionId) {
         final currentIndex = state.messages.indexWhere((m) => m.id == messageId);
@@ -424,7 +450,7 @@ class UnifiedAiChatNotifier extends Notifier<UnifiedAiChatState> {
             final pendingItems = _resolvePendingTxItemsForMessage(
               currentIndex,
               currentMsg,
-              fallbackWalletName: newWallet.name,
+              fallbackWalletName: resolvedWallet.name,
             );
             if (pendingItems.isNotEmpty) {
               unlockedGroup = AiTransactionDraftGroup(
@@ -435,8 +461,8 @@ class UnifiedAiChatNotifier extends Notifier<UnifiedAiChatState> {
                 items: pendingItems
                     .map(
                       (item) => item.copyWith(
-                        walletId: newWallet.id,
-                        walletName: newWallet.name,
+                        walletId: resolvedWallet.id,
+                        walletName: resolvedWallet.name,
                       ),
                     )
                     .toList(),
@@ -448,9 +474,9 @@ class UnifiedAiChatNotifier extends Notifier<UnifiedAiChatState> {
             currentIndex,
             currentMsg.copyWith(
               walletCreationDraft: draft.copyWith(
-                initialBalance: initialBalance,
+                initialBalance: resolvedBalance,
                 isCreated: true,
-                createdWalletId: newWallet.id,
+                createdWalletId: resolvedWallet.id,
               ),
               transactionDraftGroup: unlockedGroup,
             ),
@@ -470,6 +496,39 @@ class UnifiedAiChatNotifier extends Notifier<UnifiedAiChatState> {
         state = state.copyWith(isMutating: _confirmingMessageIds.isNotEmpty);
       }
     }
+  }
+
+  WalletModel? _findMatchingLocalWallet(
+    List<WalletModel> localWallets,
+    AiWalletCreationDraft draft,
+    String walletName,
+    String displayType,
+  ) {
+    final normalizedTarget = walletName.trim().toLowerCase();
+    for (final w in localWallets) {
+      if (w.name.trim().toLowerCase() == normalizedTarget) {
+        return w;
+      }
+    }
+    final draftInst = InstitutionRegistry.findByWallet(
+      institutionId:
+          draft.institutionId.trim().isEmpty ? null : draft.institutionId.trim(),
+      name: walletName,
+      type: displayType,
+    ).id;
+    if (draftInst != 'other') {
+      for (final w in localWallets) {
+        final wInst = InstitutionRegistry.findByWallet(
+          institutionId: w.institutionId,
+          name: w.name,
+          type: w.type,
+        ).id;
+        if (wInst == draftInst) {
+          return w;
+        }
+      }
+    }
+    return null;
   }
 
   /// Rebinds a withheld transaction draft to an [existingWallet] selected by

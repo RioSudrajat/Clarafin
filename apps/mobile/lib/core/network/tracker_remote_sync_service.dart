@@ -298,8 +298,18 @@ class TrackerRemoteSyncService {
     bool force = false,
     CancelToken? cancelToken,
   }) async {
+    final hasUnmappedWallets = wallets.any(
+      (w) => resolveRemoteWalletId(w.id) == null,
+    );
     if (!force && _initialSyncCompleted) {
-      return const TrackerSyncSummary(skippedAlreadySynced: true);
+      if (!hasUnmappedWallets) {
+        return const TrackerSyncSummary(skippedAlreadySynced: true);
+      }
+      final walletCount = await _syncWallets(wallets, cancelToken: cancelToken);
+      if (walletCount > 0) {
+        await _reconcileWalletBalances(wallets, cancelToken: cancelToken);
+      }
+      return TrackerSyncSummary(walletsSynced: walletCount);
     }
 
     final walletCount = await _syncWallets(wallets, cancelToken: cancelToken);
@@ -354,16 +364,22 @@ class TrackerRemoteSyncService {
         continue;
       }
       final apiType = normalizeWalletTypeForApi(w.type);
-      final match = remoteList.where(
+      final normalizedName = w.name.toLowerCase().trim();
+      final exactMatch = remoteList.where(
         (rw) =>
-            rw.name.toLowerCase().trim() == w.name.toLowerCase().trim() &&
+            rw.name.toLowerCase().trim() == normalizedName &&
             rw.type == apiType,
       );
-      if (match.isNotEmpty) {
-        _walletIdMap[w.id] = match.first.id;
+      final nameMatch = exactMatch.isNotEmpty
+          ? exactMatch
+          : remoteList.where(
+              (rw) => rw.name.toLowerCase().trim() == normalizedName,
+            );
+      if (nameMatch.isNotEmpty) {
+        _walletIdMap[w.id] = nameMatch.first.id;
         continue;
       }
-      await createWallet(
+      final created = await createWallet(
         name: w.name,
         type: w.type,
         institutionCode: w.institutionId,
@@ -378,6 +394,7 @@ class TrackerRemoteSyncService {
         localWalletId: w.id,
         cancelToken: cancelToken,
       );
+      remoteList.add(created);
       synced++;
     }
     await _persistWalletMap();

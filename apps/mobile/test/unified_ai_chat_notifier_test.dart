@@ -2706,5 +2706,83 @@ void main() {
         expect(walletsAfter.firstWhere((w) => w.id == 'w-gopay').balance, equals(500000));
       },
     );
+
+    test(
+      'confirmWalletCreation reuses existing GoPay in walletsProvider instead of creating a duplicate GoPay',
+      () async {
+        final fakeRepo = _ControllableAiChatRepository();
+        final container = await _createTestContainer(
+          repository: fakeRepo,
+          initialWallets: [
+            WalletModel(
+              id: 'w-existing-gopay',
+              name: 'GoPay',
+              type: 'E-Wallet',
+              balance: 300000,
+              institutionId: 'gopay',
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        final notifier = container.read(unifiedAiChatProvider.notifier);
+        final sendFuture = notifier.sendMessage(
+          'beli kopi 25rb pake gopay',
+          surfaceMode: AiSurfaceMode.quickSheet,
+        );
+        await Future<void>.delayed(Duration.zero);
+        final call = fakeRepo.calls.last;
+        call.controller.add(
+          AiFinalResponseEvent(
+            sessionId: call.sessionId,
+            clientRequestId: call.clientRequestId,
+            surfaceMode: AiSurfaceMode.quickSheet,
+            message: UnifiedAiChatMessage(
+              id: 'msg-dup-gopay',
+              sessionId: call.sessionId,
+              text: 'Silakan buat dompet GoPay.',
+              isUser: false,
+              walletCreationDraft: const AiWalletCreationDraft(
+                institutionId: 'gopay',
+                institutionName: 'gopay',
+                walletType: 'E-Wallet',
+              ),
+            ),
+          ),
+        );
+        await call.controller.close();
+        await sendFuture;
+
+        final msg = container
+            .read(unifiedAiChatProvider)
+            .messages
+            .lastWhere((m) => !m.isUser);
+        await notifier.confirmWalletCreation(msg.id, initialBalance: 100000);
+
+        final walletsAfter = container.read(walletsProvider);
+        expect(walletsAfter.length, equals(1));
+        expect(walletsAfter.single.id, equals('w-existing-gopay'));
+        expect(walletsAfter.single.balance, equals(300000));
+
+        final updatedMsg = container
+            .read(unifiedAiChatProvider)
+            .messages
+            .singleWhere((m) => m.id == msg.id);
+        expect(updatedMsg.walletCreationDraft!.isCreated, isTrue);
+        expect(
+          updatedMsg.walletCreationDraft!.createdWalletId,
+          equals('w-existing-gopay'),
+        );
+        expect(updatedMsg.transactionDraftGroup, isNotNull);
+        expect(
+          updatedMsg.transactionDraftGroup!.items.single.walletId,
+          equals('w-existing-gopay'),
+        );
+        expect(
+          updatedMsg.transactionDraftGroup!.items.single.walletName,
+          equals('GoPay'),
+        );
+      },
+    );
   });
 }

@@ -17,6 +17,8 @@ import 'package:mobile/features/session/domain/models/ai_chat_models.dart';
 import 'package:mobile/features/session/presentation/providers/unified_ai_chat_provider.dart';
 import 'package:mobile/features/session/presentation/screens/ai_chat_screen.dart';
 import 'package:mobile/features/session/presentation/screens/quick_action_sheets.dart';
+import 'package:mobile/features/session/presentation/widgets/ai_chat_bubble.dart';
+import 'package:mobile/features/session/presentation/widgets/ai_formatted_narrative_text.dart';
 import 'package:mobile/features/session/presentation/widgets/ai_money_flow_card.dart';
 import 'package:mobile/features/session/presentation/widgets/ai_planning_action_card.dart';
 import 'package:mobile/features/session/presentation/widgets/ai_recommended_consultants_section.dart';
@@ -824,5 +826,57 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
       container.dispose();
     });
+
+    testWidgets(
+      'AiChatBubble renders inline numbered AI text as separated list items with zero 360px overflow',
+      (tester) async {
+        tester.view.physicalSize = const Size(360, 780);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() {
+          tester.view.resetPhysicalSize();
+          tester.view.resetDevicePixelRatio();
+        });
+
+        const narrative =
+            'Halo Raka! 1. Pencatatan Transaksi: Catat kopi Rp 25.000 instan. '
+            '2. Cek Saldo: Pantau total kas Rp 1.500.000 setiap saat. '
+            '3. **Perencanaan**: Atur budget bulanan tanpa ribet.';
+
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: AppTheme.lightTheme,
+            home: Scaffold(
+              body: SingleChildScrollView(
+                padding: const EdgeInsets.all(12),
+                child: AiChatBubble(
+                  message: UnifiedAiChatMessage(
+                    id: 'ai-narrative-1',
+                    sessionId: 'sess-1',
+                    isUser: false,
+                    text: narrative,
+                    timestamp: DateTime(2026, 11, 18, 10, 0),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.byType(AiFormattedNarrativeText), findsOneWidget);
+        expect(find.text('1'), findsOneWidget);
+        expect(find.text('2'), findsOneWidget);
+        expect(find.text('3'), findsOneWidget);
+        expect(
+          find.textContaining('Rp 25.000', findRichText: true),
+          findsOneWidget,
+        );
+        expect(
+          find.textContaining('Rp 1.500.000', findRichText: true),
+          findsOneWidget,
+        );
+        expect(tester.takeException(), isNull);
+      },
+    );
   });
 }

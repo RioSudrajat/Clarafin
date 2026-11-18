@@ -5,6 +5,7 @@ import '../../../home/presentation/widgets/notion_doodle_icons.dart';
 import '../../domain/models/ai_chat_models.dart';
 import 'ai_action_card_primitives.dart';
 import 'ai_chat_error_card.dart';
+import 'ai_formatted_narrative_text.dart';
 import 'ai_money_flow_card.dart';
 import 'ai_planning_action_card.dart';
 import 'ai_recommended_consultants_section.dart';
@@ -154,7 +155,7 @@ class AiChatBubble extends StatelessWidget {
                         ),
                         border: NeoBrutalism.border(width: 1.8), boxShadow: NeoBrutalism.shadow(yOffset: 2.0),
                       ),
-                      child: Text(message.text, style: aiActionTextStyle(context, 13, FontWeight.w500).copyWith(height: 1.45)),
+                      child: AiFormattedNarrativeText(text: message.text),
                     ),
                   if (message.moneyFlowCard != null) ...[const SizedBox(height: 10), AiMoneyFlowCard(data: message.moneyFlowCard!)],
                   if (message.spendingTableCard != null) ...[const SizedBox(height: 10), AiSpendingBreakdownTableCard(data: message.spendingTableCard!)],
