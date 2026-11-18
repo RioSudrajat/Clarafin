@@ -8,6 +8,9 @@ import (
 	"strings"
 )
 
+// DefaultGeminiModel is the primary Gemini model used when GEMINI_MODEL is unset.
+const DefaultGeminiModel = "gemini-3.5-flash"
+
 // Config holds validated runtime configuration loaded from environment variables.
 type Config struct {
 	AppEnv                    string
@@ -19,6 +22,7 @@ type Config struct {
 	SupabaseJWKSURL           string
 	GeminiAPIKey              string
 	GeminiModel               string
+	GeminiFallbackModels      []string
 	GeminiContextCacheEnabled bool
 	AIRateLimitPerMin         int
 	EnableDevAuth             bool
@@ -75,6 +79,9 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 
+	geminiModel := getEnvOrDefault("GEMINI_MODEL", DefaultGeminiModel)
+	rawFallbackModels, hasFallbackEnv := os.LookupEnv("GEMINI_FALLBACK_MODELS")
+
 	cfg := &Config{
 		AppEnv:                    appEnv,
 		HTTPPort:                  httpPort,
@@ -84,7 +91,8 @@ func Load() (*Config, error) {
 		SupabaseJWTSecret:         getTrimmedEnv("SUPABASE_JWT_SECRET"),
 		SupabaseJWKSURL:           getTrimmedEnv("SUPABASE_JWKS_URL"),
 		GeminiAPIKey:              getTrimmedEnv("GEMINI_API_KEY"),
-		GeminiModel:               getEnvOrDefault("GEMINI_MODEL", "gemini-2.5-flash"),
+		GeminiModel:               geminiModel,
+		GeminiFallbackModels:      ParseGeminiFallbackModels(rawFallbackModels, hasFallbackEnv, geminiModel),
 		GeminiContextCacheEnabled: geminiCacheEnabled,
 		AIRateLimitPerMin:         aiRateLimit,
 		EnableDevAuth:             enableDevAuth,
@@ -172,4 +180,35 @@ func parseAllowedOrigins(raw, appEnv string) []string {
 		}
 	}
 	return origins
+}
+
+// ParseGeminiFallbackModels parses the ordered fallback model list from GEMINI_FALLBACK_MODELS.
+// When the environment variable is unset, it returns ["gemini-3-flash-preview", "gemini-3.8-flash"]
+// with the primary model excluded. When explicitly set to "" or "none", it returns an empty slice.
+func ParseGeminiFallbackModels(raw string, isSet bool, primaryModel string) []string {
+	primary := strings.TrimSpace(primaryModel)
+	if !isSet {
+		raw = "gemini-3-flash-preview,gemini-3.8-flash"
+	} else {
+		trimmedRaw := strings.TrimSpace(raw)
+		if trimmedRaw == "" || strings.EqualFold(trimmedRaw, "none") {
+			return []string{}
+		}
+	}
+
+	parts := strings.Split(raw, ",")
+	seen := make(map[string]struct{}, len(parts))
+	fallbacks := make([]string, 0, len(parts))
+	for _, part := range parts {
+		candidate := strings.TrimSpace(part)
+		if candidate == "" || strings.EqualFold(candidate, "none") || candidate == primary {
+			continue
+		}
+		if _, dup := seen[candidate]; dup {
+			continue
+		}
+		seen[candidate] = struct{}{}
+		fallbacks = append(fallbacks, candidate)
+	}
+	return fallbacks
 }

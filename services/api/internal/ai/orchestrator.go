@@ -149,6 +149,7 @@ type GenerateRequest struct {
 
 // GenerateResponse represents normalized output returned by LLMClient.
 type GenerateResponse struct {
+	Model            string
 	Text             string
 	FunctionCalls    []ToolCall
 	GroundingSources []string
@@ -291,7 +292,7 @@ func NewOrchestrator(cfg OrchestratorConfig) *Orchestrator {
 	}
 	model := strings.TrimSpace(cfg.Model)
 	if model == "" {
-		model = "gemini-2.5-flash"
+		model = "gemini-3.5-flash"
 	}
 
 	return &Orchestrator{

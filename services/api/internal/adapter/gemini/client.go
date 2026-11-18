@@ -7,9 +7,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"net"
 	"net/http"
+	"sort"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"go.uber.org/zap"
@@ -20,6 +24,7 @@ import (
 
 const defaultCacheTTL = 60 * time.Minute
 const failedCacheRetryCooldown = 5 * time.Minute
+const defaultPrimaryModel = "gemini-3.5-flash"
 
 // ErrGeminiUnavailable indicates the Gemini adapter has no API key or failed initialization.
 var ErrGeminiUnavailable = errors.New("gemini client unavailable")
@@ -28,13 +33,18 @@ var ErrGeminiUnavailable = errors.New("gemini client unavailable")
 type Config struct {
 	APIKey              string
 	DefaultModel        string
+	FallbackModels      []string
 	ContextCacheEnabled bool
 	CacheTTL            time.Duration
 	HTTPClient          *http.Client
 	Logger              *zap.Logger
 }
 
+// ClientConfig is an alias for Config.
+type ClientConfig = Config
+
 type cachedEntry struct {
+	model     string
 	name      string
 	expiresAt time.Time
 }
@@ -43,6 +53,7 @@ type cachedEntry struct {
 type Client struct {
 	apiKey              string
 	defaultModel        string
+	fallbackModels      []string
 	contextCacheEnabled bool
 	cacheTTL            time.Duration
 	logger              *zap.Logger
@@ -53,6 +64,9 @@ type Client struct {
 	cacheCreateMu sync.Mutex
 	caches        map[string]cachedEntry
 	cacheCooldown map[string]time.Time
+
+	unavailableMu     sync.RWMutex
+	unavailableModels map[string]error
 }
 
 // NewClient initializes the Google Gemini adapter. An empty APIKey yields a safe unconfigured client
@@ -64,7 +78,7 @@ func NewClient(ctx context.Context, cfg Config) (*Client, error) {
 	}
 	model := strings.TrimSpace(cfg.DefaultModel)
 	if model == "" {
-		model = "gemini-2.5-flash"
+		model = defaultPrimaryModel
 	}
 	cacheTTL := cfg.CacheTTL
 	if cacheTTL <= 0 {
@@ -74,12 +88,14 @@ func NewClient(ctx context.Context, cfg Config) (*Client, error) {
 	c := &Client{
 		apiKey:              strings.TrimSpace(cfg.APIKey),
 		defaultModel:        model,
+		fallbackModels:      normalizeFallbackSlice(cfg.FallbackModels, model),
 		contextCacheEnabled: cfg.ContextCacheEnabled,
 		cacheTTL:            cacheTTL,
 		logger:              logger,
 		nowFn:               time.Now,
 		caches:              make(map[string]cachedEntry),
 		cacheCooldown:       make(map[string]time.Time),
+		unavailableModels:   make(map[string]error),
 	}
 
 	if c.apiKey == "" {
@@ -104,15 +120,16 @@ func (c *Client) IsConfigured() bool {
 	return c != nil && c.genaiClient != nil && c.apiKey != ""
 }
 
-// GenerateContent executes one Gemini generation turn with strict tool/schema separation and context caching.
+// GenerateContent executes one Gemini generation turn with strict tool/schema separation,
+// model-isolated context caching, and ordered model failover on 404/429/5xx/network errors.
 func (c *Client) GenerateContent(ctx context.Context, req ai.GenerateRequest) (*ai.GenerateResponse, error) {
 	if !c.IsConfigured() {
 		return nil, fmt.Errorf("%w: GEMINI_API_KEY is not configured", ErrGeminiUnavailable)
 	}
 
-	model := strings.TrimSpace(req.Model)
-	if model == "" {
-		model = c.defaultModel
+	primaryModel := strings.TrimSpace(req.Model)
+	if primaryModel == "" {
+		primaryModel = c.defaultModel
 	}
 
 	contents, err := toGenaiContents(req.Contents)
@@ -120,41 +137,106 @@ func (c *Client) GenerateContent(ctx context.Context, req ai.GenerateRequest) (*
 		return nil, err
 	}
 
-	genCfg, err := BuildGenaiConfig(req)
+	baseCfg, err := BuildGenaiConfig(req)
 	if err != nil {
 		return nil, err
 	}
 
-	usedCacheName := ""
-	savedSys := genCfg.SystemInstruction
-	savedTools := genCfg.Tools
+	savedSys := baseCfg.SystemInstruction
+	savedTools := baseCfg.Tools
+	candidates := c.candidateModels(primaryModel)
+	searchGroundingDisabled := false
 
-	if c.shouldAttemptExplicitCache(req, genCfg) {
-		cacheKey := buildExplicitCacheKey(model, req.CacheKey, req.ToolDeclarations)
-		if name, ok := c.resolveOrCreateExplicitCache(ctx, model, cacheKey, savedSys, savedTools); ok {
-			usedCacheName = name
-			genCfg.CachedContent = name
-			// Gemini rejects duplicate systemInstruction or tools alongside CachedContent.
-			genCfg.SystemInstruction = nil
-			genCfg.Tools = nil
+	var lastErr error
+	for idx, candidateModel := range candidates {
+		if memoErr, unavailable := c.unavailableModelError(candidateModel); unavailable {
+			lastErr = memoErr
+			continue
+		}
+
+		attemptCfg := *baseCfg
+		attemptCfg.CachedContent = ""
+		attemptCfg.SystemInstruction = savedSys
+		attemptCfg.Tools = savedTools
+		if req.EnableGoogleSearch && searchGroundingDisabled {
+			attemptCfg.Tools = nil
+		}
+		attemptCacheName := ""
+
+		// Explicit CachedContent is strictly bound to the model that created it.
+		// Fallback models (idx > 0) always receive inline SystemInstruction and Tools.
+		if idx == 0 && c.shouldAttemptExplicitCache(req, baseCfg) {
+			cacheKey := buildExplicitCacheKey(candidateModel, req.CacheKey, req.ToolDeclarations)
+			if name, ok := c.resolveOrCreateExplicitCache(ctx, candidateModel, cacheKey, savedSys, savedTools); ok {
+				attemptCacheName = name
+				attemptCfg.CachedContent = name
+				// Gemini rejects duplicate systemInstruction or tools alongside CachedContent.
+				attemptCfg.SystemInstruction = nil
+				attemptCfg.Tools = nil
+			}
+		}
+
+		rawResp, callErr := c.genaiClient.Models.GenerateContent(ctx, candidateModel, contents, &attemptCfg)
+		if callErr != nil && attemptCacheName != "" && ctx.Err() == nil {
+			shouldFailover, _ := classifyGeminiError(ctx, callErr)
+			c.invalidateExplicitCache(buildExplicitCacheKey(candidateModel, req.CacheKey, req.ToolDeclarations))
+			if !shouldFailover {
+				c.logger.Warn(
+					"gemini cached generation failed; falling back to implicit prefix caching",
+					zap.String("model", candidateModel),
+					zap.String("cache_name", attemptCacheName),
+					zap.Error(callErr),
+				)
+				attemptCacheName = ""
+				attemptCfg.CachedContent = ""
+				attemptCfg.SystemInstruction = savedSys
+				attemptCfg.Tools = savedTools
+				rawResp, callErr = c.genaiClient.Models.GenerateContent(ctx, candidateModel, contents, &attemptCfg)
+			}
+		}
+
+		if callErr != nil && req.EnableGoogleSearch && !searchGroundingDisabled && ctx.Err() == nil {
+			_, isModelNotFound := classifyGeminiError(ctx, callErr)
+			if !isModelNotFound {
+				searchGroundingDisabled = true
+				c.logger.Warn(
+					"gemini google_search grounding failed; falling back to ungrounded model synthesis",
+					zap.String("model", candidateModel),
+					zap.Error(callErr),
+				)
+				attemptCfg.Tools = nil
+				rawResp, callErr = c.genaiClient.Models.GenerateContent(ctx, candidateModel, contents, &attemptCfg)
+			}
+		}
+
+		if callErr == nil {
+			return fromGenaiResponse(rawResp, candidateModel, attemptCacheName), nil
+		}
+
+		lastErr = callErr
+		shouldFailover, isModelNotFound := classifyGeminiError(ctx, callErr)
+		if isModelNotFound {
+			c.markModelUnavailable(candidateModel, callErr)
+		}
+		if !shouldFailover {
+			return nil, fmt.Errorf("gemini generate content (%s): %w", req.Pass, callErr)
+		}
+		if idx < len(candidates)-1 {
+			c.logger.Warn(
+				"gemini model call failed; failing over to next candidate model",
+				zap.String("pass", req.Pass),
+				zap.String("failed_model", candidateModel),
+				zap.String("next_model", candidates[idx+1]),
+				zap.Bool("memoized_404", isModelNotFound),
+				zap.Error(callErr),
+			)
 		}
 	}
 
-	rawResp, err := c.genaiClient.Models.GenerateContent(ctx, model, contents, genCfg)
-	if err != nil && usedCacheName != "" && ctx.Err() == nil {
-		c.invalidateExplicitCache(buildExplicitCacheKey(model, req.CacheKey, req.ToolDeclarations))
-		c.logger.Warn("gemini cached generation failed; falling back to implicit prefix caching", zap.String("cache_name", usedCacheName), zap.Error(err))
-		usedCacheName = ""
-		genCfg.CachedContent = ""
-		genCfg.SystemInstruction = savedSys
-		genCfg.Tools = savedTools
-		rawResp, err = c.genaiClient.Models.GenerateContent(ctx, model, contents, genCfg)
+	if lastErr == nil {
+		lastErr = ErrGeminiUnavailable
 	}
-	if err != nil {
-		return nil, fmt.Errorf("gemini generate content (%s): %w", req.Pass, err)
-	}
-
-	return fromGenaiResponse(rawResp, usedCacheName), nil
+	return nil, fmt.Errorf("gemini generate content (%s): %w", req.Pass, lastErr)
 }
 
 // BuildGenaiConfig translates an SDK-agnostic ai.GenerateRequest into *genai.GenerateContentConfig
@@ -233,10 +315,48 @@ func BuildGenaiConfig(req ai.GenerateRequest) (*genai.GenerateContentConfig, err
 		cfg.ResponseMIMEType = req.Params.ResponseMIMEType
 	}
 	if req.Params.ResponseSchema != nil {
-		cfg.ResponseSchema = ToGenaiSchema(req.Params.ResponseSchema)
+		cfg.ResponseSchema = optimizeGenaiResponseSchema(ToGenaiSchema(req.Params.ResponseSchema))
 	}
 
 	return cfg, nil
+}
+
+func optimizeGenaiResponseSchema(s *genai.Schema) *genai.Schema {
+	if s == nil {
+		return nil
+	}
+	s.Nullable = nil
+	if len(s.Enum) > 10 {
+		s.Enum = nil
+	}
+	if s.Items != nil {
+		optimizeGenaiResponseSchema(s.Items)
+	}
+	if len(s.Properties) > 0 {
+		reqSet := make(map[string]struct{}, len(s.Required))
+		ordering := make([]string, 0, len(s.Properties))
+		for _, rk := range s.Required {
+			if _, exists := s.Properties[rk]; exists {
+				if _, seen := reqSet[rk]; !seen {
+					reqSet[rk] = struct{}{}
+					ordering = append(ordering, rk)
+				}
+			}
+		}
+		optKeys := make([]string, 0, len(s.Properties)-len(ordering))
+		for k, prop := range s.Properties {
+			optimizeGenaiResponseSchema(prop)
+			if _, isReq := reqSet[k]; !isReq {
+				optKeys = append(optKeys, k)
+			}
+		}
+		sort.Strings(optKeys)
+		ordering = append(ordering, optKeys...)
+		if len(s.PropertyOrdering) == 0 {
+			s.PropertyOrdering = ordering
+		}
+	}
+	return s
 }
 
 // ToGenaiSchema converts an ai.ToolParameterSchema tree into *genai.Schema.
@@ -337,8 +457,9 @@ func toGenaiContents(msgs []ai.LLMMessage) ([]*genai.Content, error) {
 	return contents, nil
 }
 
-func fromGenaiResponse(resp *genai.GenerateContentResponse, explicitCacheName string) *ai.GenerateResponse {
+func fromGenaiResponse(resp *genai.GenerateContentResponse, modelName, explicitCacheName string) *ai.GenerateResponse {
 	out := &ai.GenerateResponse{
+		Model:            modelName,
 		UsedContextCache: explicitCacheName != "",
 		CacheName:        explicitCacheName,
 	}
@@ -409,7 +530,7 @@ func (c *Client) resolveOrCreateExplicitCache(
 	now := c.nowFn()
 
 	c.cacheMu.RLock()
-	if entry, ok := c.caches[fullKey]; ok && entry.expiresAt.After(now.Add(2*time.Minute)) {
+	if entry, ok := c.caches[fullKey]; ok && entry.model == model && entry.expiresAt.After(now.Add(2*time.Minute)) {
 		c.cacheMu.RUnlock()
 		return entry.name, true
 	}
@@ -424,7 +545,7 @@ func (c *Client) resolveOrCreateExplicitCache(
 
 	now = c.nowFn()
 	c.cacheMu.RLock()
-	if entry, ok := c.caches[fullKey]; ok && entry.expiresAt.After(now.Add(2*time.Minute)) {
+	if entry, ok := c.caches[fullKey]; ok && entry.model == model && entry.expiresAt.After(now.Add(2*time.Minute)) {
 		c.cacheMu.RUnlock()
 		return entry.name, true
 	}
@@ -453,7 +574,7 @@ func (c *Client) resolveOrCreateExplicitCache(
 		expiresAt = now.Add(c.cacheTTL)
 	}
 	c.cacheMu.Lock()
-	c.caches[fullKey] = cachedEntry{name: created.Name, expiresAt: expiresAt}
+	c.caches[fullKey] = cachedEntry{model: model, name: created.Name, expiresAt: expiresAt}
 	delete(c.cacheCooldown, fullKey)
 	c.cacheMu.Unlock()
 
@@ -465,6 +586,163 @@ func (c *Client) invalidateExplicitCache(fullKey string) {
 	delete(c.caches, fullKey)
 	c.cacheCooldown[fullKey] = c.nowFn().Add(failedCacheRetryCooldown)
 	c.cacheMu.Unlock()
+}
+
+func (c *Client) candidateModels(primaryModel string) []string {
+	primary := strings.TrimSpace(primaryModel)
+	if primary == "" {
+		primary = c.defaultModel
+	}
+	seen := make(map[string]struct{}, 1+len(c.fallbackModels))
+	out := make([]string, 0, 1+len(c.fallbackModels))
+	if primary != "" {
+		seen[primary] = struct{}{}
+		out = append(out, primary)
+	}
+	for _, fb := range c.fallbackModels {
+		if fb == "" {
+			continue
+		}
+		if _, dup := seen[fb]; dup {
+			continue
+		}
+		seen[fb] = struct{}{}
+		out = append(out, fb)
+	}
+	return out
+}
+
+func (c *Client) unavailableModelError(model string) (error, bool) {
+	c.unavailableMu.RLock()
+	err, ok := c.unavailableModels[model]
+	c.unavailableMu.RUnlock()
+	return err, ok
+}
+
+func (c *Client) markModelUnavailable(model string, err error) {
+	if model == "" {
+		return
+	}
+	c.unavailableMu.Lock()
+	c.unavailableModels[model] = err
+	c.unavailableMu.Unlock()
+}
+
+func normalizeFallbackSlice(raw []string, primaryModel string) []string {
+	primary := strings.TrimSpace(primaryModel)
+	seen := make(map[string]struct{}, len(raw))
+	out := make([]string, 0, len(raw))
+	for _, item := range raw {
+		trimmed := strings.TrimSpace(item)
+		if trimmed == "" || strings.EqualFold(trimmed, "none") || trimmed == primary {
+			continue
+		}
+		if _, dup := seen[trimmed]; dup {
+			continue
+		}
+		seen[trimmed] = struct{}{}
+		out = append(out, trimmed)
+	}
+	return out
+}
+
+func classifyGeminiError(ctx context.Context, err error) (shouldFailover bool, isModelNotFound bool) {
+	if err == nil {
+		return false, false
+	}
+	if ctx != nil && ctx.Err() != nil {
+		return false, false
+	}
+	if errors.Is(err, context.Canceled) {
+		return false, false
+	}
+
+	if apiErr, ok := extractAPIError(err); ok {
+		status := strings.ToUpper(strings.TrimSpace(apiErr.Status))
+		switch apiErr.Code {
+		case http.StatusNotFound:
+			return true, true
+		case http.StatusTooManyRequests,
+			http.StatusInternalServerError,
+			http.StatusBadGateway,
+			http.StatusServiceUnavailable,
+			http.StatusGatewayTimeout:
+			return true, false
+		case http.StatusBadRequest,
+			http.StatusUnauthorized,
+			http.StatusForbidden:
+			return false, false
+		}
+		switch status {
+		case "NOT_FOUND":
+			return true, true
+		case "RESOURCE_EXHAUSTED", "INTERNAL", "BAD_GATEWAY", "UNAVAILABLE", "DEADLINE_EXCEEDED":
+			return true, false
+		case "INVALID_ARGUMENT", "UNAUTHENTICATED", "PERMISSION_DENIED":
+			return false, false
+		}
+		if apiErr.Code >= 500 && apiErr.Code < 600 {
+			return true, false
+		}
+		return false, false
+	}
+
+	var netErr net.Error
+	if errors.As(err, &netErr) {
+		return true, false
+	}
+	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, syscall.ECONNRESET) || errors.Is(err, syscall.ECONNREFUSED) {
+		return true, false
+	}
+
+	lower := strings.ToLower(err.Error())
+	if strings.Contains(lower, "invalid_argument") ||
+		strings.Contains(lower, "unauthenticated") ||
+		strings.Contains(lower, "permission_denied") ||
+		strings.Contains(lower, "status 400") ||
+		strings.Contains(lower, "code 400") ||
+		strings.Contains(lower, "status 401") ||
+		strings.Contains(lower, "status 403") {
+		return false, false
+	}
+	if strings.Contains(lower, "not_found") || strings.Contains(lower, "status 404") || strings.Contains(lower, "code 404") || strings.Contains(lower, "error 404") {
+		return true, true
+	}
+	if strings.Contains(lower, "resource_exhausted") ||
+		strings.Contains(lower, "unavailable") ||
+		strings.Contains(lower, "deadline_exceeded") ||
+		strings.Contains(lower, "bad_gateway") ||
+		strings.Contains(lower, "status 429") ||
+		strings.Contains(lower, "status 500") ||
+		strings.Contains(lower, "status 502") ||
+		strings.Contains(lower, "status 503") ||
+		strings.Contains(lower, "status 504") ||
+		strings.Contains(lower, "error 429") ||
+		strings.Contains(lower, "error 500") ||
+		strings.Contains(lower, "error 502") ||
+		strings.Contains(lower, "error 503") ||
+		strings.Contains(lower, "error 504") ||
+		strings.Contains(lower, "connection reset") ||
+		strings.Contains(lower, "timeout") {
+		return true, false
+	}
+
+	return false, false
+}
+
+func extractAPIError(err error) (genai.APIError, bool) {
+	if err == nil {
+		return genai.APIError{}, false
+	}
+	var valErr genai.APIError
+	if errors.As(err, &valErr) {
+		return valErr, true
+	}
+	var ptrErr *genai.APIError
+	if errors.As(err, &ptrErr) && ptrErr != nil {
+		return *ptrErr, true
+	}
+	return genai.APIError{}, false
 }
 
 func buildExplicitCacheKey(model, reqKey string, decls []ai.ToolDeclaration) string {

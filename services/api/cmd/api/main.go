@@ -93,6 +93,7 @@ func main() {
 	geminiClient, err := gemini.NewClient(geminiCtx, gemini.Config{
 		APIKey:              cfg.GeminiAPIKey,
 		DefaultModel:        cfg.GeminiModel,
+		FallbackModels:      cfg.GeminiFallbackModels,
 		ContextCacheEnabled: cfg.GeminiContextCacheEnabled,
 		Logger:              logger,
 	})
@@ -147,6 +148,7 @@ func main() {
 			zap.String("addr", srv.Addr),
 			zap.String("env", cfg.AppEnv),
 			zap.String("gemini_model", cfg.GeminiModel),
+			zap.Strings("gemini_fallback_models", cfg.GeminiFallbackModels),
 			zap.Bool("dev_auth_enabled", cfg.EnableDevAuth && cfg.AppEnv == "development"),
 		)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {

@@ -1,6 +1,7 @@
 package config_test
 
 import (
+	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -20,6 +21,7 @@ func clearConfigEnv(t *testing.T) {
 		"SUPABASE_JWKS_URL",
 		"GEMINI_API_KEY",
 		"GEMINI_MODEL",
+		"GEMINI_FALLBACK_MODELS",
 		"GEMINI_CONTEXT_CACHE_ENABLED",
 		"AI_RATE_LIMIT_PER_MIN",
 		"ENABLE_DEV_AUTH",
@@ -29,6 +31,7 @@ func clearConfigEnv(t *testing.T) {
 	for _, key := range keys {
 		t.Setenv(key, "")
 	}
+	_ = os.Unsetenv("GEMINI_FALLBACK_MODELS")
 }
 
 func TestLoadConfig_FailsWithoutRequiredDatabaseURL(t *testing.T) {
@@ -73,8 +76,12 @@ func TestLoadConfig_DefaultsGeminiModelAndRateLimit(t *testing.T) {
 	if cfg.HTTPPort != "8080" {
 		t.Errorf("expected HTTPPort '8080', got %q", cfg.HTTPPort)
 	}
-	if cfg.GeminiModel != "gemini-2.5-flash" {
-		t.Errorf("expected GeminiModel 'gemini-2.5-flash', got %q", cfg.GeminiModel)
+	if cfg.GeminiModel != "gemini-3.5-flash" {
+		t.Errorf("expected GeminiModel 'gemini-3.5-flash', got %q", cfg.GeminiModel)
+	}
+	wantFallbacks := []string{"gemini-3-flash-preview", "gemini-3.8-flash"}
+	if !reflect.DeepEqual(cfg.GeminiFallbackModels, wantFallbacks) {
+		t.Errorf("expected GeminiFallbackModels %v, got %v", wantFallbacks, cfg.GeminiFallbackModels)
 	}
 	if !cfg.GeminiContextCacheEnabled {
 		t.Errorf("expected GeminiContextCacheEnabled true by default")
@@ -312,6 +319,38 @@ func TestLoadConfig_ParsesCustomValuesAndValidatesPrimitives(t *testing.T) {
 		t.Setenv("GEMINI_CONTEXT_CACHE_ENABLED", "not-a-bool")
 		if _, err := config.Load(); err == nil {
 			t.Fatal("expected error for invalid GEMINI_CONTEXT_CACHE_ENABLED")
+		}
+	})
+
+	t.Run("parses GEMINI_FALLBACK_MODELS with trim, dedupe, primary exclusion, and empty/none overrides", func(t *testing.T) {
+		clearConfigEnv(t)
+		t.Setenv("DATABASE_URL", dbURL)
+		t.Setenv("REDIS_URL", redisURL)
+		t.Setenv("GEMINI_MODEL", "gemini-3.5-flash")
+		t.Setenv("GEMINI_FALLBACK_MODELS", " gemini-3-flash-preview , gemini-3.5-flash , gemini-3.8-flash , gemini-3-flash-preview , ")
+
+		cfg, err := config.Load()
+		if err != nil {
+			t.Fatalf("expected valid config with custom GEMINI_FALLBACK_MODELS, got: %v", err)
+		}
+		wantFallbacks := []string{"gemini-3-flash-preview", "gemini-3.8-flash"}
+		if !reflect.DeepEqual(cfg.GeminiFallbackModels, wantFallbacks) {
+			t.Fatalf("expected GeminiFallbackModels %v, got %v", wantFallbacks, cfg.GeminiFallbackModels)
+		}
+
+		for _, disableVal := range []string{"", "   ", "none", "NONE"} {
+			clearConfigEnv(t)
+			t.Setenv("DATABASE_URL", dbURL)
+			t.Setenv("REDIS_URL", redisURL)
+			t.Setenv("GEMINI_FALLBACK_MODELS", disableVal)
+
+			disabledCfg, err := config.Load()
+			if err != nil {
+				t.Fatalf("expected Load() to succeed for GEMINI_FALLBACK_MODELS=%q, got: %v", disableVal, err)
+			}
+			if len(disabledCfg.GeminiFallbackModels) != 0 {
+				t.Fatalf("expected empty GeminiFallbackModels for %q, got %v", disableVal, disabledCfg.GeminiFallbackModels)
+			}
 		}
 	})
 }
