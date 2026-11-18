@@ -397,7 +397,9 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/draft/review',
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => const AiDraftReviewScreen(),
+        builder: (context, state) => AiDraftReviewScreen(
+          extra: _asExtraMap(state.extra),
+        ),
       ),
       GoRoute(
         path: '/reporting',

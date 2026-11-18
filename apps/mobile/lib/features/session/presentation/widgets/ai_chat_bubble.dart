@@ -1,28 +1,63 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
+
 import '../../../../core/theme/neo_brutalism_decorations.dart';
+import '../../../home/presentation/widgets/notion_doodle_icons.dart';
+import '../../domain/models/ai_chat_models.dart';
+import 'ai_action_card_primitives.dart';
+import 'ai_chat_error_card.dart';
+import 'ai_money_flow_card.dart';
+import 'ai_planning_action_card.dart';
+import 'ai_recommended_consultants_section.dart';
+import 'ai_spending_breakdown_table_card.dart';
+import 'ai_thinking_trace_widget.dart';
+import 'ai_transaction_draft_card.dart';
+import 'ai_wallet_creation_draft_card.dart';
 
-class AiChatMessage {
-  final String text;
-  final bool isUser;
-  final DateTime timestamp;
-  final String? ctaLabel;
-  final String? ctaRoute;
+typedef AiSelectConsultantCallback = void Function(
+  AiConsultantRecommendation consultant,
+  AiPackageRecommendation? fallbackPackage,
+);
 
-  AiChatMessage({
-    required this.text,
-    required this.isUser,
-    DateTime? timestamp,
-    this.ctaLabel,
-    this.ctaRoute,
-  }) : timestamp = timestamp ?? DateTime.now();
-}
-
+/// Renders a unified user or multimodal assistant chat turn with rich cards.
 class AiChatBubble extends StatelessWidget {
-  final AiChatMessage message;
+  final UnifiedAiChatMessage message;
+  final VoidCallback? onRetry;
+  final VoidCallback? onUpgradePlan;
+  final ValueChanged<double>? onCreateWallet;
+  final ValueChanged<String>? onSelectExistingWallet;
+  final VoidCallback? onConfirmTransaction;
+  final VoidCallback? onCancelTransaction;
+  final VoidCallback? onConfirmGoal;
+  final VoidCallback? onCancelGoal;
+  final VoidCallback? onConfirmBudget;
+  final VoidCallback? onCancelBudget;
+  final VoidCallback? onViewBudget;
+  final VoidCallback? onConfirmBill;
+  final VoidCallback? onCancelBill;
+  final AiSelectConsultantCallback? onSelectConsultant;
+  final VoidCallback? onBrowseConsultants;
+  final String Function(String walletId)? walletLabelResolver;
 
-  const AiChatBubble({super.key, required this.message});
+  const AiChatBubble({
+    super.key,
+    required this.message,
+    this.onRetry,
+    this.onUpgradePlan,
+    this.onCreateWallet,
+    this.onSelectExistingWallet,
+    this.onConfirmTransaction,
+    this.onCancelTransaction,
+    this.onConfirmGoal,
+    this.onCancelGoal,
+    this.onConfirmBudget,
+    this.onCancelBudget,
+    this.onViewBudget,
+    this.onConfirmBill,
+    this.onCancelBill,
+    this.onSelectConsultant,
+    this.onBrowseConsultants,
+    this.walletLabelResolver,
+  });
 
   String _formatTime(DateTime time) {
     final h = time.hour.toString().padLeft(2, '0');
@@ -32,113 +67,128 @@ class AiChatBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isUser = message.isUser;
+    if (message.isUser) {
+      return _buildUserTurn(context);
+    }
+    return _buildAssistantTurn(context);
+  }
+
+  Widget _buildUserTurn(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(width: 36),
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                  decoration: BoxDecoration(
+                    color: NeoBrutalism.lime,
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(16), topRight: Radius.circular(16),
+                      bottomLeft: Radius.circular(16), bottomRight: Radius.circular(4),
+                    ),
+                    border: NeoBrutalism.border(width: 2.0),
+                    boxShadow: NeoBrutalism.shadow(yOffset: 2.0),
+                  ),
+                  child: Text(message.text, style: aiActionTextStyle(context, 13.5, FontWeight.w700).copyWith(height: 1.4)),
+                ),
+                const SizedBox(height: 4),
+                Text(_formatTime(message.timestamp), style: aiActionTextStyle(context, 10.5, FontWeight.w600, const Color(0xFF4B5563))),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAssistantTurn(BuildContext context) {
+    final hasPlanning = message.goalDraft != null || message.budgetDraft != null || message.billDraft != null;
+    final hasAdvisory = message.recommendedPackage != null || message.recommendedConsultants.isNotEmpty;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Row(
-        mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (!isUser) ...[
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                color: NeoBrutalism.primary,
-                shape: BoxShape.circle,
-                border: NeoBrutalism.border(width: 1.8),
-                boxShadow: NeoBrutalism.shadow(yOffset: 1.5),
-              ),
-              child: const Center(
-                child: Icon(Icons.smart_toy_rounded, size: 18, color: Colors.black),
-              ),
+          Container(
+            width: 30, height: 30,
+            decoration: BoxDecoration(
+              color: NeoBrutalism.lime, shape: BoxShape.circle,
+              border: NeoBrutalism.border(width: 1.8), boxShadow: NeoBrutalism.shadow(yOffset: 1.5),
             ),
-            const SizedBox(width: 10),
-          ],
-          Flexible(
+            child: Center(child: NotionDoodleWidget(svgString: NotionDoodleIcons.aiChat, size: 19)),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
             child: Column(
-              crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: isUser ? NeoBrutalism.primary : Colors.white,
-                    borderRadius: BorderRadius.only(
-                      topLeft: const Radius.circular(14),
-                      topRight: const Radius.circular(14),
-                      bottomLeft: isUser ? const Radius.circular(14) : const Radius.circular(3),
-                      bottomRight: isUser ? const Radius.circular(3) : const Radius.circular(14),
-                    ),
-                    border: NeoBrutalism.border(width: 1.8),
-                    boxShadow: NeoBrutalism.shadow(yOffset: 2.0),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        message.text,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 13,
-                          fontWeight: isUser ? FontWeight.w700 : FontWeight.w500,
-                          color: Colors.black,
-                          height: 1.45,
+                if (message.errorCode != null)
+                  AiChatErrorCard(message: message, onRetry: onRetry, onUpgradePlan: onUpgradePlan)
+                else ...[
+                  if (message.thinkingTrace != null) ...[
+                    AiThinkingTraceWidget(trace: message.thinkingTrace!),
+                    const SizedBox(height: 8),
+                  ],
+                  if (message.text.trim().isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(4), topRight: Radius.circular(16),
+                          bottomLeft: Radius.circular(16), bottomRight: Radius.circular(16),
                         ),
+                        border: NeoBrutalism.border(width: 1.8), boxShadow: NeoBrutalism.shadow(yOffset: 2.0),
                       ),
-                      if (message.ctaLabel != null) ...[
-                        const SizedBox(height: 10),
-                        GestureDetector(
-                          onTap: () {
-                            if (message.ctaRoute != null) {
-                              context.push(message.ctaRoute!);
-                            }
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: NeoBrutalism.primary,
-                              borderRadius: BorderRadius.circular(10),
-                              border: NeoBrutalism.border(width: 1.5),
-                              boxShadow: NeoBrutalism.shadow(yOffset: 1.5),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  message.ctaLabel!,
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 11.5,
-                                    fontWeight: FontWeight.w800,
-                                    color: Colors.black,
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                const Icon(
-                                  Icons.arrow_forward_rounded,
-                                  size: 14,
-                                  color: Colors.black,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
+                      child: Text(message.text, style: aiActionTextStyle(context, 13, FontWeight.w500).copyWith(height: 1.45)),
+                    ),
+                  if (message.moneyFlowCard != null) ...[const SizedBox(height: 10), AiMoneyFlowCard(data: message.moneyFlowCard!)],
+                  if (message.spendingTableCard != null) ...[const SizedBox(height: 10), AiSpendingBreakdownTableCard(data: message.spendingTableCard!)],
+                  if (message.walletCreationDraft != null) ...[
+                    const SizedBox(height: 10),
+                    AiWalletCreationDraftCard(
+                      draft: message.walletCreationDraft!,
+                      onCreateWallet: onCreateWallet, onUseExistingWallet: onSelectExistingWallet, walletLabelResolver: walletLabelResolver,
+                    ),
+                  ],
+                  if (message.transactionDraftGroup != null) ...[
+                    const SizedBox(height: 10),
+                    AiTransactionDraftCard(
+                      draft: message.transactionDraftGroup!,
+                      onConfirm: onConfirmTransaction, onCancel: onCancelTransaction, walletLabelResolver: walletLabelResolver,
+                    ),
+                  ],
+                  if (hasPlanning) ...[
+                    const SizedBox(height: 10),
+                    AiPlanningActionCard(
+                      goalDraft: message.goalDraft, budgetDraft: message.budgetDraft, billDraft: message.billDraft,
+                      onConfirmGoal: onConfirmGoal, onCancelGoal: onCancelGoal,
+                      onConfirmBudget: onConfirmBudget, onCancelBudget: onCancelBudget, onViewBudget: onViewBudget,
+                      onConfirmBill: onConfirmBill, onCancelBill: onCancelBill, walletLabelResolver: walletLabelResolver,
+                    ),
+                  ],
+                  if (hasAdvisory) ...[
+                    const SizedBox(height: 10),
+                    AiRecommendedConsultantsSection(
+                      recommendedPackage: message.recommendedPackage, consultants: message.recommendedConsultants,
+                      onSchedule: onSelectConsultant == null ? null : (c) => onSelectConsultant!(c, message.recommendedPackage),
+                      onBrowseConsultants: onBrowseConsultants,
+                    ),
+                  ],
+                ],
                 const SizedBox(height: 4),
-                Text(
-                  _formatTime(message.timestamp),
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: NeoBrutalism.textMuted,
-                  ),
-                ),
+                Text(_formatTime(message.timestamp), style: aiActionTextStyle(context, 10.5, FontWeight.w600, const Color(0xFF4B5563))),
               ],
             ),
           ),
-          if (isUser) const SizedBox(width: 24),
         ],
       ),
     );
