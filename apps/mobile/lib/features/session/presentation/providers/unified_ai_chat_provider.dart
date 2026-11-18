@@ -178,7 +178,7 @@ class UnifiedAiChatNotifier extends Notifier<UnifiedAiChatState> {
   /// and strict isolation against late events from cancelled or superseded streams.
   Future<void> sendMessage(
     String text, {
-    AiSurfaceMode surfaceMode = AiSurfaceMode.quickSheet,
+    required AiSurfaceMode surfaceMode,
   }) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty || !_canMutateState) return;
@@ -187,9 +187,7 @@ class UnifiedAiChatNotifier extends Notifier<UnifiedAiChatState> {
 
     final requestSessionId = state.sessionId;
     final clientRequestId = _uuid.v4();
-    final historySnapshot = state.messages
-        .where((m) => m.errorCode == null)
-        .toList(growable: false);
+    final historySnapshot = _cleanHistoryMessages(state.messages);
     final cancelToken = CancelToken();
     final completer = Completer<void>();
     final startedAt = DateTime.now();
@@ -242,7 +240,8 @@ class UnifiedAiChatNotifier extends Notifier<UnifiedAiChatState> {
 
     _activeSubscription = stream.listen(
       (event) {
-        if (_isStaleStream(requestSessionId, clientRequestId, cancelToken)) {
+        if (_isStaleStream(requestSessionId, clientRequestId, cancelToken) ||
+            receivedTerminalEvent) {
           return;
         }
         switch (event) {
@@ -257,23 +256,23 @@ class UnifiedAiChatNotifier extends Notifier<UnifiedAiChatState> {
         }
       },
       onError: (Object error) {
-        final stale = _isStaleStream(
-          requestSessionId,
-          clientRequestId,
-          cancelToken,
-        );
-        _clearActiveStreamRefs(clientRequestId);
-        if (!stale) {
-          _onErrorEvent(
-            AiErrorEvent(
-              errorCode: 'STREAM_ERROR',
-              message:
-                  'Terjadi kendala saat memproses respons AI: ${UnifiedAiChatMutationHelpers.formatSyncError(error)}',
-            ),
-            requestSessionId,
-            trimmed,
-          );
+        if (_isStaleStream(requestSessionId, clientRequestId, cancelToken) ||
+            receivedTerminalEvent) {
+          _clearActiveStreamRefs(clientRequestId);
+          if (!completer.isCompleted) completer.complete();
+          return;
         }
+        receivedTerminalEvent = true;
+        _clearActiveStreamRefs(clientRequestId);
+        _onErrorEvent(
+          AiErrorEvent(
+            errorCode: 'STREAM_ERROR',
+            message:
+                'Terjadi kendala saat memproses respons AI: ${UnifiedAiChatMutationHelpers.formatSyncError(error)}',
+          ),
+          requestSessionId,
+          trimmed,
+        );
         if (!completer.isCompleted) completer.complete();
       },
       onDone: () {
@@ -285,6 +284,7 @@ class UnifiedAiChatNotifier extends Notifier<UnifiedAiChatState> {
         _clearActiveStreamRefs(clientRequestId);
         if (!stale) {
           if (!receivedTerminalEvent) {
+            receivedTerminalEvent = true;
             _onErrorEvent(
               const AiErrorEvent(
                 errorCode: 'STREAM_INTERRUPTED',
@@ -309,17 +309,30 @@ class UnifiedAiChatNotifier extends Notifier<UnifiedAiChatState> {
     await completer.future;
   }
 
-  /// Retries an errored assistant bubble's `failedPrompt` using a fresh `client_request_id`.
+  /// Retries an errored assistant bubble's `failedPrompt` using a fresh `client_request_id`
+  /// while removing the failed error bubble and its preceding failed user turn.
   Future<void> retryFailedMessage(
     String messageId, {
-    AiSurfaceMode surfaceMode = AiSurfaceMode.quickSheet,
+    required AiSurfaceMode surfaceMode,
   }) async {
     if (!_canMutateState) return;
-    final target = state.messages
-        .where((m) => m.id == messageId)
-        .firstOrNull;
-    final failedPrompt = target?.failedPrompt?.trim() ?? '';
+    final targetIndex = state.messages.indexWhere((m) => m.id == messageId);
+    if (targetIndex < 0) return;
+
+    final target = state.messages[targetIndex];
+    final failedPrompt = target.failedPrompt?.trim() ?? '';
     if (failedPrompt.isEmpty) return;
+
+    final updated = List<UnifiedAiChatMessage>.from(state.messages);
+    updated.removeAt(targetIndex);
+    if (targetIndex > 0) {
+      final preceding = updated[targetIndex - 1];
+      if (preceding.isUser && preceding.text.trim() == failedPrompt) {
+        updated.removeAt(targetIndex - 1);
+      }
+    }
+    state = state.copyWith(messages: updated, clearErrorMessage: true);
+
     await sendMessage(failedPrompt, surfaceMode: surfaceMode);
   }
 
@@ -330,7 +343,7 @@ class UnifiedAiChatNotifier extends Notifier<UnifiedAiChatState> {
     double initialBalance = 0,
   }) async {
     if (!_canMutateState) return;
-    if (initialBalance.isNaN || initialBalance.isInfinite || initialBalance < 0) {
+    if (!initialBalance.isFinite || initialBalance < 0) {
       state = state.copyWith(
         errorMessage: 'Saldo awal dompet tidak boleh kurang dari Rp 0.',
       );
@@ -526,10 +539,11 @@ class UnifiedAiChatNotifier extends Notifier<UnifiedAiChatState> {
       return;
     }
 
-    final validItems = draft.items.where((i) => i.amount > 0).toList();
-    if (validItems.isEmpty) {
+    if (draft.items.isEmpty ||
+        draft.items.any((i) => !i.amount.isFinite || i.amount <= 0)) {
       state = state.copyWith(
-        errorMessage: 'Nominal transaksi harus lebih dari Rp 0.',
+        errorMessage:
+            'Nominal setiap transaksi harus bernilai valid dan lebih dari Rp 0.',
       );
       return;
     }
@@ -560,18 +574,18 @@ class UnifiedAiChatNotifier extends Notifier<UnifiedAiChatState> {
     state = state.copyWith(isMutating: true, clearErrorMessage: true);
 
     try {
+      final items = draft.items;
       final prepared = <({TransactionModel tx, String mutationId})>[];
-      for (var i = 0; i < validItems.length; i++) {
-        final item = validItems[i];
+      for (var i = 0; i < items.length; i++) {
+        final item = items[i];
         final itemMutationId =
             TrackerRemoteSyncService.sanitizeClientMutationId(
-              validItems.length == 1
-                  ? baseMutationId
-                  : '${baseMutationId}_$i',
+              items.length == 1 ? baseMutationId : '${baseMutationId}_$i',
             );
         final resolvedWalletId =
             UnifiedAiChatMutationHelpers.resolveLocalWalletId(item, wallets);
-        final resolvedTargetWalletId = item.type == 'transfer'
+        final normalizedType = item.type.trim().toLowerCase();
+        final resolvedTargetWalletId = normalizedType == 'transfer'
             ? UnifiedAiChatMutationHelpers.resolveTargetWalletId(
                 item.targetWalletId,
                 wallets,
@@ -590,7 +604,7 @@ class UnifiedAiChatNotifier extends Notifier<UnifiedAiChatState> {
             category: canonicalCategory,
             amount: item.amount,
             date: item.occurredAt,
-            type: item.type,
+            type: normalizedType,
             walletId: resolvedWalletId,
             targetWalletId: resolvedTargetWalletId,
           ),
@@ -684,7 +698,10 @@ class UnifiedAiChatNotifier extends Notifier<UnifiedAiChatState> {
       lockPrefix: 'goal',
       extractDraft: (msg) => msg.goalDraft,
       isBlocked: (d) => d.isSubmitting || d.isConfirmed || d.isCancelled,
-      validateError: (d) => (d.name.trim().isEmpty || d.targetAmount <= 0)
+      validateError: (d) =>
+          (d.name.trim().isEmpty ||
+              !d.targetAmount.isFinite ||
+              d.targetAmount <= 0)
           ? 'Nama target dan nominal tabungan harus valid.'
           : null,
       withDraftState: (msg, d) => msg.copyWith(goalDraft: d),
@@ -739,8 +756,8 @@ class UnifiedAiChatNotifier extends Notifier<UnifiedAiChatState> {
       lockPrefix: 'budget',
       extractDraft: (msg) => msg.budgetDraft,
       isBlocked: (d) => d.isSubmitting || d.isConfirmed || d.isCancelled,
-      validateError: (d) => d.limitAmount <= 0
-          ? 'Batas anggaran harus lebih dari Rp 0.'
+      validateError: (d) => (!d.limitAmount.isFinite || d.limitAmount <= 0)
+          ? 'Batas anggaran harus bernilai valid dan lebih dari Rp 0.'
           : null,
       withDraftState: (msg, d) => msg.copyWith(budgetDraft: d),
       updateDraftFlags: (d, {required isSubmitting, required isConfirmed, required mutationId}) =>
@@ -793,7 +810,8 @@ class UnifiedAiChatNotifier extends Notifier<UnifiedAiChatState> {
       lockPrefix: 'bill',
       extractDraft: (msg) => msg.billDraft,
       isBlocked: (d) => d.isSubmitting || d.isConfirmed || d.isCancelled,
-      validateError: (d) => (d.title.trim().isEmpty || d.amount <= 0)
+      validateError: (d) =>
+          (d.title.trim().isEmpty || !d.amount.isFinite || d.amount <= 0)
           ? 'Nama tagihan dan nominal tagihan harus valid.'
           : null,
       withDraftState: (msg, d) => msg.copyWith(billDraft: d),
@@ -872,11 +890,10 @@ class UnifiedAiChatNotifier extends Notifier<UnifiedAiChatState> {
   }
 
   /// Builds a sanitized session history list (last 10 turns max, <= 1000 runes per entry,
-  /// excluding failed error bubbles so transient network/quota errors never pollute AI context).
+  /// excluding failed turns and error bubbles so transient errors never pollute AI context).
   List<Map<String, String>> buildSanitizedHistory() {
     final turns = <Map<String, String>>[];
-    for (final msg in state.messages) {
-      if (msg.errorCode != null) continue;
+    for (final msg in _cleanHistoryMessages(state.messages)) {
       final compacted = msg.toCompactedHistoryText().trim();
       if (compacted.isEmpty) continue;
       final runes = compacted.runes;
@@ -890,6 +907,23 @@ class UnifiedAiChatNotifier extends Notifier<UnifiedAiChatState> {
     }
     if (turns.length <= maxHistoryTurns) return turns;
     return turns.sublist(turns.length - maxHistoryTurns);
+  }
+
+  static List<UnifiedAiChatMessage> _cleanHistoryMessages(
+    List<UnifiedAiChatMessage> messages,
+  ) {
+    final cleaned = <UnifiedAiChatMessage>[];
+    for (final msg in messages) {
+      if (msg.errorCode != null) {
+        // Drop unanswered failed user prompt immediately preceding an error bubble.
+        if (cleaned.isNotEmpty && cleaned.last.isUser) {
+          cleaned.removeLast();
+        }
+        continue;
+      }
+      cleaned.add(msg);
+    }
+    return cleaned;
   }
 
   Future<void> _runSingleDraftConfirmation<T>({

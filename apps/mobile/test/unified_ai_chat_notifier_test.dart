@@ -838,7 +838,10 @@ void main() {
 
         // Emit all 5 draft types from controllable stream.
         Future<String> emitAssistantMsg(UnifiedAiChatMessage msg) async {
-          final sendFut = notifier.sendMessage('test prompt ${msg.id}');
+          final sendFut = notifier.sendMessage(
+            'test prompt ${msg.id}',
+            surfaceMode: AiSurfaceMode.quickSheet,
+          );
           await Future<void>.delayed(Duration.zero);
           final call = fakeRepo.calls.last;
           call.controller.add(
@@ -1027,12 +1030,18 @@ void main() {
         final notifier = container.read(unifiedAiChatProvider.notifier);
 
         // Start stream 1 in current session.
-        final fut1 = notifier.sendMessage('pertanyaan pertama');
+        final fut1 = notifier.sendMessage(
+          'pertanyaan pertama',
+          surfaceMode: AiSurfaceMode.quickSheet,
+        );
         await Future<void>.delayed(Duration.zero);
         final call1 = fakeRepo.calls[0];
 
         // Start stream 2 in the SAME session before stream 1 completes.
-        final fut2 = notifier.sendMessage('pertanyaan kedua');
+        final fut2 = notifier.sendMessage(
+          'pertanyaan kedua',
+          surfaceMode: AiSurfaceMode.quickSheet,
+        );
         await Future<void>.delayed(Duration.zero);
         final call2 = fakeRepo.calls[1];
 
@@ -1105,7 +1114,10 @@ void main() {
         final notifier = container.read(unifiedAiChatProvider.notifier);
 
         // 1. Emit an error turn and ensure it does not pollute buildSanitizedHistory().
-        final errFut = notifier.sendMessage('gagal cek');
+        final errFut = notifier.sendMessage(
+          'gagal cek',
+          surfaceMode: AiSurfaceMode.quickSheet,
+        );
         await Future<void>.delayed(Duration.zero);
         fakeRepo.calls.last.controller.add(
           const AiErrorEvent(
@@ -1123,7 +1135,10 @@ void main() {
         );
 
         // 2. Emit bill draft with dueDay 30 and ensure dueDate keeps day >= 28 (e.g., 30 in 30/31-day months, or Feb max).
-        final billFut = notifier.sendMessage('tagihan listrik 300rb tgl 30');
+        final billFut = notifier.sendMessage(
+          'tagihan listrik 300rb tgl 30',
+          surfaceMode: AiSurfaceMode.quickSheet,
+        );
         await Future<void>.delayed(Duration.zero);
         fakeRepo.calls.last.controller.add(
           AiFinalResponseEvent(
@@ -1158,7 +1173,10 @@ void main() {
         );
 
         // 3. Emit walletCreationDraft, rebind to BCA, confirm tx, then try rebinding to GoPay -> MUST be blocked!
-        final txFut = notifier.sendMessage('makan 50rb pake bank jago');
+        final txFut = notifier.sendMessage(
+          'makan 50rb pake bank jago',
+          surfaceMode: AiSurfaceMode.quickSheet,
+        );
         await Future<void>.delayed(Duration.zero);
         fakeRepo.calls.last.controller.add(
           AiFinalResponseEvent(
@@ -1274,7 +1292,7 @@ void main() {
     );
 
     test(
-      'retryFailedMessage() generates a brand-new clientRequestId and never reuses failed request IDs',
+      'retryFailedMessage() generates a brand-new clientRequestId, cleans duplicate user turns, and never reuses failed request IDs',
       () async {
         final fakeRepo = _ControllableAiChatRepository();
         final container = await _createTestContainer(repository: fakeRepo);
@@ -1282,12 +1300,35 @@ void main() {
 
         final notifier = container.read(unifiedAiChatProvider.notifier);
 
+        // Prior successful turn so multi-turn context is preserved cleanly.
+        final initFut = notifier.sendMessage(
+          'Halo',
+          surfaceMode: AiSurfaceMode.fullScreen,
+        );
+        await Future<void>.delayed(Duration.zero);
+        final initCall = fakeRepo.calls[0];
+        initCall.controller.add(
+          AiFinalResponseEvent(
+            sessionId: initCall.sessionId,
+            clientRequestId: initCall.clientRequestId,
+            surfaceMode: AiSurfaceMode.fullScreen,
+            message: UnifiedAiChatMessage(
+              id: 'm-init-ok',
+              sessionId: initCall.sessionId,
+              text: 'Halo! Ada yang bisa dibantu?',
+              isUser: false,
+            ),
+          ),
+        );
+        await initCall.controller.close();
+        await initFut;
+
         final sendFut1 = notifier.sendMessage(
           'analisa cashflow Q4',
           surfaceMode: AiSurfaceMode.fullScreen,
         );
         await Future<void>.delayed(Duration.zero);
-        final call1 = fakeRepo.calls[0];
+        final call1 = fakeRepo.calls[1];
         call1.controller.add(
           const AiErrorEvent(
             errorCode: 'INTERNAL_ERROR',
@@ -1305,11 +1346,16 @@ void main() {
           surfaceMode: AiSurfaceMode.fullScreen,
         );
         await Future<void>.delayed(Duration.zero);
-        final call2 = fakeRepo.calls[1];
+        final call2 = fakeRepo.calls[2];
 
         expect(call2.prompt, equals('analisa cashflow Q4'));
         expect(call2.sessionId, equals(call1.sessionId));
         expect(call2.clientRequestId, isNot(equals(call1.clientRequestId)));
+        // Retried sessionHistory must not resend the failed user prompt as a prior turn.
+        expect(
+          call2.sessionHistory.map((m) => m.text).toList(),
+          equals(['Halo', 'Halo! Ada yang bisa dibantu?']),
+        );
 
         call2.controller.add(
           AiFinalResponseEvent(
@@ -1327,10 +1373,30 @@ void main() {
         await call2.controller.close();
         await retryFut;
 
-        expect(container.read(unifiedAiChatProvider).errorMessage, isNull);
+        final finalState = container.read(unifiedAiChatProvider);
+        expect(finalState.errorMessage, isNull);
         expect(
-          container.read(unifiedAiChatProvider).messages.last.text,
+          finalState.messages.last.text,
           equals('Analisa Q4 selesai.'),
+        );
+        expect(
+          finalState.messages.where((m) => m.errorCode != null),
+          isEmpty,
+        );
+        expect(
+          finalState.messages.where((m) => m.isUser).map((m) => m.text).toList(),
+          equals(['Halo', 'analisa cashflow Q4']),
+        );
+
+        final sanitized = notifier.buildSanitizedHistory();
+        expect(
+          sanitized,
+          equals([
+            {'role': 'user', 'text': 'Halo'},
+            {'role': 'model', 'text': 'Halo! Ada yang bisa dibantu?'},
+            {'role': 'user', 'text': 'analisa cashflow Q4'},
+            {'role': 'model', 'text': 'Analisa Q4 selesai.'},
+          ]),
         );
       },
     );
@@ -1408,7 +1474,10 @@ void main() {
         addTearDown(container.dispose);
 
         final notifier = container.read(unifiedAiChatProvider.notifier);
-        final sendFut = notifier.sendMessage('kopi 25k + parkir 5k pake gopay');
+        final sendFut = notifier.sendMessage(
+          'kopi 25k + parkir 5k pake gopay',
+          surfaceMode: AiSurfaceMode.quickSheet,
+        );
         await Future<void>.delayed(Duration.zero);
         final call = fakeRepo.calls.single;
         call.controller.add(
@@ -1503,7 +1572,10 @@ void main() {
         final notifier = container.read(unifiedAiChatProvider.notifier);
 
         // 1. Validation guards for negative wallet initialBalance & zero-amount tx.
-        final sendFut = notifier.sendMessage('test booking & validation');
+        final sendFut = notifier.sendMessage(
+          'test booking & validation',
+          surfaceMode: AiSurfaceMode.fullScreen,
+        );
         await Future<void>.delayed(Duration.zero);
         final call = fakeRepo.calls.single;
 
@@ -1570,7 +1642,10 @@ void main() {
         expect(container.read(unifiedAiChatProvider).errorMessage, isNotNull);
 
         // Zero-amount tx draft must not confirm, and cancelGoal/Budget/Bill must mark cancelled.
-        final zeroFut = notifier.sendMessage('test zero & cancel');
+        final zeroFut = notifier.sendMessage(
+          'test zero & cancel',
+          surfaceMode: AiSurfaceMode.quickSheet,
+        );
         await Future<void>.delayed(Duration.zero);
         final zeroCall = fakeRepo.calls.last;
         zeroCall.controller.add(
@@ -1668,13 +1743,409 @@ void main() {
         );
 
         // 2. Disposal mid-stream must cancel token cleanly without throwing.
-        final stream2Fut = notifier.sendMessage('stream saat dispose');
+        final stream2Fut = notifier.sendMessage(
+          'stream saat dispose',
+          surfaceMode: AiSurfaceMode.quickSheet,
+        );
         await Future<void>.delayed(Duration.zero);
         final call2 = fakeRepo.calls.last;
         container.dispose();
         await stream2Fut;
         expect(call2.cancelToken?.isCancelled, isTrue);
         await call2.controller.close();
+      },
+    );
+
+    test(
+      'ignores trailing AiErrorEvent and stream addError emitted after AiFinalResponseEvent',
+      () async {
+        final fakeRepo = _ControllableAiChatRepository();
+        final container = await _createTestContainer(repository: fakeRepo);
+        addTearDown(container.dispose);
+
+        final notifier = container.read(unifiedAiChatProvider.notifier);
+
+        // Part A: Trailing AiErrorEvent & AiThinkingStepEvent via onData after AiFinalResponseEvent.
+        final fut1 = notifier.sendMessage(
+          'analisa pengeluaran bulan ini',
+          surfaceMode: AiSurfaceMode.fullScreen,
+        );
+        await Future<void>.delayed(Duration.zero);
+        final call1 = fakeRepo.calls[0];
+
+        call1.controller.add(
+          AiThinkingStepEvent(
+            stepNumber: 1,
+            id: 'step-1',
+            title: 'Mengambil ringkasan',
+            status: 'in_progress',
+            isDone: false,
+            sessionId: call1.sessionId,
+            clientRequestId: call1.clientRequestId,
+          ),
+        );
+        call1.controller.add(
+          AiFinalResponseEvent(
+            sessionId: call1.sessionId,
+            clientRequestId: call1.clientRequestId,
+            surfaceMode: AiSurfaceMode.fullScreen,
+            message: UnifiedAiChatMessage(
+              id: 'm-clean-after-eof-err',
+              sessionId: call1.sessionId,
+              text: 'Ringkasan pengeluaran berhasil disusun.',
+              isUser: false,
+            ),
+          ),
+        );
+        // Simulate proxy reset caught by RemoteAiChatRepository after final_response flushed.
+        call1.controller.add(
+          const AiErrorEvent(
+            errorCode: 'STREAM_ERROR',
+            message: 'Connection reset before TCP EOF',
+          ),
+        );
+        call1.controller.add(
+          AiThinkingStepEvent(
+            stepNumber: 2,
+            id: 'step-late',
+            title: 'Langkah terlambat setelah final',
+            status: 'completed',
+            isDone: true,
+            sessionId: call1.sessionId,
+            clientRequestId: call1.clientRequestId,
+          ),
+        );
+        await call1.controller.close();
+        await fut1;
+
+        final stateAfterPartA = container.read(unifiedAiChatProvider);
+        expect(stateAfterPartA.isStreaming, isFalse);
+        expect(stateAfterPartA.activeThinkingTrace, isNull);
+        expect(stateAfterPartA.errorMessage, isNull);
+        expect(stateAfterPartA.messages.length, equals(2));
+        expect(
+          stateAfterPartA.messages.last.id,
+          equals('m-clean-after-eof-err'),
+        );
+        expect(
+          stateAfterPartA.messages.where((m) => m.errorCode != null),
+          isEmpty,
+        );
+
+        // Part B: Trailing stream onError after AiFinalResponseEvent.
+        final fut2 = notifier.sendMessage(
+          'cek kondisi dompet',
+          surfaceMode: AiSurfaceMode.quickSheet,
+        );
+        await Future<void>.delayed(Duration.zero);
+        final call2 = fakeRepo.calls[1];
+
+        call2.controller.add(
+          AiFinalResponseEvent(
+            sessionId: call2.sessionId,
+            clientRequestId: call2.clientRequestId,
+            surfaceMode: AiSurfaceMode.quickSheet,
+            message: UnifiedAiChatMessage(
+              id: 'm-clean-after-onerror',
+              sessionId: call2.sessionId,
+              text: 'Semua dompet terpantau sehat.',
+              isUser: false,
+            ),
+          ),
+        );
+        call2.controller.addError(StateError('Socket closed unexpectedly'));
+        await call2.controller.close();
+        await fut2;
+
+        final stateAfterPartB = container.read(unifiedAiChatProvider);
+        expect(stateAfterPartB.isStreaming, isFalse);
+        expect(stateAfterPartB.activeThinkingTrace, isNull);
+        expect(stateAfterPartB.errorMessage, isNull);
+        expect(stateAfterPartB.messages.length, equals(4));
+        expect(
+          stateAfterPartB.messages.last.id,
+          equals('m-clean-after-onerror'),
+        );
+        expect(
+          stateAfterPartB.messages.where((m) => m.errorCode != null),
+          isEmpty,
+        );
+      },
+    );
+
+    test(
+      'rejects [25000, 0] transaction batch and non-finite amounts across tx, goal, budget, and bill drafts before .round() or provider mutation',
+      () async {
+        var remoteCalls = 0;
+        final adapter = _FakeHttpClientAdapter((options, _, _) async {
+          remoteCalls++;
+          throw StateError(
+            'Remote sync must not be called for invalid draft: ${options.path}',
+          );
+        });
+        final apiConfig = ClarafinApiConfig.fromUrl('http://127.0.0.1:8080');
+        final dio = Dio(BaseOptions(baseUrl: apiConfig.normalizedBaseUrl));
+        dio.httpClientAdapter = adapter;
+        final syncService = TrackerRemoteSyncService(
+          client: ClarafinApiClient(
+            config: apiConfig,
+            dio: dio,
+            accessToken: 'test_jwt',
+          ),
+        );
+
+        final gopay = WalletModel(
+          id: 'w-gopay',
+          name: 'GoPay',
+          type: 'E-Wallet',
+          balance: 250000,
+          institutionId: 'gopay',
+        );
+        final fakeRepo = _ControllableAiChatRepository();
+        final container = await _createTestContainer(
+          repository: fakeRepo,
+          initialWallets: [gopay],
+          apiConfig: apiConfig,
+          remoteSyncService: syncService,
+        );
+        addTearDown(container.dispose);
+
+        final notifier = container.read(unifiedAiChatProvider.notifier);
+
+        Future<void> emitDraftMessage(UnifiedAiChatMessage msg) async {
+          final fut = notifier.sendMessage(
+            'draft ${msg.id}',
+            surfaceMode: AiSurfaceMode.quickSheet,
+          );
+          await Future<void>.delayed(Duration.zero);
+          final call = fakeRepo.calls.last;
+          call.controller.add(
+            AiFinalResponseEvent(
+              sessionId: call.sessionId,
+              clientRequestId: call.clientRequestId,
+              surfaceMode: AiSurfaceMode.quickSheet,
+              message: msg,
+            ),
+          );
+          await call.controller.close();
+          await fut;
+        }
+
+        // 1. Mixed [25000, 0] tx batch must reject the entire group without silent partial commit.
+        await emitDraftMessage(
+          UnifiedAiChatMessage(
+            id: 'm-tx-mixed-zero',
+            sessionId: container.read(unifiedAiChatProvider).sessionId,
+            text: 'Draf campuran 25rb dan 0',
+            isUser: false,
+            transactionDraftGroup: AiTransactionDraftGroup(
+              clientMutationId: 'mut-mixed-zero',
+              items: [
+                AiTransactionDraftItem(
+                  title: 'Kopi',
+                  amount: 25000,
+                  type: 'expense',
+                  canonicalCategory: 'Food & Beverage • Coffee Shop',
+                  walletId: 'w-gopay',
+                  walletName: 'GoPay',
+                  occurredAt: DateTime(2026, 11, 18),
+                ),
+                AiTransactionDraftItem(
+                  title: 'Parkir Nol',
+                  amount: 0,
+                  type: 'expense',
+                  canonicalCategory: 'Transportation • Parking & Toll',
+                  walletId: 'w-gopay',
+                  walletName: 'GoPay',
+                  occurredAt: DateTime(2026, 11, 18),
+                ),
+              ],
+            ),
+          ),
+        );
+        await notifier.confirmTransactionDraft('m-tx-mixed-zero');
+        expect(container.read(transactionsProvider), isEmpty);
+        expect(container.read(walletsProvider).single.balance, equals(250000));
+        expect(
+          container
+              .read(unifiedAiChatProvider)
+              .messages
+              .singleWhere((m) => m.id == 'm-tx-mixed-zero')
+              .transactionDraftGroup!
+              .isConfirmed,
+          isFalse,
+        );
+        expect(container.read(unifiedAiChatProvider).errorMessage, isNotNull);
+
+        // 2. Non-finite double.infinity tx item must be rejected before .round().
+        await emitDraftMessage(
+          UnifiedAiChatMessage(
+            id: 'm-tx-inf',
+            sessionId: container.read(unifiedAiChatProvider).sessionId,
+            text: 'Draf infinity',
+            isUser: false,
+            transactionDraftGroup: AiTransactionDraftGroup(
+              clientMutationId: 'mut-tx-inf',
+              items: [
+                AiTransactionDraftItem(
+                  title: 'Infinity Tx',
+                  amount: double.infinity,
+                  type: 'expense',
+                  canonicalCategory: 'Others • General Uncategorized',
+                  walletId: 'w-gopay',
+                  walletName: 'GoPay',
+                  occurredAt: DateTime(2026, 11, 18),
+                ),
+              ],
+            ),
+          ),
+        );
+        await notifier.confirmTransactionDraft('m-tx-inf');
+        expect(container.read(transactionsProvider), isEmpty);
+        expect(
+          container
+              .read(unifiedAiChatProvider)
+              .messages
+              .singleWhere((m) => m.id == 'm-tx-inf')
+              .transactionDraftGroup!
+              .isConfirmed,
+          isFalse,
+        );
+        expect(container.read(unifiedAiChatProvider).errorMessage, isNotNull);
+
+        // 3. Non-finite goal, budget, and bill amounts must be rejected before .round().
+        await emitDraftMessage(
+          UnifiedAiChatMessage(
+            id: 'm-goal-inf',
+            sessionId: container.read(unifiedAiChatProvider).sessionId,
+            text: 'Goal infinity',
+            isUser: false,
+            goalDraft: const AiGoalDraft(
+              clientMutationId: 'mut-goal-inf',
+              name: 'Dana Darurat',
+              targetAmount: double.infinity,
+            ),
+          ),
+        );
+        await notifier.confirmGoalDraft('m-goal-inf');
+        expect(container.read(goalsProvider), isEmpty);
+        expect(container.read(unifiedAiChatProvider).errorMessage, isNotNull);
+
+        await emitDraftMessage(
+          UnifiedAiChatMessage(
+            id: 'm-budget-inf',
+            sessionId: container.read(unifiedAiChatProvider).sessionId,
+            text: 'Budget infinity',
+            isUser: false,
+            budgetDraft: const AiBudgetDraft(
+              clientMutationId: 'mut-budget-inf',
+              category: 'Food & Beverage',
+              limitAmount: double.infinity,
+            ),
+          ),
+        );
+        await notifier.confirmBudgetDraft('m-budget-inf');
+        expect(container.read(budgetsProvider), isEmpty);
+        expect(container.read(unifiedAiChatProvider).errorMessage, isNotNull);
+
+        await emitDraftMessage(
+          UnifiedAiChatMessage(
+            id: 'm-bill-inf',
+            sessionId: container.read(unifiedAiChatProvider).sessionId,
+            text: 'Bill infinity',
+            isUser: false,
+            billDraft: const AiBillDraft(
+              clientMutationId: 'mut-bill-inf',
+              title: 'Listrik',
+              amount: double.infinity,
+            ),
+          ),
+        );
+        await notifier.confirmBillDraft('m-bill-inf');
+        expect(container.read(billsProvider), isEmpty);
+        expect(container.read(unifiedAiChatProvider).errorMessage, isNotNull);
+
+        expect(remoteCalls, equals(0));
+      },
+    );
+
+    test(
+      'normalizes uppercase/padded item.type (" TRANSFER ") during confirmTransactionDraft',
+      () async {
+        final gopay = WalletModel(
+          id: 'w-gopay',
+          name: 'GoPay',
+          type: 'E-Wallet',
+          balance: 250000,
+          institutionId: 'gopay',
+        );
+        final bca = WalletModel(
+          id: 'w-bca',
+          name: 'BCA Utama',
+          type: 'Bank',
+          balance: 1000000,
+          institutionId: 'bca',
+        );
+        final fakeRepo = _ControllableAiChatRepository();
+        final container = await _createTestContainer(
+          repository: fakeRepo,
+          initialWallets: [gopay, bca],
+        );
+        addTearDown(container.dispose);
+
+        final notifier = container.read(unifiedAiChatProvider.notifier);
+        final fut = notifier.sendMessage(
+          'transfer 50rb dari gopay ke bca',
+          surfaceMode: AiSurfaceMode.quickSheet,
+        );
+        await Future<void>.delayed(Duration.zero);
+        final call = fakeRepo.calls.single;
+        call.controller.add(
+          AiFinalResponseEvent(
+            sessionId: call.sessionId,
+            clientRequestId: call.clientRequestId,
+            surfaceMode: AiSurfaceMode.quickSheet,
+            message: UnifiedAiChatMessage(
+              id: 'm-transfer-upper',
+              sessionId: call.sessionId,
+              text: 'Draf transfer siap.',
+              isUser: false,
+              transactionDraftGroup: AiTransactionDraftGroup(
+                clientMutationId: 'mut-transfer-upper',
+                items: [
+                  AiTransactionDraftItem(
+                    title: 'Transfer GoPay ke BCA',
+                    amount: 50000,
+                    type: ' TRANSFER ',
+                    canonicalCategory: 'Transfer',
+                    walletId: 'w-gopay',
+                    walletName: 'GoPay',
+                    targetWalletId: 'BCA Utama',
+                    occurredAt: DateTime(2026, 11, 18),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+        await call.controller.close();
+        await fut;
+
+        await notifier.confirmTransactionDraft('m-transfer-upper');
+        final savedTx = container.read(transactionsProvider).single;
+        expect(savedTx.type, equals('transfer'));
+        expect(savedTx.category, equals('Transfer'));
+        expect(savedTx.targetWalletId, equals('w-bca'));
+
+        final wallets = container.read(walletsProvider);
+        expect(
+          wallets.singleWhere((w) => w.id == 'w-gopay').balance,
+          equals(200000.0),
+        );
+        expect(
+          wallets.singleWhere((w) => w.id == 'w-bca').balance,
+          equals(1050000.0),
+        );
       },
     );
   });
