@@ -25,14 +25,14 @@ class ClarafinApiConfig {
     this.baseUrl = envBaseUrl,
     this.connectTimeout = const Duration(seconds: 10),
     this.receiveTimeout = const Duration(seconds: 30),
-    this.streamReceiveTimeout = const Duration(seconds: 90),
+    this.streamReceiveTimeout = const Duration(seconds: 120),
   });
 
   factory ClarafinApiConfig.fromUrl(
     String url, {
     Duration connectTimeout = const Duration(seconds: 10),
     Duration receiveTimeout = const Duration(seconds: 30),
-    Duration streamReceiveTimeout = const Duration(seconds: 90),
+    Duration streamReceiveTimeout = const Duration(seconds: 120),
   }) {
     return ClarafinApiConfig(
       baseUrl: url.trim(),
