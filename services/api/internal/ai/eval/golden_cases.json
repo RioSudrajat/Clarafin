@@ -48,12 +48,12 @@
     "id": "Slang-03",
     "category": "slang_extraction",
     "surface_mode": "quick_sheet",
-    "user_prompt": "makan siang gocap sama parkir seceng pake ovo",
+    "user_prompt": "makan siang gocap sama parkir seceng pake tunai",
     "pass1_calls": [
       {
         "tool": "check_and_prepare_transaction",
         "args": {
-          "default_wallet_hint": "ovo",
+          "default_wallet_hint": "tunai",
           "items": [
             {"title": "Makan Siang", "amount_idr": 50000, "type": "expense", "raw_category": "makan siang"},
             {"title": "Parkir", "amount_idr": 1000, "type": "expense", "raw_category": "parkir"}
@@ -61,11 +61,11 @@
         }
       }
     ],
-    "pass2_narrative": "Sudah aku siapkan draf pengeluaran OVO untuk Makan Siang Rp 50.000 dan Parkir Rp 1.000 dengan total Rp 51.000.",
+    "pass2_narrative": "Sudah aku siapkan draf pengeluaran Cash untuk Makan Siang Rp 50.000 dan Parkir Rp 1.000 dengan total Rp 51.000.",
     "expected_total_idr": 51000,
     "expected_items": [
-      {"title": "Makan Siang", "amount_idr": 50000, "type": "expense", "canonical_category": "Food & Beverage • Restaurant", "wallet_name": "OVO"},
-      {"title": "Parkir", "amount_idr": 1000, "type": "expense", "canonical_category": "Transportation • Parking & Toll", "wallet_name": "OVO"}
+      {"title": "Makan Siang", "amount_idr": 50000, "type": "expense", "canonical_category": "Food & Beverage • Restaurant", "wallet_name": "Cash"},
+      {"title": "Parkir", "amount_idr": 1000, "type": "expense", "canonical_category": "Transportation • Parking & Toll", "wallet_name": "Cash"}
     ]
   },
   {

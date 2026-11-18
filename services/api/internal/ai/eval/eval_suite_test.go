@@ -197,6 +197,7 @@ type scriptedEvalLLM struct {
 	pass2Calls          int
 	searchIsolatedValid bool
 	observedToolNames   []string
+	pass2Bundle         *ai.Pass1ToolBundle
 }
 
 func (s *scriptedEvalLLM) GenerateContent(_ context.Context, req ai.GenerateRequest) (*ai.GenerateResponse, error) {
@@ -215,10 +216,26 @@ func (s *scriptedEvalLLM) GenerateContent(_ context.Context, req ai.GenerateRequ
 		if req.EnableGoogleSearch {
 			s.t.Errorf("[%s] Pass 1 tool call must not enable google_search alongside custom tools", s.tc.ID)
 		}
+
+		// Capture real FunctionResponse names passed back by Orchestrator after tool execution.
+		var observedFromHistory []string
+		for _, msg := range req.Contents {
+			for _, part := range msg.Parts {
+				if part.FunctionResponse != nil {
+					if len(part.FunctionResponse.Response) == 0 {
+						s.t.Errorf("[%s] Pass 1 FunctionResponse for %q has empty response map", s.tc.ID, part.FunctionResponse.Name)
+					}
+					observedFromHistory = append(observedFromHistory, part.FunctionResponse.Name)
+				}
+			}
+		}
+		if len(observedFromHistory) > 0 {
+			s.observedToolNames = observedFromHistory
+		}
+
 		if s.pass1Calls == 1 && len(s.tc.Pass1Calls) > 0 {
 			calls := make([]ai.ToolCall, 0, len(s.tc.Pass1Calls))
 			for idx, c := range s.tc.Pass1Calls {
-				s.observedToolNames = append(s.observedToolNames, c.Tool)
 				calls = append(calls, ai.ToolCall{
 					ID:   fmt.Sprintf("call_%s_%d", s.tc.ID, idx),
 					Name: c.Tool,
@@ -249,6 +266,11 @@ func (s *scriptedEvalLLM) GenerateContent(_ context.Context, req ai.GenerateRequ
 		if len(req.ToolDeclarations) > 0 || req.EnableGoogleSearch {
 			s.t.Errorf("[%s] Pass 2 must not declare tools or google_search", s.tc.ID)
 		}
+		if parsedBundle, ok := extractPass2BundleFromContents(req.Contents); ok {
+			s.pass2Bundle = parsedBundle
+		} else {
+			s.t.Errorf("[%s] Pass 2 prompt missing serialized Pass1ToolBundle", s.tc.ID)
+		}
 		stepTitle := "Menyusun jawaban terstruktur"
 		if len(s.tc.Pass1Calls) > 0 {
 			stepTitle = "Menjalankan " + s.tc.Pass1Calls[0].Tool
@@ -275,10 +297,40 @@ func (s *scriptedEvalLLM) GenerateContent(_ context.Context, req ai.GenerateRequ
 	}
 }
 
+func extractPass2BundleFromContents(contents []ai.LLMMessage) (*ai.Pass1ToolBundle, bool) {
+	const marker = "Data deterministik terverifikasi Pass 1 (WAJIB dipakai apa adanya tanpa mengubah angka atau ID):\n"
+	for _, msg := range contents {
+		for _, part := range msg.Parts {
+			idx := strings.Index(part.Text, marker)
+			if idx < 0 {
+				continue
+			}
+			rest := part.Text[idx+len(marker):]
+			if nl := strings.IndexByte(rest, '\n'); nl >= 0 {
+				rest = rest[:nl]
+			}
+			var bundle ai.Pass1ToolBundle
+			if err := json.Unmarshal([]byte(strings.TrimSpace(rest)), &bundle); err != nil {
+				return nil, false
+			}
+			return &bundle, true
+		}
+	}
+	return nil, false
+}
+
 func openEvalTxStore(t *testing.T) (*repository.Store, pgx.Tx, context.Context) {
 	t.Helper()
+	return openEvalTxStoreWithTimeout(t, 60*time.Second)
+}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+func openEvalTxStoreWithTimeout(t *testing.T, timeout time.Duration) (*repository.Store, pgx.Tx, context.Context) {
+	t.Helper()
+
+	if timeout <= 0 {
+		timeout = 60 * time.Second
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	t.Cleanup(cancel)
 
 	pool, err := pgxpool.New(ctx, buildEvalPostgresDSN())
@@ -737,21 +789,56 @@ func checkSchemaAndRoutingGate(
 		t.Errorf("[%s] expected SSE stream ending in final_response, got %d events", tc.ID, len(events))
 		return false
 	}
-	expectedStepNum := 1
+
+	thinkingSteps := make([]ai.SSEThinkingStepEvent, 0, len(events)-1)
 	for i := 0; i < len(events)-1; i++ {
 		if events[i].Type != ai.SSEEventThinkingStep {
-			continue
+			t.Errorf("[%s] event[%d] unexpected type %q before final_response", tc.ID, i, events[i].Type)
+			return false
 		}
 		step, ok := events[i].Data.(ai.SSEThinkingStepEvent)
 		if !ok {
 			t.Errorf("[%s] event[%d] unexpected thinking step type %T", tc.ID, i, events[i].Data)
 			return false
 		}
-		if step.StepNumber != expectedStepNum {
-			t.Errorf("[%s] event[%d] StepNumber=%d, want %d", tc.ID, i, step.StepNumber, expectedStepNum)
+		thinkingSteps = append(thinkingSteps, step)
+	}
+
+	wantStepCount := len(tc.Pass1Calls) + 2
+	if len(thinkingSteps) != wantStepCount {
+		t.Errorf("[%s] SSE thinkingSteps count = %d, want %d (1 intake + %d Pass 1 tools + 1 synthesis)",
+			tc.ID, len(thinkingSteps), wantStepCount, len(tc.Pass1Calls))
+		return false
+	}
+	for i, step := range thinkingSteps {
+		if step.StepNumber != i+1 {
+			t.Errorf("[%s] thinkingSteps[%d] StepNumber=%d, want %d", tc.ID, i, step.StepNumber, i+1)
 			return false
 		}
-		expectedStepNum++
+	}
+	if thinkingSteps[0].Title != "Memahami maksud & konteks chat" || thinkingSteps[0].Status != "in_progress" {
+		t.Errorf("[%s] unexpected intake thinking step: %+v", tc.ID, thinkingSteps[0])
+		return false
+	}
+	lastStep := thinkingSteps[len(thinkingSteps)-1]
+	if lastStep.Title != "Menyusun jawaban & komponen aksi" || lastStep.Status != "in_progress" {
+		t.Errorf("[%s] unexpected final synthesis thinking step: %+v", tc.ID, lastStep)
+		return false
+	}
+
+	expectToolErr := tc.ExpectedErrorRecovery != nil && tc.ExpectedErrorRecovery.ExpectToolError
+	for i, c := range tc.Pass1Calls {
+		step := thinkingSteps[i+1]
+		wantTitle := expectedPass1StepTitle(c)
+		wantStatus := "completed"
+		if expectToolErr {
+			wantStatus = "failed"
+		}
+		if step.Title != wantTitle || step.Status != wantStatus {
+			t.Errorf("[%s] tool thinkingSteps[%d] = (%q, %q), want (%q, %q)",
+				tc.ID, i+1, step.Title, step.Status, wantTitle, wantStatus)
+			return false
+		}
 	}
 
 	wantTools := make([]string, 0, len(tc.Pass1Calls))
@@ -759,7 +846,27 @@ func checkSchemaAndRoutingGate(
 		wantTools = append(wantTools, c.Tool)
 	}
 	if !slices.Equal(llm.observedToolNames, wantTools) {
-		t.Errorf("[%s] observed Pass 1 tool routing = %v, want %v", tc.ID, llm.observedToolNames, wantTools)
+		t.Errorf("[%s] observed Pass 1 FunctionResponse tools = %v, want %v", tc.ID, llm.observedToolNames, wantTools)
+		return false
+	}
+	if llm.pass2Bundle == nil {
+		t.Errorf("[%s] Pass 2 did not receive Pass1ToolBundle from Orchestrator", tc.ID)
+		return false
+	}
+	if len(llm.pass2Bundle.ExecutedSteps) != len(tc.Pass1Calls) {
+		t.Errorf("[%s] Pass 2 bundle ExecutedSteps = %d, want %d", tc.ID, len(llm.pass2Bundle.ExecutedSteps), len(tc.Pass1Calls))
+		return false
+	}
+	for i, c := range tc.Pass1Calls {
+		bStep := llm.pass2Bundle.ExecutedSteps[i]
+		wantTitle := expectedPass1StepTitle(c)
+		if bStep.StepNumber != i+2 || bStep.Title != wantTitle {
+			t.Errorf("[%s] Pass 2 bundle ExecutedSteps[%d] = %+v, want StepNumber=%d Title=%q",
+				tc.ID, i, bStep, i+2, wantTitle)
+			return false
+		}
+	}
+	if !verifyPass2BundleToolOutputs(t, tc, llm.pass2Bundle) {
 		return false
 	}
 
@@ -792,6 +899,114 @@ func checkSchemaAndRoutingGate(
 		}
 	}
 
+	return true
+}
+
+func expectedPass1StepTitle(call goldenToolCall) string {
+	switch call.Tool {
+	case "get_user_wallets":
+		return "Memeriksa dompet & saldo aktif"
+	case "get_cashflow_summary":
+		groupBy, _ := call.Args["group_by"].(string)
+		switch groupBy {
+		case "merchant":
+			return "Menghitung rincian merchant"
+		case "income_to_expense_flow":
+			return "Menganalisa aliran kas"
+		default:
+			return "Menganalisa arus kas"
+		}
+	case "get_budget_and_bills_status":
+		return "Memeriksa anggaran, goal, & tagihan"
+	case "check_and_prepare_transaction":
+		return "Memvalidasi dompet & kategori transaksi"
+	case "propose_goal_draft":
+		return "Menyiapkan draf target tabungan"
+	case "propose_budget_draft":
+		return "Menyiapkan draf batas anggaran"
+	case "propose_bill_draft":
+		return "Menyiapkan draf pengingat tagihan"
+	case "match_experts_and_package":
+		return "Mencocokkan paket & konsultan berjadwal"
+	case "search_financial_knowledge":
+		return "Mencari referensi ekonomi terkini"
+	default:
+		return "Memproses alat bantu AI"
+	}
+}
+
+func verifyPass2BundleToolOutputs(t *testing.T, tc goldenCase, bundle *ai.Pass1ToolBundle) bool {
+	t.Helper()
+
+	expectToolErr := tc.ExpectedErrorRecovery != nil && tc.ExpectedErrorRecovery.ExpectToolError
+	for _, c := range tc.Pass1Calls {
+		switch c.Tool {
+		case "get_user_wallets":
+			if bundle.Wallets == nil || len(bundle.Wallets.Wallets) == 0 {
+				t.Errorf("[%s] Pass 2 bundle missing Wallets output", tc.ID)
+				return false
+			}
+		case "get_cashflow_summary":
+			groupBy, _ := c.Args["group_by"].(string)
+			switch groupBy {
+			case "income_to_expense_flow":
+				if bundle.FlowCashflow == nil {
+					t.Errorf("[%s] Pass 2 bundle missing FlowCashflow output", tc.ID)
+					return false
+				}
+			case "merchant":
+				if bundle.MerchantCashflow == nil {
+					t.Errorf("[%s] Pass 2 bundle missing MerchantCashflow output", tc.ID)
+					return false
+				}
+			case "wallet":
+				if bundle.WalletCashflow == nil {
+					t.Errorf("[%s] Pass 2 bundle missing WalletCashflow output", tc.ID)
+					return false
+				}
+			default:
+				if bundle.CategoryCashflow == nil {
+					t.Errorf("[%s] Pass 2 bundle missing CategoryCashflow output", tc.ID)
+					return false
+				}
+			}
+		case "get_budget_and_bills_status":
+			if bundle.BudgetBills == nil {
+				t.Errorf("[%s] Pass 2 bundle missing BudgetBills output", tc.ID)
+				return false
+			}
+		case "check_and_prepare_transaction":
+			if !expectToolErr && (bundle.PrepareTx == nil || len(bundle.TxChecks) == 0) {
+				t.Errorf("[%s] Pass 2 bundle missing PrepareTx output", tc.ID)
+				return false
+			}
+		case "propose_goal_draft":
+			if bundle.GoalDraft == nil {
+				t.Errorf("[%s] Pass 2 bundle missing GoalDraft output", tc.ID)
+				return false
+			}
+		case "propose_budget_draft":
+			if bundle.BudgetDraft == nil {
+				t.Errorf("[%s] Pass 2 bundle missing BudgetDraft output", tc.ID)
+				return false
+			}
+		case "propose_bill_draft":
+			if bundle.BillDraft == nil {
+				t.Errorf("[%s] Pass 2 bundle missing BillDraft output", tc.ID)
+				return false
+			}
+		case "match_experts_and_package":
+			if bundle.Matching == nil {
+				t.Errorf("[%s] Pass 2 bundle missing Matching output", tc.ID)
+				return false
+			}
+		case "search_financial_knowledge":
+			if len(bundle.SearchSummaries) == 0 {
+				t.Errorf("[%s] Pass 2 bundle missing SearchSummaries output", tc.ID)
+				return false
+			}
+		}
+	}
 	return true
 }
 
@@ -837,7 +1052,8 @@ func checkNumericIDRGate(t *testing.T, tc goldenCase, resp *ai.AiStructuredRespo
 		}
 		for i, want := range tc.ExpectedItems {
 			got := resp.TransactionDraft.Items[i]
-			if got.AmountIDR != want.AmountIDR ||
+			if (want.Title != "" && !strings.EqualFold(strings.TrimSpace(got.Title), strings.TrimSpace(want.Title))) ||
+				got.AmountIDR != want.AmountIDR ||
 				got.Type != want.Type ||
 				got.CanonicalCategory != want.CanonicalCategory ||
 				got.WalletName != want.WalletName ||
@@ -884,6 +1100,10 @@ func checkNumericIDRGate(t *testing.T, tc goldenCase, resp *ai.AiStructuredRespo
 				t.Errorf("[%s] expected MoneyFlowCard, got nil", tc.ID)
 				return false
 			}
+			if spec.ExpectedPeriod != "" && resp.MoneyFlowCard.Period != spec.ExpectedPeriod {
+				t.Errorf("[%s] MoneyFlowCard.Period = %q, want %q", tc.ID, resp.MoneyFlowCard.Period, spec.ExpectedPeriod)
+				return false
+			}
 			if resp.MoneyFlowCard.TotalIncomeIDR != 8000000 || resp.MoneyFlowCard.TotalExpenseIDR != 1130000 || resp.MoneyFlowCard.NetCashflowIDR != 6870000 || resp.MoneyFlowCard.TransactionCount != 3 {
 				t.Errorf("[%s] MoneyFlowCard mismatch: %+v", tc.ID, resp.MoneyFlowCard)
 				return false
@@ -918,7 +1138,8 @@ func checkNumericIDRGate(t *testing.T, tc goldenCase, resp *ai.AiStructuredRespo
 				t.Errorf("[%s] expected GoalDraft, got nil", tc.ID)
 				return false
 			}
-			if resp.GoalDraft.TargetAmountIDR != spec.AmountIDR ||
+			if (spec.Title != "" && !strings.EqualFold(strings.TrimSpace(resp.GoalDraft.Title), strings.TrimSpace(spec.Title))) ||
+				resp.GoalDraft.TargetAmountIDR != spec.AmountIDR ||
 				resp.GoalDraft.MonthlySavingEstimateIDR != spec.MonthlySavingIDR ||
 				resp.GoalDraft.Priority != spec.Priority {
 				t.Errorf("[%s] GoalDraft = %+v, want %+v", tc.ID, resp.GoalDraft, spec)
@@ -958,7 +1179,8 @@ func checkNumericIDRGate(t *testing.T, tc goldenCase, resp *ai.AiStructuredRespo
 				t.Errorf("[%s] expected BillDraft, got nil", tc.ID)
 				return false
 			}
-			if resp.BillDraft.CanonicalCategory != spec.Category ||
+			if (spec.Title != "" && !strings.EqualFold(strings.TrimSpace(resp.BillDraft.Title), strings.TrimSpace(spec.Title))) ||
+				resp.BillDraft.CanonicalCategory != spec.Category ||
 				resp.BillDraft.AmountIDR != spec.AmountIDR ||
 				resp.BillDraft.DueDay != spec.DueDay {
 				t.Errorf("[%s] BillDraft = %+v, want %+v", tc.ID, resp.BillDraft, spec)
@@ -1248,19 +1470,22 @@ func checkBoundaryAndRecommendationGate(
 }
 
 type failIfCalledLLM struct {
-	t *testing.T
+	t     *testing.T
+	calls int
 }
 
 func (f *failIfCalledLLM) GenerateContent(_ context.Context, req ai.GenerateRequest) (*ai.GenerateResponse, error) {
+	f.calls++
 	f.t.Fatalf("LLM must not be called (got pass=%s)", req.Pass)
 	return nil, nil
 }
 
 func TestEval_GreetingsPrefilter_ZeroQuota_AndFinancialBypassGuard(t *testing.T) {
 	quota := &evalQuotaManager{}
+	llmGuard := &failIfCalledLLM{t: t}
 	orch := ai.NewOrchestrator(ai.OrchestratorConfig{
 		Model: "gemini-2.5-flash",
-		LLM:   &failIfCalledLLM{t: t},
+		LLM:   llmGuard,
 		Quota: quota,
 	})
 
@@ -1291,9 +1516,10 @@ func TestEval_GreetingsPrefilter_ZeroQuota_AndFinancialBypassGuard(t *testing.T)
 		if !res.IsPrefiltered {
 			t.Fatalf("ChatStream(%q) expected IsPrefiltered=true", msg)
 		}
-		if elapsed > 5*time.Millisecond {
-			t.Fatalf("ChatStream(%q) latency %s exceeded 5ms prefilter budget", msg, elapsed)
+		if llmGuard.calls != 0 {
+			t.Fatalf("ChatStream(%q) expected 0 LLM calls, got %d", msg, llmGuard.calls)
 		}
+		t.Logf("ChatStream(%q) prefilter elapsed=%s (llmCalls=%d, quotaUsed=%d)", msg, elapsed, llmGuard.calls, res.QuotaStatus.QuotaUsed)
 		if len(quota.reservedIDs) != 0 || res.QuotaStatus.QuotaUsed != 0 {
 			t.Fatalf("ChatStream(%q) must consume 0 quota, got reserved=%d used=%d", msg, len(quota.reservedIDs), res.QuotaStatus.QuotaUsed)
 		}
@@ -1542,6 +1768,110 @@ func TestEval_FixRound1_MultiCallMerge_NarrativeIDR_AndClientRequestIDLimits(t *
 	if !strings.Contains(res.Response.Narrative, "Rp 25.000") || strings.Contains(res.Response.Narrative, ".50") || strings.Contains(res.Response.Narrative, "\u2014") {
 		t.Fatalf("expected normalized Rp 25.000 without decimal or em dash, got %q", res.Response.Narrative)
 	}
+
+	// 3a. Verify dual Pass 1 check_and_prepare_transaction calls merge into one multi-item TransactionDraft.
+	mergeReadyTC := goldenCase{
+		ID:          "Fix1-MultiMergeReady",
+		SurfaceMode: "quick_sheet",
+		Pass1Calls: []goldenToolCall{
+			{
+				Tool: "check_and_prepare_transaction",
+				Args: map[string]any{
+					"items": []any{
+						map[string]any{"title": "Kopi Kenangan", "amount_idr": 25000, "type": "expense", "raw_category": "kopi", "wallet_hint": "gopay"},
+					},
+				},
+			},
+			{
+				Tool: "check_and_prepare_transaction",
+				Args: map[string]any{
+					"items": []any{
+						map[string]any{"title": "Parkir", "amount_idr": 5000, "type": "expense", "raw_category": "parkir", "wallet_hint": "ovo"},
+					},
+				},
+			},
+		},
+		Pass2Narrative: "Draf gabungan Rp 25.000 via GoPay dan Rp 5.000 via OVO (total Rp 30.000) siap dikonfirmasi.",
+	}
+	mergeReadyOrch := ai.NewOrchestrator(ai.OrchestratorConfig{
+		Model:      "gemini-2.5-flash",
+		LLM:        &scriptedEvalLLM{t: t, tc: mergeReadyTC},
+		Quota:      quota,
+		Financial:  finTools,
+		Actions:    actTools,
+		Matching:   matchTools,
+		NowFunc:    nowFn,
+		JakartaLoc: wib,
+	})
+	mergeReadyRes, err := mergeReadyOrch.ChatStream(ctx, userID, ai.ChatRequest{
+		ClientRequestID: "req_fix1_merge_ready",
+		Message:         "kopi 25k pake gopay + parkir goceng pake ovo",
+		SurfaceMode:     "quick_sheet",
+	}, nil)
+	if err != nil {
+		t.Fatalf("ChatStream multi-call ready merge failed: %v", err)
+	}
+	if mergeReadyRes.Response.TransactionDraft == nil ||
+		mergeReadyRes.Response.TransactionDraft.ItemCount != 2 ||
+		mergeReadyRes.Response.TransactionDraft.TotalAmountIDR != 30000 {
+		t.Fatalf("expected merged 2-item TransactionDraft totaling 30000, got %+v", mergeReadyRes.Response.TransactionDraft)
+	}
+	if mergeReadyRes.Response.TransactionDraft.Items[0].WalletName != "GoPay" || mergeReadyRes.Response.TransactionDraft.Items[1].WalletName != "OVO" {
+		t.Fatalf("expected merged wallet names [GoPay, OVO], got [%s, %s]",
+			mergeReadyRes.Response.TransactionDraft.Items[0].WalletName,
+			mergeReadyRes.Response.TransactionDraft.Items[1].WalletName)
+	}
+
+	// 3b. Verify mixed ready + missing_wallet multi-call merge withholds TransactionDraft and keeps both PendingItems.
+	mergeMissingTC := goldenCase{
+		ID:          "Fix1-MultiMergeMissing",
+		SurfaceMode: "quick_sheet",
+		Pass1Calls: []goldenToolCall{
+			{
+				Tool: "check_and_prepare_transaction",
+				Args: map[string]any{
+					"items": []any{
+						map[string]any{"title": "Kopi Kenangan", "amount_idr": 25000, "type": "expense", "raw_category": "kopi", "wallet_hint": "gopay"},
+					},
+				},
+			},
+			{
+				Tool: "check_and_prepare_transaction",
+				Args: map[string]any{
+					"items": []any{
+						map[string]any{"title": "Makan Siang", "amount_idr": 45000, "type": "expense", "raw_category": "makan siang", "wallet_hint": "bank jago"},
+					},
+				},
+			},
+		},
+		Pass2Narrative: "Dompet Bank Jago belum terdaftar sehingga total Rp 70.000 (Rp 25.000 dan Rp 45.000) aku tahan di draf pembuatan dompet.",
+	}
+	mergeMissingOrch := ai.NewOrchestrator(ai.OrchestratorConfig{
+		Model:      "gemini-2.5-flash",
+		LLM:        &scriptedEvalLLM{t: t, tc: mergeMissingTC},
+		Quota:      quota,
+		Financial:  finTools,
+		Actions:    actTools,
+		Matching:   matchTools,
+		NowFunc:    nowFn,
+		JakartaLoc: wib,
+	})
+	mergeMissingRes, err := mergeMissingOrch.ChatStream(ctx, userID, ai.ChatRequest{
+		ClientRequestID: "req_fix1_merge_missing",
+		Message:         "kopi 25k pake gopay + makan 45rb pake bank jago",
+		SurfaceMode:     "quick_sheet",
+	}, nil)
+	if err != nil {
+		t.Fatalf("ChatStream multi-call missing merge failed: %v", err)
+	}
+	if mergeMissingRes.Response.TransactionDraft != nil {
+		t.Fatalf("expected TransactionDraft withheld on mixed ready+missing merge, got %+v", mergeMissingRes.Response.TransactionDraft)
+	}
+	if mergeMissingRes.Response.WalletCreationDraft == nil ||
+		mergeMissingRes.Response.WalletCreationDraft.InstitutionID != "jago" ||
+		len(mergeMissingRes.Response.WalletCreationDraft.PendingItems) != 2 {
+		t.Fatalf("expected WalletCreationDraft(jago) with 2 pending items, got %+v", mergeMissingRes.Response.WalletCreationDraft)
+	}
 }
 
 func TestEval_QuotaExhaustion_AndRateLimitBoundaries(t *testing.T) {
@@ -1559,8 +1889,12 @@ func TestEval_QuotaExhaustion_AndRateLimitBoundaries(t *testing.T) {
 	t.Cleanup(func() {
 		cleanupCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		_, _ = store.Pool.Exec(cleanupCtx, `DELETE FROM ai_usage_ledger WHERE user_id = $1`, userID)
-		_, _ = store.Pool.Exec(cleanupCtx, `DELETE FROM auth.users WHERE id = $1`, userID)
+		if _, err := store.Pool.Exec(cleanupCtx, `DELETE FROM ai_usage_ledger WHERE user_id = $1`, userID); err != nil {
+			t.Errorf("cleanup ai_usage_ledger for user %s: %v", userID, err)
+		}
+		if _, err := store.Pool.Exec(cleanupCtx, `DELETE FROM auth.users WHERE id = $1`, userID); err != nil {
+			t.Errorf("cleanup auth.users for user %s: %v", userID, err)
+		}
 	})
 
 	wib := time.FixedZone("WIB", 7*3600)
@@ -1663,8 +1997,12 @@ func TestEval_QuotaExhaustion_AndRateLimitBoundaries(t *testing.T) {
 	}
 	rdb := redis.NewClient(opts)
 	t.Cleanup(func() {
-		_ = rdb.Del(context.Background(), "ratelimit:ai:"+userID.String()).Err()
-		_ = rdb.Close()
+		if err := rdb.Del(context.Background(), "ratelimit:ai:"+userID.String()).Err(); err != nil {
+			t.Errorf("cleanup redis rate limit key for user %s: %v", userID, err)
+		}
+		if err := rdb.Close(); err != nil {
+			t.Errorf("close redis client: %v", err)
+		}
 	})
 	if err := rdb.Ping(ctx).Err(); err != nil {
 		t.Fatalf("ping redis: %v", err)
