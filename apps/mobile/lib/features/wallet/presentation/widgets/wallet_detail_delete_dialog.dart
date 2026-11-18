@@ -80,7 +80,7 @@ class WalletDetailDeleteDialog extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Yakin ingin menghapus ${wallet.name}? Aksi ini tidak dapat dibatalkan.',
+              'Yakin ingin menghapus ${wallet.name}? Seluruh riwayat transaksi di dompet ini juga akan ikut terhapus dan aksi ini tidak dapat dibatalkan.',
               textAlign: TextAlign.center,
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 12,

@@ -46,6 +46,7 @@ class ReceiptPill extends StatelessWidget {
   final Color backgroundColor;
   final Color foregroundColor;
   final IconData? icon;
+  final Widget? leading;
 
   const ReceiptPill({
     super.key,
@@ -53,12 +54,16 @@ class ReceiptPill extends StatelessWidget {
     required this.backgroundColor,
     required this.foregroundColor,
     this.icon,
+    this.leading,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: EdgeInsets.symmetric(
+        horizontal: leading != null ? 6 : 8,
+        vertical: leading != null ? 3 : 4,
+      ),
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.circular(NeoBrutalism.radiusPill),
@@ -67,7 +72,10 @@ class ReceiptPill extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (icon != null) ...[
+          if (leading != null) ...[
+            leading!,
+            const SizedBox(width: 5),
+          ] else if (icon != null) ...[
             Icon(icon, size: 12, color: foregroundColor),
             const SizedBox(width: 4),
           ],

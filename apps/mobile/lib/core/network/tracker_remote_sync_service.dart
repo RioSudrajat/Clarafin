@@ -57,6 +57,22 @@ class TrackerRemoteSyncService {
     return _validNonNilUuid(trimmed);
   }
 
+  /// Reverse-resolves a remote wallet UUID back to the paired local wallet ID.
+  String? resolveLocalWalletId(String remoteOrLocalId) {
+    final trimmed = remoteOrLocalId.trim();
+    if (trimmed.isEmpty) return null;
+    if (_walletIdMap.containsKey(trimmed)) {
+      return trimmed;
+    }
+    final lower = trimmed.toLowerCase();
+    for (final entry in _walletIdMap.entries) {
+      if (entry.value.trim().toLowerCase() == lower) {
+        return entry.key;
+      }
+    }
+    return null;
+  }
+
   Future<RemoteQuotaStatus> fetchQuota({CancelToken? cancelToken}) async {
     final data = await _client.getJson('/v1/ai/quota', cancelToken: cancelToken);
     return RemoteQuotaStatus.fromJson(data);

@@ -1137,6 +1137,12 @@ void main() {
         syncService.resolveRemoteWalletId('local_gopay'),
         equals('22222222-2222-4222-8222-222222222222'),
       );
+      expect(
+        syncService.resolveLocalWalletId(
+          '22222222-2222-4222-8222-222222222222'.toUpperCase(),
+        ),
+        equals('local_gopay'),
+      );
     });
   });
 }

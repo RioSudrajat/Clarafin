@@ -106,6 +106,7 @@ class WalletsNotifier extends Notifier<List<WalletModel>> {
   void deleteWallet(String id) {
     state = state.where((w) => w.id != id).toList();
     _persist();
+    ref.read(transactionsProvider.notifier).deleteTransactionsByWallet(id);
   }
 
   void updateBalance(String id, double amount, {bool isExpense = false}) {
@@ -185,6 +186,24 @@ class TransactionsNotifier extends Notifier<List<TransactionModel>> {
 
   void deleteTransaction(String id) {
     state = state.where((t) => t.id != id).toList();
+    _persist();
+  }
+
+  /// Removes all transactions linked to [walletId] (source, transfer target, or goal reverse-transfer).
+  void deleteTransactionsByWallet(String walletId) {
+    final trimmed = walletId.trim();
+    if (trimmed.isEmpty) return;
+    final next = state.where((t) {
+      if (t.walletId == trimmed || t.targetWalletId == trimmed) {
+        return false;
+      }
+      if (t.walletId.startsWith('goal:') && t.walletId.endsWith(':$trimmed')) {
+        return false;
+      }
+      return true;
+    }).toList();
+    if (next.length == state.length) return;
+    state = next;
     _persist();
   }
 }

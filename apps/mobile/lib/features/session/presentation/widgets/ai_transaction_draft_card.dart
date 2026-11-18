@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/institutions/institution_logo_widget.dart';
+import '../../../../core/models/wallet_model.dart';
 import '../../../../core/theme/neo_brutalism_decorations.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../domain/models/ai_chat_models.dart';
@@ -15,6 +17,7 @@ class AiTransactionDraftCard extends StatelessWidget {
   final VoidCallback? onEditDetail;
   final String Function(String walletId)? walletLabelResolver;
   final double? Function(String walletId)? walletBalanceResolver;
+  final WalletModel? Function(String walletId)? walletResolver;
 
   const AiTransactionDraftCard({
     super.key,
@@ -24,7 +27,13 @@ class AiTransactionDraftCard extends StatelessWidget {
     this.onEditDetail,
     this.walletLabelResolver,
     this.walletBalanceResolver,
+    this.walletResolver,
   });
+
+  static final RegExp _uuidPattern = RegExp(
+    r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+    caseSensitive: false,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -33,6 +42,9 @@ class AiTransactionDraftCard extends StatelessWidget {
     final headerWallet = draft.items.isEmpty
         ? ''
         : _resolveWallet(draft.items.first.walletId, draft.items.first.walletName);
+    final headerWalletModel = draft.items.isEmpty
+        ? null
+        : walletResolver?.call(draft.items.first.walletId);
     final totalAmount = draft.items.fold<double>(
       0.0,
       (sum, item) => sum + (item.amount.isFinite && item.amount > 0 ? item.amount : 0.0),
@@ -44,7 +56,7 @@ class AiTransactionDraftCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildHeader(context, headerWallet),
+          _buildHeader(context, headerWallet, headerWalletModel),
           const SizedBox(height: 10),
           const ReceiptDashedDivider(),
           const SizedBox(height: 10),
@@ -129,7 +141,11 @@ class AiTransactionDraftCard extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader(BuildContext context, String headerWallet) {
+  Widget _buildHeader(
+    BuildContext context,
+    String headerWallet,
+    WalletModel? headerWalletModel,
+  ) {
     return SizedBox(
       width: double.infinity,
       child: Wrap(
@@ -160,7 +176,13 @@ class AiTransactionDraftCard extends StatelessWidget {
                   label: headerWallet.toUpperCase(),
                   backgroundColor: NeoBrutalism.lime,
                   foregroundColor: Colors.black,
-                  icon: Icons.account_balance_wallet_outlined,
+                  leading: InstitutionLogoWidget(
+                    institutionId: headerWalletModel?.institutionId,
+                    walletName: headerWallet,
+                    walletType: headerWalletModel?.type,
+                    size: 18,
+                    borderWidth: 1.2,
+                  ),
                 ),
               if (draft.items.isNotEmpty)
                 ReceiptPill(
@@ -228,7 +250,9 @@ class AiTransactionDraftCard extends StatelessWidget {
     final trimmedId = walletId.trim();
     if (trimmedId.isNotEmpty && walletLabelResolver != null) {
       final resolved = walletLabelResolver!(trimmedId).trim();
-      if (resolved.isNotEmpty) return resolved;
+      if (resolved.isNotEmpty && !_uuidPattern.hasMatch(resolved)) {
+        return resolved;
+      }
     }
     return fallbackName.trim().isNotEmpty ? fallbackName.trim() : trimmedId;
   }

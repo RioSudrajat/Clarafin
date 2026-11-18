@@ -13,16 +13,23 @@ import 'ai_action_card_primitives.dart';
 import 'ai_chat_bubble.dart';
 import 'ai_thinking_trace_widget.dart';
 
-/// Matches a local [WalletModel] by ID, remote `existingWalletNames`, name, or institution.
+/// Matches a local [WalletModel] by ID, remote `localWalletIdResolver`, `existingWalletNames`, name, or institution.
 WalletModel? matchChatLocalWallet(
   List<WalletModel> wallets,
   String walletId, {
   Map<String, String> existingWalletNames = const {},
+  String? Function(String id)? localWalletIdResolver,
 }) {
   final trimmed = walletId.trim();
   if (trimmed.isEmpty) return null;
   final byId = wallets.where((w) => w.id == trimmed).firstOrNull;
   if (byId != null) return byId;
+
+  final mappedLocalId = localWalletIdResolver?.call(trimmed)?.trim() ?? '';
+  if (mappedLocalId.isNotEmpty) {
+    final byMappedId = wallets.where((w) => w.id == mappedLocalId).firstOrNull;
+    if (byMappedId != null) return byMappedId;
+  }
 
   final namedHint = existingWalletNames[trimmed]?.trim() ?? '';
   if (namedHint.isNotEmpty) {
@@ -45,10 +52,16 @@ String resolveChatWalletLabel(
   List<WalletModel> wallets,
   String walletId, {
   Map<String, String> existingWalletNames = const {},
+  String? Function(String id)? localWalletIdResolver,
 }) {
   final trimmed = walletId.trim();
   if (trimmed.isEmpty) return '';
-  final hit = matchChatLocalWallet(wallets, trimmed, existingWalletNames: existingWalletNames);
+  final hit = matchChatLocalWallet(
+    wallets,
+    trimmed,
+    existingWalletNames: existingWalletNames,
+    localWalletIdResolver: localWalletIdResolver,
+  );
   if (hit != null && hit.name.trim().isNotEmpty) return hit.name;
   final namedHint = existingWalletNames[trimmed]?.trim() ?? '';
   if (namedHint.isNotEmpty) return namedHint;
@@ -66,15 +79,22 @@ Widget buildUnifiedChatBubble({
   required AiSurfaceMode surfaceMode,
   required void Function(AiConsultantRecommendation, AiPackageRecommendation?) onSelectConsultant,
   required void Function(String route) onNavigateShellBranch,
+  String? Function(String id)? localWalletIdResolver,
 }) {
   final walletNames = msg.walletCreationDraft?.existingWalletNames ?? const {};
+  WalletModel? resolveWallet(String id) => matchChatLocalWallet(
+        wallets,
+        id,
+        existingWalletNames: walletNames,
+        localWalletIdResolver: localWalletIdResolver,
+      );
   return AiChatBubble(
     message: msg,
     onRetry: () => unawaited(notifier.retryFailedMessage(msg.id, surfaceMode: surfaceMode)),
     onUpgradePlan: () => SaasUpgradeBottomSheet.show(context, reason: msg.text),
     onCreateWallet: (bal) => unawaited(notifier.confirmWalletCreation(msg.id, initialBalance: bal)),
     onSelectExistingWallet: (walletId) {
-      final w = matchChatLocalWallet(wallets, walletId, existingWalletNames: walletNames);
+      final w = resolveWallet(walletId);
       if (w != null) notifier.selectExistingWalletForPendingTx(msg.id, w);
     },
     onConfirmTransaction: () => unawaited(notifier.confirmTransactionDraft(msg.id)),
@@ -90,8 +110,14 @@ Widget buildUnifiedChatBubble({
     onCancelBill: () => notifier.cancelBillDraft(msg.id),
     onSelectConsultant: onSelectConsultant,
     onBrowseConsultants: () => onNavigateShellBranch('/consult'),
-    walletLabelResolver: (id) => resolveChatWalletLabel(wallets, id, existingWalletNames: walletNames),
-    walletBalanceResolver: (id) => matchChatLocalWallet(wallets, id, existingWalletNames: walletNames)?.balance,
+    walletLabelResolver: (id) => resolveChatWalletLabel(
+      wallets,
+      id,
+      existingWalletNames: walletNames,
+      localWalletIdResolver: localWalletIdResolver,
+    ),
+    walletBalanceResolver: (id) => resolveWallet(id)?.balance,
+    walletResolver: resolveWallet,
   );
 }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/models/wallet_model.dart';
 import '../../../../core/theme/neo_brutalism_decorations.dart';
 import '../../../home/presentation/widgets/notion_doodle_icons.dart';
 import '../../domain/models/ai_chat_models.dart';
@@ -41,6 +42,7 @@ class AiChatBubble extends StatelessWidget {
   final VoidCallback? onBrowseConsultants;
   final String Function(String walletId)? walletLabelResolver;
   final double? Function(String walletId)? walletBalanceResolver;
+  final WalletModel? Function(String walletId)? walletResolver;
 
   const AiChatBubble({
     super.key,
@@ -64,6 +66,7 @@ class AiChatBubble extends StatelessWidget {
     this.onBrowseConsultants,
     this.walletLabelResolver,
     this.walletBalanceResolver,
+    this.walletResolver,
   });
 
   String _formatTime(DateTime time) {
@@ -179,6 +182,7 @@ class AiChatBubble extends StatelessWidget {
                           : (i == 0 ? onCancelTransaction : null),
                       walletLabelResolver: walletLabelResolver,
                       walletBalanceResolver: walletBalanceResolver,
+                      walletResolver: walletResolver,
                     ),
                   ],
                   if (hasPlanning) ...[

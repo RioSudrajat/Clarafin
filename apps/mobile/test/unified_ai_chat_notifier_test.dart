@@ -2784,5 +2784,73 @@ void main() {
         );
       },
     );
+
+    test(
+      'deleteWallet removes wallet and cascades to all linked transactions while preserving other wallets',
+      () async {
+        final gopay = WalletModel(
+          id: 'w-gopay-del',
+          name: 'GoPay',
+          type: 'E-Wallet',
+          balance: 150000,
+          institutionId: 'gopay',
+        );
+        final cash = WalletModel(
+          id: 'w-cash-keep',
+          name: 'Cash',
+          type: 'Cash',
+          balance: 50000,
+          institutionId: 'cash',
+        );
+        final container = await _createTestContainer(
+          initialWallets: [gopay, cash],
+        );
+        addTearDown(container.dispose);
+
+        final txNotifier = container.read(transactionsProvider.notifier);
+        txNotifier.addTransaction(
+          TransactionModel(
+            id: 'tx-gopay-exp',
+            title: 'Kopi',
+            amount: 25000,
+            type: 'expense',
+            category: 'Food & Beverage • Coffee Shop',
+            walletId: gopay.id,
+            date: DateTime(2026, 11, 18),
+          ),
+        );
+        txNotifier.addTransaction(
+          TransactionModel(
+            id: 'tx-transfer-to-gopay',
+            title: 'Topup GoPay',
+            amount: 50000,
+            type: 'transfer',
+            category: 'Transfer',
+            walletId: cash.id,
+            targetWalletId: gopay.id,
+            date: DateTime(2026, 11, 18),
+          ),
+        );
+        txNotifier.addTransaction(
+          TransactionModel(
+            id: 'tx-cash-keep',
+            title: 'Parkir',
+            amount: 5000,
+            type: 'expense',
+            category: 'Transportation • Parking & Toll',
+            walletId: cash.id,
+            date: DateTime(2026, 11, 18),
+          ),
+        );
+
+        container.read(walletsProvider.notifier).deleteWallet(gopay.id);
+
+        final remainingWallets = container.read(walletsProvider);
+        expect(remainingWallets.map((w) => w.id), equals([cash.id]));
+
+        final remainingTxs = container.read(transactionsProvider);
+        expect(remainingTxs.map((t) => t.id), equals(['tx-cash-keep']));
+      },
+    );
   });
 }

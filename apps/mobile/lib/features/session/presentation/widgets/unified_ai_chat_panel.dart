@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/models/wallet_model.dart';
+import '../../../../core/network/tracker_remote_sync_service.dart';
 import '../../../../core/providers/ai_quota_provider.dart';
 import '../../../../core/providers/mock_providers.dart';
 import '../../../../core/theme/neo_brutalism_decorations.dart';
@@ -121,6 +122,7 @@ class _UnifiedAiChatPanelState extends ConsumerState<UnifiedAiChatPanel> {
     final padding = EdgeInsets.fromLTRB(12, 14, 12, showExpandPill ? 68 : 14);
     final itemCount = chatState.messages.length + (showLiveTrace ? 1 : 0);
     final notifier = ref.read(unifiedAiChatProvider.notifier);
+    final syncService = ref.watch(trackerRemoteSyncServiceProvider);
 
     Widget renderBubble(UnifiedAiChatMessage msg) => buildUnifiedChatBubble(
           context: context,
@@ -130,6 +132,7 @@ class _UnifiedAiChatPanelState extends ConsumerState<UnifiedAiChatPanel> {
           surfaceMode: _surfaceMode,
           onSelectConsultant: (c, pkg) => _handleSelectConsultant(context, c, pkg),
           onNavigateShellBranch: (route) => _navigateShellBranch(context, route),
+          localWalletIdResolver: syncService.resolveLocalWalletId,
         );
 
     // Quick Sheet keeps short threads non-virtualized so adjacent draft cards stay onstage.

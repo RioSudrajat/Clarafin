@@ -995,5 +995,39 @@ void main() {
         expect(cancelledIndices, equals([1]));
       },
     );
+
+    testWidgets(
+      'AiTransactionDraftCard never shows raw unresolved UUID and renders InstitutionLogoWidget in header pill',
+      (tester) async {
+        final draft = AiTransactionDraftGroup(
+          clientMutationId: 'mut-uuid-fallback',
+          items: [
+            AiTransactionDraftItem(
+              title: 'Gaji Bulanan',
+              amount: 1200000,
+              type: 'income',
+              canonicalCategory: 'Income • Salary',
+              walletId: 'E4B89FD2-2622-4C6E-9CC1-3A3989366C11',
+              walletName: 'GoPay',
+              occurredAt: DateTime(2026, 11, 18),
+            ),
+          ],
+        );
+
+        await tester.pumpWidget(
+          _wrapViewport360(
+            AiTransactionDraftCard(
+              draft: draft,
+              walletLabelResolver: (id) => id,
+            ),
+          ),
+        );
+        await tester.pump();
+
+        expect(find.text('GOPAY'), findsOneWidget);
+        expect(find.textContaining('E4B89FD2'), findsNothing);
+        expect(find.byType(InstitutionLogoWidget), findsOneWidget);
+      },
+    );
   });
 }
