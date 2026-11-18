@@ -79,7 +79,13 @@ func TestLoadConfig_DefaultsGeminiModelAndRateLimit(t *testing.T) {
 	if cfg.GeminiModel != "gemini-3.5-flash" {
 		t.Errorf("expected GeminiModel 'gemini-3.5-flash', got %q", cfg.GeminiModel)
 	}
-	wantFallbacks := []string{"gemini-3-flash-preview", "gemini-3.8-flash"}
+	wantFallbacks := []string{
+		"gemini-3.1-flash-lite-preview",
+		"gemini-3.1-flash-lite",
+		"gemini-flash-lite-latest",
+		"gemini-3-flash-preview",
+		"gemini-3.8-flash",
+	}
 	if !reflect.DeepEqual(cfg.GeminiFallbackModels, wantFallbacks) {
 		t.Errorf("expected GeminiFallbackModels %v, got %v", wantFallbacks, cfg.GeminiFallbackModels)
 	}

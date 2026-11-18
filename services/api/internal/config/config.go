@@ -11,6 +11,8 @@ import (
 // DefaultGeminiModel is the primary Gemini model used when GEMINI_MODEL is unset.
 const DefaultGeminiModel = "gemini-3.5-flash"
 
+const defaultFallbackModels = "gemini-3.1-flash-lite-preview,gemini-3.1-flash-lite,gemini-flash-lite-latest,gemini-3-flash-preview,gemini-3.8-flash"
+
 // Config holds validated runtime configuration loaded from environment variables.
 type Config struct {
 	AppEnv                    string
@@ -183,12 +185,12 @@ func parseAllowedOrigins(raw, appEnv string) []string {
 }
 
 // ParseGeminiFallbackModels parses the ordered fallback model list from GEMINI_FALLBACK_MODELS.
-// When the environment variable is unset, it returns ["gemini-3-flash-preview", "gemini-3.8-flash"]
+// When the environment variable is unset, it returns the default fallback chain
 // with the primary model excluded. When explicitly set to "" or "none", it returns an empty slice.
 func ParseGeminiFallbackModels(raw string, isSet bool, primaryModel string) []string {
 	primary := strings.TrimSpace(primaryModel)
 	if !isSet {
-		raw = "gemini-3-flash-preview,gemini-3.8-flash"
+		raw = defaultFallbackModels
 	} else {
 		trimmedRaw := strings.TrimSpace(raw)
 		if trimmedRaw == "" || strings.EqualFold(trimmedRaw, "none") {

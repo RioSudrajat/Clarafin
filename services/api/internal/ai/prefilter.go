@@ -155,8 +155,36 @@ var allowedGreetingFillers = map[string]struct{}{
 	"semua":    {},
 }
 
-// MatchPureGreeting deterministically matches pure Indonesian/English greetings and polite closings
-// in under 2ms so zero-quota responses never hit the LLM or consume user AI quota.
+const capabilityHelpReply = "Halo! Aku Clarafin AI, asisten keuangan pribadimu. Ini yang bisa aku bantu:\n" +
+	"1. Catat transaksi & buat dompet (misal: \"catat kopi 25rb pakai GoPay\")\n" +
+	"2. Analisa arus kas & rincian pengeluaran bulananmu\n" +
+	"3. Buat target/goal, budget & tagihan rutin\n" +
+	"4. Edukasi keuangan & pencarian data transaksi\n" +
+	"5. Rekomendasi konsultan keuangan sesuai kebutuhanmu\n\n" +
+	"Langsung ketik saja apa yang ingin kamu catat atau tanyakan!"
+
+// Exact normalized phrases for capability/help queries that should return a zero-quota overview
+// before hitting blockedFinancialTokens (such as "apa" or "bantu").
+var capabilityHelpPhrases = map[string]struct{}{
+	"apa yang kamu bisa lakukan":  {},
+	"apa yang bisa kamu lakukan":  {},
+	"kamu bisa apa":               {},
+	"kamu bisa apa aja":           {},
+	"kamu bisa bantu apa":         {},
+	"kamu bisa bantu apa aja":     {},
+	"bisa bantu apa":              {},
+	"bisa bantu apa aja":          {},
+	"fitur apa saja":              {},
+	"fitur apa aja":               {},
+	"fitur clarafin":              {},
+	"cara pakai clarafin":         {},
+	"cara pakai":                  {},
+	"bantuan":                     {},
+	"help":                        {},
+}
+
+// MatchPureGreeting deterministically matches pure Indonesian/English greetings, polite closings,
+// and exact capability/help queries in under 2ms so zero-quota responses never hit the LLM.
 func MatchPureGreeting(input string) (reply string, matched bool) {
 	trimmed := strings.TrimSpace(input)
 	if trimmed == "" || utf8.RuneCountInString(trimmed) > maxGreetingRunes {
@@ -178,6 +206,10 @@ func MatchPureGreeting(input string) (reply string, matched bool) {
 	})
 	if len(tokens) == 0 || len(tokens) > maxGreetingTokens {
 		return "", false
+	}
+
+	if _, isCapabilityQuery := capabilityHelpPhrases[strings.Join(tokens, " ")]; isCapabilityQuery {
+		return capabilityHelpReply, true
 	}
 
 	for _, tok := range tokens {

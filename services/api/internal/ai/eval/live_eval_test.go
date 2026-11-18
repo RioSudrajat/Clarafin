@@ -342,7 +342,7 @@ func TestLiveGeminiEvalSuite_RepresentativeCases(t *testing.T) {
 		quota.mu.Unlock()
 		llmBefore := llmCounter.CallCount()
 
-		callCtx, cancel := context.WithTimeout(ctx, 25*time.Second)
+		callCtx, cancel := context.WithTimeout(ctx, 60*time.Second)
 		start := time.Now()
 		res, err := orch.ChatStream(callCtx, userID, ai.ChatRequest{
 			SessionID:       "sess_" + lc.id,

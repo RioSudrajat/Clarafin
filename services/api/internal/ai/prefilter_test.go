@@ -33,6 +33,10 @@ func TestMatchPureGreeting_PositiveCases(t *testing.T) {
 		{name: "sip", input: "sip"},
 		{name: "mantap", input: "mantap"},
 		{name: "whitespace padded", input: "   Halo!!   "},
+		{name: "capability apa yang kamu bisa lakukan", input: "Apa yang kamu bisa lakukan?"},
+		{name: "capability kamu bisa bantu apa aja", input: "  kamu bisa bantu apa aja?! "},
+		{name: "capability fitur clarafin", input: "fitur clarafin"},
+		{name: "capability help", input: "help"},
 	}
 
 	for _, tc := range cases {
@@ -73,6 +77,10 @@ func TestMatchPureGreeting_RejectsMixedAmountsAndFinancialIntents(t *testing.T) 
 		{name: "incomplete selamat", input: "selamat"},
 		{name: "incomplete terima", input: "terima"},
 		{name: "lone filler", input: "ya"},
+		{name: "financial question apa itu inflasi", input: "apa itu inflasi"},
+		{name: "financial question apa saldo BCA ku", input: "apa saldo BCA ku"},
+		{name: "financial question berapa saldo saya", input: "berapa saldo saya"},
+		{name: "transaction catat kopi 25k", input: "catat kopi 25k"},
 	}
 
 	for _, tc := range cases {
