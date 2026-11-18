@@ -67,6 +67,16 @@ func TestNormalizeNarrativeIDR(t *testing.T) {
 			in:   "Tagihan Rp 1,5 juta dan kopi Rp 25000.50.",
 			want: "Tagihan Rp 1,5 juta dan kopi Rp 25.000.",
 		},
+		{
+			name: "normalizes decimal and integer IDR tokens followed by prose punctuation comma",
+			in:   "Saldo Rp 8000000.00, detail dan Rp 50000, cek Rp 2,500 serta Rp 1.500,50.",
+			want: "Saldo Rp 8.000.000, detail dan Rp 50.000, cek Rp 2,500 serta Rp 1.500.",
+		},
+		{
+			name: "preserves Rp 8000000.00 followed directly by comma prose",
+			in:   "Rp 8000000.00, detail",
+			want: "Rp 8.000.000, detail",
+		},
 	}
 
 	for _, tc := range tests {

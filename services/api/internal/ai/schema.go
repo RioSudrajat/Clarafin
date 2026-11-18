@@ -749,11 +749,12 @@ func NormalizeNarrativeIDR(text string) string {
 		numStart, numEnd := m[2], m[3]
 		if fullEnd < len(text) {
 			next := text[fullEnd]
-			if (next >= '0' && next <= '9') || next == ',' {
+			if next >= '0' && next <= '9' {
 				continue
 			}
-			// Guard compact dot decimals such as "Rp 2000.5jt" where \b prevented suffix matching.
-			if next == '.' && fullEnd+1 < len(text) && text[fullEnd+1] >= '0' && text[fullEnd+1] <= '9' {
+			// Guard unmatched comma/dot numeric suffixes (e.g. "Rp 2,500" or "Rp 2000.5jt")
+			// while still formatting tokens followed by prose punctuation (e.g. "Rp 8000000.00, detail").
+			if (next == ',' || next == '.') && fullEnd+1 < len(text) && text[fullEnd+1] >= '0' && text[fullEnd+1] <= '9' {
 				continue
 			}
 		}
