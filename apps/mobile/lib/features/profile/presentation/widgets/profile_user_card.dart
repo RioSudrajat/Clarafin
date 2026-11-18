@@ -22,21 +22,8 @@ class ProfileUserCard extends StatelessWidget {
         border: NeoBrutalism.border(width: 2.0),
         boxShadow: NeoBrutalism.shadow(yOffset: 3.5),
       ),
-      child: Column(
-        children: [
-          // Top Accent Banner Strip
-          Container(
-            height: 12,
-            decoration: const BoxDecoration(
-              gradient: NeoBrutalism.brandGradient,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
-              border: Border(
-                bottom: BorderSide(color: Colors.black, width: 2.0),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
             child: Row(
               children: [
                 // Avatar with 2px border and badge
@@ -141,8 +128,6 @@ class ProfileUserCard extends StatelessWidget {
               ],
             ),
           ),
-        ],
-      ),
     );
   }
 }

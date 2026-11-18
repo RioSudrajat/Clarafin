@@ -126,46 +126,49 @@ class ProfileSaasPlanCard extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 12),
-          Material(
-            color: isPro || isUnlimited ? Colors.white : NeoBrutalism.lime,
-            borderRadius: BorderRadius.circular(10),
-            child: InkWell(
+          Container(
+            decoration: BoxDecoration(
+              color: isPro || isUnlimited ? Colors.white : NeoBrutalism.lime,
               borderRadius: BorderRadius.circular(10),
-              onTap: () => SaasUpgradeBottomSheet.show(context),
-              child: Container(
-                constraints: const BoxConstraints(minHeight: 44),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(10),
-                  border: NeoBrutalism.border(width: 1.5),
-                  boxShadow: NeoBrutalism.shadow(yOffset: 1.5),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      isPro || isUnlimited
-                          ? Icons.tune_rounded
-                          : Icons.upgrade_rounded,
-                      size: 16,
-                      color: NeoBrutalism.dark,
-                    ),
-                    const SizedBox(width: 6),
-                    Flexible(
-                      child: Text(
+              border: NeoBrutalism.border(width: 1.5),
+              boxShadow: NeoBrutalism.shadow(yOffset: 1.5),
+            ),
+            child: Material(
+              type: MaterialType.transparency,
+              borderRadius: BorderRadius.circular(10),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(10),
+                onTap: () => SaasUpgradeBottomSheet.show(context),
+                child: Container(
+                  constraints: const BoxConstraints(minHeight: 44),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
                         isPro || isUnlimited
-                            ? 'Kelola Paket Langganan'
-                            : 'Upgrade ke Pro (Rp 49.000 / bln)',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                          color: NeoBrutalism.dark,
+                            ? Icons.tune_rounded
+                            : Icons.upgrade_rounded,
+                        size: 16,
+                        color: NeoBrutalism.dark,
+                      ),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          isPro || isUnlimited
+                              ? 'Kelola Paket Langganan'
+                              : 'Upgrade ke Pro (Rp 49.000 / bln)',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            color: NeoBrutalism.dark,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),

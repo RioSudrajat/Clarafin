@@ -107,27 +107,30 @@ class SaasPlanTierCard extends StatelessWidget {
               ),
             ),
           const SizedBox(height: 10),
-          Material(
-            color: isActive ? Colors.white : ctaColor,
-            borderRadius: BorderRadius.circular(NeoBrutalism.radiusSm),
-            child: InkWell(
+          Container(
+            decoration: BoxDecoration(
+              color: isActive ? Colors.white : ctaColor,
               borderRadius: BorderRadius.circular(NeoBrutalism.radiusSm),
-              onTap: isActive ? null : onTap,
-              child: Container(
-                constraints: const BoxConstraints(minHeight: 44),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(NeoBrutalism.radiusSm),
-                  border: NeoBrutalism.border(width: 2.0),
-                  boxShadow: isActive ? null : NeoBrutalism.shadow(yOffset: 2.0),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  ctaLabel,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w900,
-                    color: NeoBrutalism.dark,
+              border: NeoBrutalism.border(width: 2.0),
+              boxShadow: isActive ? null : NeoBrutalism.shadow(yOffset: 2.0),
+            ),
+            child: Material(
+              type: MaterialType.transparency,
+              borderRadius: BorderRadius.circular(NeoBrutalism.radiusSm),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(NeoBrutalism.radiusSm),
+                onTap: isActive ? null : onTap,
+                child: Container(
+                  constraints: const BoxConstraints(minHeight: 44),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  alignment: Alignment.center,
+                  child: Text(
+                    ctaLabel,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w900,
+                      color: NeoBrutalism.dark,
+                    ),
                   ),
                 ),
               ),
