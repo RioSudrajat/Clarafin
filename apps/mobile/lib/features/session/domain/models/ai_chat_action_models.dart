@@ -1339,9 +1339,10 @@ String _compactMessage(UnifiedAiChatMessage msg) {
 
 List<String> _completedActionMarkers(UnifiedAiChatMessage msg) {
   final markers = <String>[];
-  final txGroup = msg.transactionDraftGroup;
-  if (txGroup != null && (txGroup.isConfirmed || txGroup.isCancelled)) {
-    markers.add(_compactTxGroup(txGroup));
+  for (final txGroup in msg.transactionDraftGroups) {
+    if (txGroup.isConfirmed || txGroup.isCancelled) {
+      markers.add(_compactTxGroup(txGroup));
+    }
   }
   final wallet = msg.walletCreationDraft;
   if (wallet != null && wallet.isCreated) {
@@ -1376,8 +1377,8 @@ List<String> _completedActionMarkers(UnifiedAiChatMessage msg) {
 
 List<String> _pendingDraftMarkers(UnifiedAiChatMessage msg) {
   final markers = <String>[];
-  if (msg.transactionDraftGroup != null) {
-    markers.add(_compactTxGroup(msg.transactionDraftGroup!));
+  for (final txGroup in msg.transactionDraftGroups) {
+    markers.add(_compactTxGroup(txGroup));
   }
   if (msg.walletCreationDraft != null) {
     markers.add(

@@ -7,6 +7,7 @@ import '../../../../core/theme/neo_brutalism_decorations.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../domain/models/ai_chat_models.dart';
 import 'ai_analytical_card_helpers.dart';
+import 'ai_money_flow_horizontal_bars.dart';
 import 'ai_money_flow_painter.dart';
 
 /// Neo-Brutalist analytical Money Flow Sankey card rendered inside AI chat.
@@ -45,6 +46,7 @@ class AiMoneyFlowCard extends ConsumerWidget {
     final rawNet = data.netCashflow.isFinite ? data.netCashflow : (safeInc - safeExp);
     final safeNet = normalizeAnalyticalZero(rawNet);
     final hasNodes = data.incomeSources.isNotEmpty || data.expenseCategories.isNotEmpty;
+    final hasSankeyFlow = data.incomeSources.isNotEmpty && data.flows.isNotEmpty;
     final maxNodes = math.max(data.incomeSources.length, data.expenseCategories.length);
     final fontFamily = Theme.of(context).textTheme.bodyMedium?.fontFamily;
 
@@ -62,7 +64,7 @@ class AiMoneyFlowCard extends ConsumerWidget {
           const SizedBox(height: 12),
           if (!hasNodes)
             _buildEmptyFlowState()
-          else
+          else if (hasSankeyFlow)
             Semantics(
               container: true,
               label: _buildSankeySemanticLabel(currency),
@@ -73,6 +75,18 @@ class AiMoneyFlowCard extends ConsumerWidget {
                   painter: AiMoneyFlowPainter(data: data, currencyCode: currency, fontFamily: fontFamily),
                 ),
               ),
+            )
+          else
+            AiMoneyFlowHorizontalBars(
+              key: const Key('money_flow_horizontal_bars'),
+              nodes: data.expenseCategories.isNotEmpty
+                  ? data.expenseCategories
+                  : data.incomeSources,
+              fallbackTotal: data.expenseCategories.isNotEmpty ? safeExp : safeInc,
+              currencyCode: currency,
+              sectionTitle: data.expenseCategories.isNotEmpty
+                  ? 'Proporsi Pengeluaran'
+                  : 'Sumber Pemasukan',
             ),
           const Divider(height: 22, thickness: 1.2, color: AppColors.divider),
           _buildBreakdownSection(currency, safeNet),

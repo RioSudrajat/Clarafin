@@ -27,6 +27,8 @@ class AiChatBubble extends StatelessWidget {
   final ValueChanged<String>? onSelectExistingWallet;
   final VoidCallback? onConfirmTransaction;
   final VoidCallback? onCancelTransaction;
+  final ValueChanged<int>? onConfirmTransactionGroup;
+  final ValueChanged<int>? onCancelTransactionGroup;
   final VoidCallback? onConfirmGoal;
   final VoidCallback? onCancelGoal;
   final VoidCallback? onConfirmBudget;
@@ -37,6 +39,7 @@ class AiChatBubble extends StatelessWidget {
   final AiSelectConsultantCallback? onSelectConsultant;
   final VoidCallback? onBrowseConsultants;
   final String Function(String walletId)? walletLabelResolver;
+  final double? Function(String walletId)? walletBalanceResolver;
 
   const AiChatBubble({
     super.key,
@@ -47,6 +50,8 @@ class AiChatBubble extends StatelessWidget {
     this.onSelectExistingWallet,
     this.onConfirmTransaction,
     this.onCancelTransaction,
+    this.onConfirmTransactionGroup,
+    this.onCancelTransactionGroup,
     this.onConfirmGoal,
     this.onCancelGoal,
     this.onConfirmBudget,
@@ -57,6 +62,7 @@ class AiChatBubble extends StatelessWidget {
     this.onSelectConsultant,
     this.onBrowseConsultants,
     this.walletLabelResolver,
+    this.walletBalanceResolver,
   });
 
   String _formatTime(DateTime time) {
@@ -159,11 +165,19 @@ class AiChatBubble extends StatelessWidget {
                       onCreateWallet: onCreateWallet, onUseExistingWallet: onSelectExistingWallet, walletLabelResolver: walletLabelResolver,
                     ),
                   ],
-                  if (message.transactionDraftGroup != null) ...[
+                  for (var i = 0; i < message.transactionDraftGroups.length; i++) ...[
                     const SizedBox(height: 10),
                     AiTransactionDraftCard(
-                      draft: message.transactionDraftGroup!,
-                      onConfirm: onConfirmTransaction, onCancel: onCancelTransaction, walletLabelResolver: walletLabelResolver,
+                      key: ValueKey('tx_draft_card_${message.id}_$i'),
+                      draft: message.transactionDraftGroups[i],
+                      onConfirm: onConfirmTransactionGroup != null
+                          ? () => onConfirmTransactionGroup!(i)
+                          : (i == 0 ? onConfirmTransaction : null),
+                      onCancel: onCancelTransactionGroup != null
+                          ? () => onCancelTransactionGroup!(i)
+                          : (i == 0 ? onCancelTransaction : null),
+                      walletLabelResolver: walletLabelResolver,
+                      walletBalanceResolver: walletBalanceResolver,
                     ),
                   ],
                   if (hasPlanning) ...[

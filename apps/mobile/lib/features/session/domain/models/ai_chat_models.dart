@@ -32,7 +32,7 @@ class UnifiedAiChatMessage {
   final AiMoneyFlowData? moneyFlowCard;
   final AiSpendingTableData? spendingTableCard;
   final AiWalletCreationDraft? walletCreationDraft;
-  final AiTransactionDraftGroup? transactionDraftGroup;
+  final List<AiTransactionDraftGroup> transactionDraftGroups;
   final AiTransactionDraftGroup? pendingTransactionAfterWallet;
   final AiGoalDraft? goalDraft;
   final AiBudgetDraft? budgetDraft;
@@ -52,7 +52,8 @@ class UnifiedAiChatMessage {
     this.moneyFlowCard,
     this.spendingTableCard,
     this.walletCreationDraft,
-    this.transactionDraftGroup,
+    AiTransactionDraftGroup? transactionDraftGroup,
+    List<AiTransactionDraftGroup>? transactionDraftGroups,
     this.pendingTransactionAfterWallet,
     this.goalDraft,
     this.budgetDraft,
@@ -61,7 +62,16 @@ class UnifiedAiChatMessage {
     this.recommendedConsultants = const [],
     this.errorCode,
     this.failedPrompt,
-  }) : timestamp = timestamp ?? DateTime.now();
+  })  : transactionDraftGroups =
+            transactionDraftGroups ??
+            (transactionDraftGroup != null
+                ? [transactionDraftGroup]
+                : const []),
+        timestamp = timestamp ?? DateTime.now();
+
+  /// Backward-compatible accessor returning the first transaction draft group.
+  AiTransactionDraftGroup? get transactionDraftGroup =>
+      transactionDraftGroups.isEmpty ? null : transactionDraftGroups.first;
 
   UnifiedAiChatMessage copyWith({
     String? id,
@@ -74,6 +84,7 @@ class UnifiedAiChatMessage {
     AiSpendingTableData? spendingTableCard,
     AiWalletCreationDraft? walletCreationDraft,
     AiTransactionDraftGroup? transactionDraftGroup,
+    List<AiTransactionDraftGroup>? transactionDraftGroups,
     AiTransactionDraftGroup? pendingTransactionAfterWallet,
     AiGoalDraft? goalDraft,
     AiBudgetDraft? budgetDraft,
@@ -84,6 +95,15 @@ class UnifiedAiChatMessage {
     String? failedPrompt,
     bool clearError = false,
   }) {
+    final nextTxGroups =
+        transactionDraftGroups ??
+        (transactionDraftGroup != null
+            ? [
+                transactionDraftGroup,
+                if (this.transactionDraftGroups.length > 1)
+                  ...this.transactionDraftGroups.skip(1),
+              ]
+            : this.transactionDraftGroups);
     return UnifiedAiChatMessage(
       id: id ?? this.id,
       sessionId: sessionId ?? this.sessionId,
@@ -94,8 +114,7 @@ class UnifiedAiChatMessage {
       moneyFlowCard: moneyFlowCard ?? this.moneyFlowCard,
       spendingTableCard: spendingTableCard ?? this.spendingTableCard,
       walletCreationDraft: walletCreationDraft ?? this.walletCreationDraft,
-      transactionDraftGroup:
-          transactionDraftGroup ?? this.transactionDraftGroup,
+      transactionDraftGroups: nextTxGroups,
       pendingTransactionAfterWallet:
           pendingTransactionAfterWallet ?? this.pendingTransactionAfterWallet,
       goalDraft: goalDraft ?? this.goalDraft,
@@ -141,15 +160,29 @@ class UnifiedAiChatMessage {
       AiWalletCreationDraft.fromJson,
     );
 
-    final parsedTransactionDraft = _parseTransactionDraftGroup(
-      pick([
-        'transaction_draft_card',
-        'transaction_draft',
-        'transaction_draft_group',
-        'transactionDraftGroup',
-      ]),
-      topMutationId,
-    );
+    final rawTxGroups = pick([
+      'transaction_draft_groups',
+      'transactionDraftGroups',
+    ]);
+    final parsedTransactionGroups = <AiTransactionDraftGroup>[];
+    if (rawTxGroups is List) {
+      for (final raw in rawTxGroups) {
+        final parsed = _parseTransactionDraftGroup(raw, topMutationId);
+        if (parsed != null) parsedTransactionGroups.add(parsed);
+      }
+    }
+    if (parsedTransactionGroups.isEmpty) {
+      final singleGroup = _parseTransactionDraftGroup(
+        pick([
+          'transaction_draft_card',
+          'transaction_draft',
+          'transaction_draft_group',
+          'transactionDraftGroup',
+        ]),
+        topMutationId,
+      );
+      if (singleGroup != null) parsedTransactionGroups.add(singleGroup);
+    }
     var pendingTransactionDraft = _parseTransactionDraftGroup(
       pick([
         'pending_transaction_after_wallet',
@@ -203,7 +236,7 @@ class UnifiedAiChatMessage {
         AiSpendingTableData.fromJson,
       ),
       walletCreationDraft: walletCreationDraft,
-      transactionDraftGroup: parsedTransactionDraft,
+      transactionDraftGroups: parsedTransactionGroups,
       pendingTransactionAfterWallet: pendingTransactionDraft,
       goalDraft: _parseOpt(
         pick(['goal_draft_card', 'goal_draft', 'goalDraft']),
@@ -251,8 +284,13 @@ class UnifiedAiChatMessage {
       'spending_breakdown_table': spendingTableCard!.toJson(),
     if (walletCreationDraft != null)
       'wallet_creation_draft': walletCreationDraft!.toJson(),
-    if (transactionDraftGroup != null)
-      'transaction_draft': transactionDraftGroup!.toJson(),
+    if (transactionDraftGroups.length == 1)
+      'transaction_draft': transactionDraftGroups.first.toJson()
+    else if (transactionDraftGroups.length > 1) ...{
+      'transaction_draft': transactionDraftGroups.first.toJson(),
+      'transaction_draft_groups':
+          transactionDraftGroups.map((g) => g.toJson()).toList(),
+    },
     if (pendingTransactionAfterWallet != null)
       'pending_transaction_after_wallet':
           pendingTransactionAfterWallet!.toJson(),

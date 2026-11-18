@@ -9,7 +9,9 @@ import '../../../../core/institutions/institution_registry.dart';
 import '../../../../core/models/transaction_category_model.dart';
 import '../../../../core/models/wallet_model.dart';
 import '../../../../core/network/clarafin_api_client.dart';
+import '../../../../core/network/tracker_remote_sync_service.dart';
 import '../../../../core/utils/ai_category_normalizer.dart';
+import '../../../../core/utils/currency_formatter.dart';
 import '../../../budget/presentation/providers/finance_providers.dart';
 import '../../../profile/presentation/providers/user_profile_provider.dart';
 import '../../data/local_ai_nlp_helpers.dart';
@@ -323,5 +325,80 @@ class UnifiedAiChatMutationHelpers {
       return 'Gagal menyinkronkan data ke server Clarafin.';
     }
     return 'Gagal menyinkronkan data: $raw';
+  }
+
+  /// Validates that each source wallet has sufficient balance for total outgoing
+  /// (`expense` + `transfer`) items in [draft]. Returns an error message or null.
+  static String? validateOutgoingBalance(
+    AiTransactionDraftGroup draft,
+    List<WalletModel> wallets,
+  ) {
+    final outgoingByWallet = <String, double>{};
+    for (final item in draft.items) {
+      final type = item.type.trim().toLowerCase();
+      if (type == 'expense' || type == 'transfer') {
+        final wId = resolveLocalWalletId(item, wallets);
+        outgoingByWallet[wId] = (outgoingByWallet[wId] ?? 0.0) + item.amount;
+      }
+    }
+    for (final entry in outgoingByWallet.entries) {
+      final wallet = wallets.where((w) => w.id == entry.key).firstOrNull;
+      if (wallet != null && wallet.balance < entry.value) {
+        return 'Saldo ${wallet.name} (${CurrencyFormatter.format(wallet.balance)}) '
+            'tidak mencukupi untuk transaksi ${CurrencyFormatter.format(entry.value)}. '
+            'Silakan ubah saldo dompet atau pilih dompet lain via Edit Rinci.';
+      }
+    }
+    return null;
+  }
+
+  /// Splits a multi-item [AiTransactionDraftGroup] into separate per-wallet
+  /// groups when items span multiple distinct source wallets.
+  static List<AiTransactionDraftGroup> splitTransactionDraftGroupsByWallet(
+    AiTransactionDraftGroup? group,
+    List<WalletModel> wallets,
+  ) {
+    if (group == null || group.items.isEmpty) return const [];
+    final buckets = <String, List<AiTransactionDraftItem>>{};
+    for (final item in group.items) {
+      final key = _resolveGroupingWalletKey(item, wallets);
+      buckets.putIfAbsent(key, () => <AiTransactionDraftItem>[]).add(item);
+    }
+    if (buckets.length <= 1) return [group];
+
+    final entries = buckets.entries.toList();
+    return [
+      for (var i = 0; i < entries.length; i++)
+        AiTransactionDraftGroup(
+          clientMutationId: i == 0
+              ? group.clientMutationId
+              : TrackerRemoteSyncService.sanitizeClientMutationId(
+                  '${group.clientMutationId}_g$i',
+                ),
+          items: entries[i].value,
+          isSubmitting: group.isSubmitting,
+          isConfirmed: group.isConfirmed,
+          isCancelled: group.isCancelled,
+        ),
+    ];
+  }
+
+  static String _resolveGroupingWalletKey(
+    AiTransactionDraftItem item,
+    List<WalletModel> wallets,
+  ) {
+    final trimmedId = item.walletId.trim();
+    if (trimmedId.isNotEmpty && wallets.any((w) => w.id == trimmedId)) {
+      return trimmedId;
+    }
+    final trimmedName = item.walletName.trim();
+    if (trimmedName.isNotEmpty) {
+      final matched = LocalAiNlpHelpers.matchWalletStrict(trimmedName, wallets);
+      if (matched != null) return matched.id;
+      if (trimmedId.isEmpty) return 'name:${trimmedName.toLowerCase()}';
+    }
+    if (trimmedId.isNotEmpty) return trimmedId;
+    if (wallets.isNotEmpty) return wallets.first.id;
+    return 'default';
   }
 }

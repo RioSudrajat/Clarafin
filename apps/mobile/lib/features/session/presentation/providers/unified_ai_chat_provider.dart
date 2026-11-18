@@ -479,7 +479,7 @@ class UnifiedAiChatNotifier extends Notifier<UnifiedAiChatState> {
     WalletModel existingWallet,
   ) {
     if (!_canMutateState) return;
-    if (_confirmingMessageIds.contains('tx:$messageId')) return;
+    if (_confirmingMessageIds.any((k) => k.startsWith('tx:$messageId:'))) return;
 
     final index = state.messages.indexWhere((m) => m.id == messageId);
     if (index < 0) return;
@@ -561,18 +561,23 @@ class UnifiedAiChatNotifier extends Notifier<UnifiedAiChatState> {
 
   /// Idempotently confirms 1..N items in a `TransactionDraftGroup` at 0 AI quota cost.
   /// Synchronous in-flight locking prevents rapid double-taps from duplicating records.
-  Future<void> confirmTransactionDraft(String messageId) async {
+  Future<void> confirmTransactionDraft(
+    String messageId, {
+    int groupIndex = 0,
+  }) async {
     if (!_canMutateState) return;
-    final lockKey = 'tx:$messageId';
+    final lockKey = 'tx:$messageId:$groupIndex';
     if (_confirmingMessageIds.contains(lockKey)) return;
 
     final index = state.messages.indexWhere((m) => m.id == messageId);
     if (index < 0) return;
 
     final targetMsg = state.messages[index];
-    final draft = targetMsg.transactionDraftGroup;
-    if (draft == null ||
-        draft.isSubmitting ||
+    if (groupIndex < 0 || groupIndex >= targetMsg.transactionDraftGroups.length) {
+      return;
+    }
+    final draft = targetMsg.transactionDraftGroups[groupIndex];
+    if (draft.isSubmitting ||
         draft.isConfirmed ||
         draft.isCancelled) {
       return;
@@ -589,6 +594,14 @@ class UnifiedAiChatNotifier extends Notifier<UnifiedAiChatState> {
 
     final requestSessionId = state.sessionId;
     final wallets = ref.read(walletsProvider);
+    final balanceError = UnifiedAiChatMutationHelpers.validateOutgoingBalance(
+      draft,
+      wallets,
+    );
+    if (balanceError != null) {
+      state = state.copyWith(errorMessage: balanceError);
+      return;
+    }
     final existingTxIds = ref.read(transactionsProvider).map((t) => t.id).toSet();
     final isRemote = ref.read(clarafinApiConfigProvider).isConfigured;
     final syncService = isRemote
@@ -608,7 +621,7 @@ class UnifiedAiChatNotifier extends Notifier<UnifiedAiChatState> {
     _confirmingMessageIds.add(lockKey);
     _replaceMessageAt(
       index,
-      targetMsg.copyWith(transactionDraftGroup: lockedDraft),
+      _replaceTxGroupAt(targetMsg, groupIndex, lockedDraft),
     );
     state = state.copyWith(isMutating: true, clearErrorMessage: true);
 
@@ -678,14 +691,20 @@ class UnifiedAiChatNotifier extends Notifier<UnifiedAiChatState> {
       if (state.sessionId == requestSessionId) {
         _updateMessageById(
           messageId,
-          (msg) => msg.copyWith(
-            transactionDraftGroup:
-                (msg.transactionDraftGroup ?? lockedDraft).copyWith(
-                  clientMutationId: baseMutationId,
-                  isSubmitting: false,
-                  isConfirmed: true,
-                ),
-          ),
+          (msg) {
+            final current = groupIndex < msg.transactionDraftGroups.length
+                ? msg.transactionDraftGroups[groupIndex]
+                : lockedDraft;
+            return _replaceTxGroupAt(
+              msg,
+              groupIndex,
+              current.copyWith(
+                clientMutationId: baseMutationId,
+                isSubmitting: false,
+                isConfirmed: true,
+              ),
+            );
+          },
         );
         state = state.copyWith(clearErrorMessage: true);
       }
@@ -693,14 +712,20 @@ class UnifiedAiChatNotifier extends Notifier<UnifiedAiChatState> {
       if (_canMutateState && state.sessionId == requestSessionId) {
         _updateMessageById(
           messageId,
-          (msg) => msg.copyWith(
-            transactionDraftGroup:
-                (msg.transactionDraftGroup ?? lockedDraft).copyWith(
-                  clientMutationId: baseMutationId,
-                  isSubmitting: false,
-                  isConfirmed: false,
-                ),
-          ),
+          (msg) {
+            final current = groupIndex < msg.transactionDraftGroups.length
+                ? msg.transactionDraftGroups[groupIndex]
+                : lockedDraft;
+            return _replaceTxGroupAt(
+              msg,
+              groupIndex,
+              current.copyWith(
+                clientMutationId: baseMutationId,
+                isSubmitting: false,
+                isConfirmed: false,
+              ),
+            );
+          },
         );
         state = state.copyWith(
           errorMessage: UnifiedAiChatMutationHelpers.formatSyncError(err),
@@ -714,18 +739,34 @@ class UnifiedAiChatNotifier extends Notifier<UnifiedAiChatState> {
     }
   }
 
+  UnifiedAiChatMessage _replaceTxGroupAt(
+    UnifiedAiChatMessage msg,
+    int groupIndex,
+    AiTransactionDraftGroup updated,
+  ) {
+    if (groupIndex < 0 || groupIndex >= msg.transactionDraftGroups.length) {
+      return msg.copyWith(transactionDraftGroup: updated);
+    }
+    final next = List<AiTransactionDraftGroup>.from(msg.transactionDraftGroups);
+    next[groupIndex] = updated;
+    return msg.copyWith(transactionDraftGroups: next);
+  }
+
   /// Cancels a pending `TransactionDraftGroup` at 0 AI quota cost.
-  void cancelTransactionDraft(String messageId) {
+  void cancelTransactionDraft(String messageId, {int groupIndex = 0}) {
     _cancelSingleDraft(
       messageId,
       canCancel: (msg) {
-        final d = msg.transactionDraftGroup;
-        return d != null && !d.isConfirmed && !d.isSubmitting;
+        if (groupIndex < 0 || groupIndex >= msg.transactionDraftGroups.length) {
+          return false;
+        }
+        final d = msg.transactionDraftGroups[groupIndex];
+        return !d.isConfirmed && !d.isSubmitting;
       },
-      markCancelled: (msg) => msg.copyWith(
-        transactionDraftGroup: msg.transactionDraftGroup!.copyWith(
-          isCancelled: true,
-        ),
+      markCancelled: (msg) => _replaceTxGroupAt(
+        msg,
+        groupIndex,
+        msg.transactionDraftGroups[groupIndex].copyWith(isCancelled: true),
       ),
     );
   }
@@ -1152,13 +1193,14 @@ class UnifiedAiChatNotifier extends Notifier<UnifiedAiChatState> {
             isLive: false,
           );
 
-    var resolvedTxGroup = event.message.transactionDraftGroup;
+    var resolvedTxGroups = event.message.transactionDraftGroups;
     final walletDraft = event.message.walletCreationDraft;
     final pendingAfterWallet = event.message.pendingTransactionAfterWallet;
     if (walletDraft != null && !walletDraft.isCreated) {
+      final firstGroup = resolvedTxGroups.isNotEmpty ? resolvedTxGroups.first : null;
       final withheldItems =
-          resolvedTxGroup != null && resolvedTxGroup.items.isNotEmpty
-          ? resolvedTxGroup.items
+          firstGroup != null && firstGroup.items.isNotEmpty
+          ? firstGroup.items
           : (pendingAfterWallet != null && pendingAfterWallet.items.isNotEmpty
               ? pendingAfterWallet.items
               : UnifiedAiChatMutationHelpers.extractPendingTxItemsFromPrompt(
@@ -1170,7 +1212,16 @@ class UnifiedAiChatNotifier extends Notifier<UnifiedAiChatState> {
         _pendingWalletTxItems[msgId] = withheldItems;
       }
       // Keep TransactionDraftGroup locked until the prerequisite wallet is created or chosen.
-      resolvedTxGroup = null;
+      resolvedTxGroups = const [];
+    } else if (resolvedTxGroups.isNotEmpty) {
+      final currentWallets = ref.read(walletsProvider);
+      resolvedTxGroups = [
+        for (final group in resolvedTxGroups)
+          ...UnifiedAiChatMutationHelpers.splitTransactionDraftGroupsByWallet(
+            group,
+            currentWallets,
+          ),
+      ];
     }
 
     if (event.message.recommendedConsultants.isNotEmpty) {
@@ -1190,7 +1241,7 @@ class UnifiedAiChatNotifier extends Notifier<UnifiedAiChatState> {
       moneyFlowCard: event.message.moneyFlowCard,
       spendingTableCard: event.message.spendingTableCard,
       walletCreationDraft: walletDraft,
-      transactionDraftGroup: resolvedTxGroup,
+      transactionDraftGroups: resolvedTxGroups,
       pendingTransactionAfterWallet: pendingAfterWallet,
       goalDraft: event.message.goalDraft,
       budgetDraft: event.message.budgetDraft,

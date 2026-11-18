@@ -5,14 +5,16 @@ import '../../../../core/theme/neo_brutalism_decorations.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../domain/models/ai_chat_models.dart';
 import 'ai_action_card_primitives.dart';
+import 'ai_transaction_draft_receipt_parts.dart';
 
-/// Neo-Brutalist confirmation card for 1..N proposed transaction drafts.
+/// Neo-Brutalist paper receipt (`Struk Transaksi`) card for 1..N proposed drafts.
 class AiTransactionDraftCard extends StatelessWidget {
   final AiTransactionDraftGroup draft;
   final VoidCallback? onConfirm;
   final VoidCallback? onCancel;
   final VoidCallback? onEditDetail;
   final String Function(String walletId)? walletLabelResolver;
+  final double? Function(String walletId)? walletBalanceResolver;
 
   const AiTransactionDraftCard({
     super.key,
@@ -21,38 +23,52 @@ class AiTransactionDraftCard extends StatelessWidget {
     this.onCancel,
     this.onEditDetail,
     this.walletLabelResolver,
+    this.walletBalanceResolver,
   });
 
   @override
   Widget build(BuildContext context) {
     final isFinalized = draft.isConfirmed || draft.isCancelled;
     final isLocked = draft.isSubmitting || isFinalized || draft.items.isEmpty;
+    final headerWallet = draft.items.isEmpty
+        ? ''
+        : _resolveWallet(draft.items.first.walletId, draft.items.first.walletName);
+    final totalAmount = draft.items.fold<double>(
+      0.0,
+      (sum, item) => sum + (item.amount.isFinite && item.amount > 0 ? item.amount : 0.0),
+    );
+    final balanceWarn = isFinalized ? null : _findInsufficientBalance();
 
     return AiActionCardShell(
+      backgroundColor: const Color(0xFFFFFDF7),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const Icon(Icons.receipt_long_rounded, size: 18, color: Colors.black),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  draft.items.length > 1 ? 'Draf Transaksi (${draft.items.length} item)' : 'Draf Transaksi',
-                  style: aiActionTextStyle(context, 13.5, FontWeight.w900),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
+          _buildHeader(context, headerWallet),
+          const SizedBox(height: 10),
+          const ReceiptDashedDivider(),
+          const SizedBox(height: 10),
           if (draft.items.isEmpty)
-            _box(Text('Belum ada item transaksi pada draf ini.', style: aiActionTextStyle(context, 12, FontWeight.w600, const Color(0xFF4B5563))))
-          else
+            _emptyBox(context)
+          else ...[
             for (var i = 0; i < draft.items.length; i++)
               Padding(
-                padding: EdgeInsets.only(bottom: i == draft.items.length - 1 ? 0 : 8),
-                child: _buildItemRow(context, draft.items[i]),
+                padding: EdgeInsets.only(bottom: i == draft.items.length - 1 ? 0 : 10),
+                child: ReceiptItemRow(item: draft.items[i], resolveWallet: _resolveWallet),
               ),
+            const SizedBox(height: 10),
+            const ReceiptDashedDivider(),
+            const SizedBox(height: 10),
+            _buildTotalRow(context, totalAmount),
+          ],
+          if (balanceWarn != null) ...[
+            const SizedBox(height: 10),
+            ReceiptBalanceWarningBanner(
+              walletLabel: balanceWarn.label,
+              balance: balanceWarn.balance,
+              outgoing: balanceWarn.outgoing,
+            ),
+          ],
           const SizedBox(height: 12),
           if (draft.isConfirmed)
             Padding(
@@ -113,67 +129,44 @@ class AiTransactionDraftCard extends StatelessWidget {
     );
   }
 
-  Widget _box(Widget child) => Container(
-    width: double.infinity,
-    padding: const EdgeInsets.all(12),
-    decoration: BoxDecoration(
-      color: NeoBrutalism.surfaceWarm,
-      borderRadius: BorderRadius.circular(NeoBrutalism.radiusSm),
-      border: NeoBrutalism.border(width: 1.5),
-    ),
-    child: child,
-  );
-
-  Widget _buildItemRow(BuildContext context, AiTransactionDraftItem item) {
-    final normalizedType = item.type.trim().toLowerCase();
-    final badge = _badgeForType(normalizedType);
-    final sourceWallet = _resolveWallet(item.walletId, item.walletName);
-    final targetId = (item.targetWalletId ?? '').trim();
-    final walletLabel = normalizedType == 'transfer' && targetId.isNotEmpty
-        ? '$sourceWallet -> ${_resolveWallet(targetId, '')}'
-        : sourceWallet;
-
-    return _box(
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildHeader(BuildContext context, String headerWallet) {
+    return SizedBox(
+      width: double.infinity,
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 8,
+        runSpacing: 6,
         children: [
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Expanded(
-                flex: 3,
-                child: Text(
-                  item.title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: aiActionTextStyle(context, 13.5, FontWeight.w800),
-                ),
-              ),
-              const SizedBox(width: 8),
+              const Icon(Icons.receipt_long_rounded, size: 18, color: Colors.black),
+              const SizedBox(width: 6),
               Flexible(
-                flex: 2,
                 child: Text(
-                  CurrencyFormatter.format(item.amount),
-                  textAlign: TextAlign.right,
-                  style: aiActionTextStyle(context, 13.5, FontWeight.w900, Colors.black),
+                  'STRUK TRANSAKSI',
+                  style: aiActionTextStyle(context, 12.5, FontWeight.w900),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
           Wrap(
             spacing: 6,
-            runSpacing: 6,
+            runSpacing: 4,
             children: [
-              _pill(context, badge.$1, badge.$2, badge.$3),
-              _pill(context, item.canonicalCategory, Colors.white, NeoBrutalism.dark),
-              if (walletLabel.isNotEmpty)
-                _pill(
-                  context,
-                  walletLabel,
-                  Colors.white,
-                  const Color(0xFF374151),
+              if (headerWallet.isNotEmpty)
+                ReceiptPill(
+                  label: headerWallet.toUpperCase(),
+                  backgroundColor: NeoBrutalism.lime,
+                  foregroundColor: Colors.black,
                   icon: Icons.account_balance_wallet_outlined,
+                ),
+              if (draft.items.isNotEmpty)
+                ReceiptPill(
+                  label: '${draft.items.length} item',
+                  backgroundColor: NeoBrutalism.surfaceWarm,
+                  foregroundColor: NeoBrutalism.dark,
                 ),
             ],
           ),
@@ -182,28 +175,54 @@ class AiTransactionDraftCard extends StatelessWidget {
     );
   }
 
-  Widget _pill(BuildContext context, String label, Color bg, Color fg, {IconData? icon}) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+  Widget _emptyBox(BuildContext context) => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(12),
     decoration: BoxDecoration(
-      color: bg,
-      borderRadius: BorderRadius.circular(NeoBrutalism.radiusPill),
+      color: NeoBrutalism.surfaceWarm,
+      borderRadius: BorderRadius.circular(NeoBrutalism.radiusSm),
       border: NeoBrutalism.border(width: 1.5),
     ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
+    child: Text('Belum ada item transaksi pada draf ini.', style: aiActionTextStyle(context, 12, FontWeight.w600, const Color(0xFF4B5563))),
+  );
+
+  Widget _buildTotalRow(BuildContext context, double totalAmount) => SizedBox(
+    width: double.infinity,
+    child: Wrap(
+      alignment: WrapAlignment.spaceBetween,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 8,
+      runSpacing: 4,
       children: [
-        if (icon != null) ...[Icon(icon, size: 12, color: fg), const SizedBox(width: 4)],
-        Flexible(
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: aiActionTextStyle(context, 11, FontWeight.w700, fg),
-          ),
+        Text('TOTAL', style: aiActionTextStyle(context, 13, FontWeight.w900, Colors.black)),
+        Text(
+          CurrencyFormatter.format(totalAmount),
+          style: aiActionTextStyle(context, 15, FontWeight.w900, Colors.black).copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
         ),
       ],
     ),
   );
+
+  ({String label, double balance, double outgoing})? _findInsufficientBalance() {
+    final resolver = walletBalanceResolver;
+    if (resolver == null) return null;
+    final outgoingByKey = <String, ({double total, String label})>{};
+    for (final item in draft.items) {
+      final type = item.type.trim().toLowerCase();
+      if (type != 'expense' && type != 'transfer') continue;
+      final key = item.walletId.trim().isNotEmpty ? item.walletId.trim() : item.walletName.trim();
+      if (key.isEmpty) continue;
+      final prev = outgoingByKey[key];
+      outgoingByKey[key] = (total: (prev?.total ?? 0.0) + item.amount, label: _resolveWallet(item.walletId, item.walletName));
+    }
+    for (final entry in outgoingByKey.entries) {
+      final balance = resolver(entry.key);
+      if (balance != null && balance < entry.value.total) {
+        return (label: entry.value.label, balance: balance, outgoing: entry.value.total);
+      }
+    }
+    return null;
+  }
 
   String _resolveWallet(String walletId, String fallbackName) {
     final trimmedId = walletId.trim();
@@ -217,28 +236,14 @@ class AiTransactionDraftCard extends StatelessWidget {
   void _handleEditDetail(BuildContext context) {
     if (draft.items.isEmpty) return;
     if (onEditDetail != null) return onEditDetail!();
-    GoRouter.maybeOf(context)?.push(
-      '/draft/review',
-      extra: {
-        'prefillItems': draft.items.map((item) => {
-          'title': item.title,
-          'amount': item.amount,
-          'isExpense': item.type.trim().toLowerCase() == 'expense',
-          'type': item.type.trim().toLowerCase(),
-          'category': item.canonicalCategory,
-          'walletId': item.walletId,
-          'walletName': item.walletName,
-          if (item.targetWalletId != null) 'targetWalletId': item.targetWalletId,
-          'occurredAt': item.occurredAt.toIso8601String(),
-        }).toList(),
-        'clientMutationId': draft.clientMutationId,
-      },
-    );
+    GoRouter.maybeOf(context)?.push('/draft/review', extra: {
+      'prefillItems': draft.items.map((item) => {
+        'title': item.title, 'amount': item.amount, 'isExpense': item.type.trim().toLowerCase() == 'expense',
+        'type': item.type.trim().toLowerCase(), 'category': item.canonicalCategory, 'walletId': item.walletId,
+        'walletName': item.walletName, if (item.targetWalletId != null) 'targetWalletId': item.targetWalletId,
+        'occurredAt': item.occurredAt.toIso8601String(),
+      }).toList(),
+      'clientMutationId': draft.clientMutationId,
+    });
   }
-
-  (String, Color, Color) _badgeForType(String normalizedType) => switch (normalizedType) {
-    'income' => ('Pemasukan', const Color(0xFFD1FAE5), const Color(0xFF065F46)),
-    'transfer' => ('Transfer', const Color(0xFFE0F2FE), const Color(0xFF075985)),
-    _ => ('Pengeluaran', const Color(0xFFFFE4E6), const Color(0xFF9F1239)),
-  };
 }

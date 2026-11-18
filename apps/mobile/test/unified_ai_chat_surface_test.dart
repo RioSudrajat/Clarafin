@@ -230,7 +230,8 @@ void main() {
 
       expect(find.byType(AiThinkingTraceWidget), findsOneWidget);
       expect(find.byType(AiTransactionDraftCard), findsOneWidget);
-      expect(find.text('Draf Transaksi (2 item)'), findsOneWidget);
+      expect(find.text('STRUK TRANSAKSI'), findsOneWidget);
+      expect(find.text('2 item'), findsOneWidget);
       expect(find.text('Food & Beverage • Coffee Shop'), findsOneWidget);
       expect(find.text('Transportation • Parking & Toll'), findsOneWidget);
       expect(find.byKey(const Key('ai_chat_expand_pill')), findsOneWidget);
@@ -250,7 +251,8 @@ void main() {
         equals(sessionIdBeforeExpand),
       );
       expect(find.byType(AiTransactionDraftCard), findsOneWidget);
-      expect(find.text('Draf Transaksi (2 item)'), findsOneWidget);
+      expect(find.text('STRUK TRANSAKSI'), findsOneWidget);
+      expect(find.text('2 item'), findsOneWidget);
 
       await tester.tap(find.byKey(const Key('ai_chat_new_chat_btn')));
       await tester.pumpAndSettle();

@@ -2481,4 +2481,230 @@ void main() {
       },
     );
   });
+
+  group('Balance Guard & Per-Wallet Receipt Splitting', () {
+    test(
+      'confirmTransactionDraft blocks -Rp 30.000 overdraft when GoPay balance is Rp 0',
+      () async {
+        final fakeRepo = _ControllableAiChatRepository();
+        final container = await _createTestContainer(
+          repository: fakeRepo,
+          initialWallets: [
+            WalletModel(
+              id: 'w-gopay',
+              name: 'GoPay',
+              type: 'E-Wallet',
+              balance: 0,
+              institutionId: 'gopay',
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        final notifier = container.read(unifiedAiChatProvider.notifier);
+        final sendFuture = notifier.sendMessage(
+          'kopi kenangan 25k + parkir 5k pake gopay',
+          surfaceMode: AiSurfaceMode.quickSheet,
+        );
+        await Future<void>.delayed(Duration.zero);
+
+        final call = fakeRepo.calls.single;
+        call.controller.add(
+          AiFinalResponseEvent(
+            sessionId: call.sessionId,
+            clientRequestId: call.clientRequestId,
+            surfaceMode: AiSurfaceMode.quickSheet,
+            message: UnifiedAiChatMessage(
+              id: 'm-overdraft',
+              sessionId: call.sessionId,
+              text: 'Ini struknya.',
+              isUser: false,
+              transactionDraftGroup: AiTransactionDraftGroup(
+                clientMutationId: 'mut-overdraft',
+                items: [
+                  AiTransactionDraftItem(
+                    title: 'Kopi Kenangan',
+                    amount: 25000,
+                    type: 'expense',
+                    canonicalCategory: 'Food & Beverage • Coffee Shop',
+                    walletId: 'w-gopay',
+                    walletName: 'GoPay',
+                    occurredAt: DateTime(2026, 11, 18),
+                  ),
+                  AiTransactionDraftItem(
+                    title: 'Parkir',
+                    amount: 5000,
+                    type: 'expense',
+                    canonicalCategory: 'Transportation • Parking & Toll',
+                    walletId: 'w-gopay',
+                    walletName: 'GoPay',
+                    occurredAt: DateTime(2026, 11, 18),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+        await call.controller.close();
+        await sendFuture;
+
+        await notifier.confirmTransactionDraft('m-overdraft');
+
+        final st = container.read(unifiedAiChatProvider);
+        expect(st.messages.last.transactionDraftGroup!.isConfirmed, isFalse);
+        expect(
+          st.errorMessage,
+          equals(
+            'Saldo GoPay (Rp 0) tidak mencukupi untuk transaksi Rp 30.000. '
+            'Silakan ubah saldo dompet atau pilih dompet lain via Edit Rinci.',
+          ),
+        );
+        expect(container.read(walletsProvider).single.balance, equals(0));
+        expect(container.read(transactionsProvider), isEmpty);
+      },
+    );
+
+    test(
+      'keeps same-wallet items in 1 Struk group and splits cross-wallet items into 2 independent Struk groups',
+      () async {
+        final fakeRepo = _ControllableAiChatRepository();
+        final container = await _createTestContainer(
+          repository: fakeRepo,
+          initialWallets: [
+            WalletModel(
+              id: 'w-cash',
+              name: 'Cash',
+              type: 'Cash',
+              balance: 100000,
+            ),
+            WalletModel(
+              id: 'w-gopay',
+              name: 'GoPay',
+              type: 'E-Wallet',
+              balance: 500000,
+              institutionId: 'gopay',
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        final notifier = container.read(unifiedAiChatProvider.notifier);
+
+        // 1. Same-wallet items -> 1 group
+        final sameFuture = notifier.sendMessage(
+          'kopi 20k + roti 15k pake cash',
+          surfaceMode: AiSurfaceMode.quickSheet,
+        );
+        await Future<void>.delayed(Duration.zero);
+        final c1 = fakeRepo.calls.last;
+        c1.controller.add(
+          AiFinalResponseEvent(
+            sessionId: c1.sessionId,
+            clientRequestId: c1.clientRequestId,
+            surfaceMode: AiSurfaceMode.quickSheet,
+            message: UnifiedAiChatMessage(
+              id: 'm-same',
+              sessionId: c1.sessionId,
+              text: '1 struk Cash.',
+              isUser: false,
+              transactionDraftGroup: AiTransactionDraftGroup(
+                clientMutationId: 'mut-same',
+                items: [
+                  AiTransactionDraftItem(
+                    title: 'Kopi',
+                    amount: 20000,
+                    type: 'expense',
+                    canonicalCategory: 'Food & Beverage • Coffee Shop',
+                    walletId: 'w-cash',
+                    walletName: 'Cash',
+                    occurredAt: DateTime(2026, 11, 18),
+                  ),
+                  AiTransactionDraftItem(
+                    title: 'Roti',
+                    amount: 15000,
+                    type: 'expense',
+                    canonicalCategory: 'Food & Beverage • Snacks',
+                    walletId: 'w-cash',
+                    walletName: 'Cash',
+                    occurredAt: DateTime(2026, 11, 18),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+        await c1.controller.close();
+        await sameFuture;
+
+        final sameMsg = container.read(unifiedAiChatProvider).messages.last;
+        expect(sameMsg.transactionDraftGroups.length, equals(1));
+        expect(sameMsg.transactionDraftGroups.first.items.length, equals(2));
+
+        // 2. Cross-wallet items -> 2 independent groups
+        final splitFuture = notifier.sendMessage(
+          'beli kopi 25k pake cash dan beli baju 150k pake gopay',
+          surfaceMode: AiSurfaceMode.quickSheet,
+        );
+        await Future<void>.delayed(Duration.zero);
+        final c2 = fakeRepo.calls.last;
+        c2.controller.add(
+          AiFinalResponseEvent(
+            sessionId: c2.sessionId,
+            clientRequestId: c2.clientRequestId,
+            surfaceMode: AiSurfaceMode.quickSheet,
+            message: UnifiedAiChatMessage(
+              id: 'm-cross',
+              sessionId: c2.sessionId,
+              text: '2 struk per dompet.',
+              isUser: false,
+              transactionDraftGroup: AiTransactionDraftGroup(
+                clientMutationId: 'mut-cross',
+                items: [
+                  AiTransactionDraftItem(
+                    title: 'Kopi',
+                    amount: 25000,
+                    type: 'expense',
+                    canonicalCategory: 'Food & Beverage • Coffee Shop',
+                    walletId: 'w-cash',
+                    walletName: 'Cash',
+                    occurredAt: DateTime(2026, 11, 18),
+                  ),
+                  AiTransactionDraftItem(
+                    title: 'Baju',
+                    amount: 150000,
+                    type: 'expense',
+                    canonicalCategory: 'Lifestyle • Shopping',
+                    walletId: 'w-gopay',
+                    walletName: 'GoPay',
+                    occurredAt: DateTime(2026, 11, 18),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+        await c2.controller.close();
+        await splitFuture;
+
+        final crossMsg = container.read(unifiedAiChatProvider).messages.last;
+        expect(crossMsg.transactionDraftGroups.length, equals(2));
+        expect(crossMsg.transactionDraftGroups[0].items.single.walletId, equals('w-cash'));
+        expect(crossMsg.transactionDraftGroups[1].items.single.walletId, equals('w-gopay'));
+
+        // Confirm group 0 (Cash) and cancel group 1 (GoPay) independently
+        await notifier.confirmTransactionDraft('m-cross', groupIndex: 0);
+        notifier.cancelTransactionDraft('m-cross', groupIndex: 1);
+
+        final updatedCross = container.read(unifiedAiChatProvider).messages.last;
+        expect(updatedCross.transactionDraftGroups[0].isConfirmed, isTrue);
+        expect(updatedCross.transactionDraftGroups[0].isCancelled, isFalse);
+        expect(updatedCross.transactionDraftGroups[1].isConfirmed, isFalse);
+        expect(updatedCross.transactionDraftGroups[1].isCancelled, isTrue);
+
+        final walletsAfter = container.read(walletsProvider);
+        expect(walletsAfter.firstWhere((w) => w.id == 'w-cash').balance, equals(75000));
+        expect(walletsAfter.firstWhere((w) => w.id == 'w-gopay').balance, equals(500000));
+      },
+    );
+  });
 }

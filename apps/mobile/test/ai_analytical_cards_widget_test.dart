@@ -533,6 +533,9 @@ void main() {
           expenseCategories: [
             AiMoneyFlowNode(label: 'Makan', amount: 400000, colorHex: '#DC2626'),
           ],
+          flows: [
+            AiMoneyFlowEdge(sourceIndex: 0, targetIndex: 0, amount: 400000),
+          ],
         );
         const negativeCountTable = AiSpendingTableData(
           title: 'Tabel Uji',
@@ -633,6 +636,54 @@ void main() {
         } finally {
           handle.dispose();
         }
+      },
+    );
+
+    testWidgets(
+      'renders full-width horizontal proportion bars without 360px overflow when totalIncome == 0 (expense-only)',
+      (tester) async {
+        await tester.binding.setSurfaceSize(const Size(360, 640));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+
+        final prefs = await createMockPrefs();
+        const expenseOnlyFlow = AiMoneyFlowData(
+          periodLabel: 'Nov 2026',
+          totalIncome: 0,
+          totalExpense: 175000,
+          netCashflow: -175000,
+          transactionCount: 3,
+          incomeSources: [],
+          expenseCategories: [
+            AiMoneyFlowNode(
+              label: 'Food & Beverage • Coffee Shop',
+              amount: 125000,
+              colorHex: '#0F758A',
+              percentage: 71.4,
+            ),
+            AiMoneyFlowNode(
+              label: 'Transportation • Parking & Toll',
+              amount: 50000,
+              colorHex: '#CCFF00',
+              percentage: 28.6,
+            ),
+          ],
+          flows: [],
+        );
+
+        await tester.pumpWidget(
+          wrapAtPhoneWidth(
+            prefs: prefs,
+            child: const AiMoneyFlowCard(data: expenseOnlyFlow),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(tester.takeException(), isNull);
+        expect(find.byKey(const Key('money_flow_horizontal_bars')), findsOneWidget);
+        expect(find.text('Food & Beverage • Coffee Shop'), findsWidgets);
+        expect(find.text('Transportation • Parking & Toll'), findsWidgets);
+        expect(find.text('71% | Rp 125.000'), findsOneWidget);
+        expect(find.text('29% | Rp 50.000'), findsOneWidget);
       },
     );
   });

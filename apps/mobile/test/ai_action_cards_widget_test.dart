@@ -10,6 +10,7 @@ import 'package:mobile/core/institutions/institution_logo_widget.dart';
 import 'package:mobile/core/theme/app_theme.dart';
 import 'package:mobile/core/theme/neo_brutalism_decorations.dart';
 import 'package:mobile/features/session/domain/models/ai_chat_models.dart';
+import 'package:mobile/features/session/presentation/widgets/ai_chat_bubble.dart';
 import 'package:mobile/features/session/presentation/widgets/ai_planning_action_card.dart';
 import 'package:mobile/features/session/presentation/widgets/ai_transaction_draft_card.dart';
 import 'package:mobile/features/session/presentation/widgets/ai_wallet_creation_draft_card.dart';
@@ -310,7 +311,11 @@ void main() {
         expect(find.textContaining('15.000'), findsOneWidget);
         expect(find.text('Food & Beverage • Coffee Shop'), findsOneWidget);
         expect(find.text('Transportation • Ride Hailing / Taxi'), findsOneWidget);
-        expect(find.text('GoPay'), findsNWidgets(2));
+        expect(find.text('STRUK TRANSAKSI'), findsOneWidget);
+        expect(find.text('GOPAY'), findsOneWidget);
+        expect(find.text('2 item'), findsOneWidget);
+        expect(find.text('TOTAL'), findsOneWidget);
+        expect(find.textContaining('43.000'), findsOneWidget);
 
         final pillBox = tester.widget<Container>(
           find
@@ -531,7 +536,7 @@ void main() {
       await tester.pump();
       expect(find.text('Pemasukan'), findsOneWidget);
       expect(find.text('Transfer'), findsNWidgets(2));
-      expect(find.text('BCA Tabungan'), findsOneWidget);
+      expect(find.text('BCA TABUNGAN'), findsOneWidget);
       expect(find.text('BCA Tabungan -> GoPay Utama'), findsOneWidget);
     });
   });
@@ -866,5 +871,129 @@ void main() {
       expect(tester.takeException(), isNull);
       _expectNoEmDash(tester);
     });
+
+    testWidgets(
+      'shows insufficient-balance warning banner when walletBalanceResolver < totalOutgoing and hides when confirmed',
+      (tester) async {
+        final draft = AiTransactionDraftGroup(
+          clientMutationId: 'mut-low-bal',
+          items: [
+            AiTransactionDraftItem(
+              title: 'Kopi Kenangan',
+              amount: 25000,
+              type: 'expense',
+              canonicalCategory: 'Food & Beverage • Coffee Shop',
+              walletId: 'w-gopay',
+              walletName: 'GoPay',
+              occurredAt: DateTime(2026, 11, 18),
+            ),
+            AiTransactionDraftItem(
+              title: 'Parkir',
+              amount: 5000,
+              type: 'expense',
+              canonicalCategory: 'Transportation • Parking & Toll',
+              walletId: 'w-gopay',
+              walletName: 'GoPay',
+              occurredAt: DateTime(2026, 11, 18),
+            ),
+          ],
+        );
+
+        await tester.pumpWidget(
+          _wrapViewport360(
+            AiTransactionDraftCard(
+              draft: draft,
+              walletLabelResolver: (_) => 'GoPay',
+              walletBalanceResolver: (_) => 0,
+            ),
+          ),
+        );
+        await tester.pump();
+
+        expect(find.byKey(const Key('tx_insufficient_balance_banner')), findsOneWidget);
+        expect(find.textContaining('Saldo GoPay (Rp 0) kurang untuk Rp 30.000'), findsOneWidget);
+
+        await tester.pumpWidget(
+          _wrapViewport360(
+            AiTransactionDraftCard(
+              draft: draft.copyWith(isConfirmed: true),
+              walletLabelResolver: (_) => 'GoPay',
+              walletBalanceResolver: (_) => 0,
+            ),
+          ),
+        );
+        await tester.pump();
+        expect(find.byKey(const Key('tx_insufficient_balance_banner')), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'AiChatBubble renders 2 independent Struk receipt cards when transactionDraftGroups has 2 wallet groups',
+      (tester) async {
+        final confirmedIndices = <int>[];
+        final cancelledIndices = <int>[];
+        final msg = UnifiedAiChatMessage(
+          id: 'msg-split',
+          sessionId: 'sess-1',
+          text: 'Dua struk dipisah per dompet.',
+          isUser: false,
+          transactionDraftGroups: [
+            AiTransactionDraftGroup(
+              clientMutationId: 'mut-cash',
+              items: [
+                AiTransactionDraftItem(
+                  title: 'Kopi Pagi',
+                  amount: 15000,
+                  type: 'expense',
+                  canonicalCategory: 'Food & Beverage • Coffee Shop',
+                  walletId: 'w-cash',
+                  walletName: 'Cash',
+                  occurredAt: DateTime(2026, 11, 18),
+                ),
+              ],
+            ),
+            AiTransactionDraftGroup(
+              clientMutationId: 'mut-gopay',
+              items: [
+                AiTransactionDraftItem(
+                  title: 'Baju Baru',
+                  amount: 120000,
+                  type: 'expense',
+                  canonicalCategory: 'Lifestyle • Shopping',
+                  walletId: 'w-gopay',
+                  walletName: 'GoPay',
+                  occurredAt: DateTime(2026, 11, 18),
+                ),
+              ],
+            ),
+          ],
+        );
+
+        await tester.pumpWidget(
+          _wrapViewport360(
+            AiChatBubble(
+              message: msg,
+              onConfirmTransactionGroup: confirmedIndices.add,
+              onCancelTransactionGroup: cancelledIndices.add,
+            ),
+          ),
+        );
+        await tester.pump();
+
+        expect(find.byType(AiTransactionDraftCard), findsNWidgets(2));
+        expect(find.text('STRUK TRANSAKSI'), findsNWidgets(2));
+        expect(find.text('CASH'), findsOneWidget);
+        expect(find.text('GOPAY'), findsOneWidget);
+
+        await tester.tap(find.byKey(const Key('tx_confirm_btn')).first);
+        final lastCancelBtn = find.byKey(const Key('tx_cancel_btn')).last;
+        await tester.ensureVisible(lastCancelBtn);
+        await tester.tap(lastCancelBtn);
+        await tester.pump();
+
+        expect(confirmedIndices, equals([0]));
+        expect(cancelledIndices, equals([1]));
+      },
+    );
   });
 }

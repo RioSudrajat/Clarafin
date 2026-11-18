@@ -79,6 +79,8 @@ Widget buildUnifiedChatBubble({
     },
     onConfirmTransaction: () => unawaited(notifier.confirmTransactionDraft(msg.id)),
     onCancelTransaction: () => notifier.cancelTransactionDraft(msg.id),
+    onConfirmTransactionGroup: (groupIndex) => unawaited(notifier.confirmTransactionDraft(msg.id, groupIndex: groupIndex)),
+    onCancelTransactionGroup: (groupIndex) => notifier.cancelTransactionDraft(msg.id, groupIndex: groupIndex),
     onConfirmGoal: () => unawaited(notifier.confirmGoalDraft(msg.id)),
     onCancelGoal: () => notifier.cancelGoalDraft(msg.id),
     onConfirmBudget: () => unawaited(notifier.confirmBudgetDraft(msg.id)),
@@ -89,6 +91,7 @@ Widget buildUnifiedChatBubble({
     onSelectConsultant: onSelectConsultant,
     onBrowseConsultants: () => onNavigateShellBranch('/consult'),
     walletLabelResolver: (id) => resolveChatWalletLabel(wallets, id, existingWalletNames: walletNames),
+    walletBalanceResolver: (id) => matchChatLocalWallet(wallets, id, existingWalletNames: walletNames)?.balance,
   );
 }
 
