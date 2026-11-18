@@ -725,3 +725,45 @@ func TestTrackerService_PreventNegativeWalletBalance(t *testing.T) {
 		t.Fatalf("expected historical sync_tx_ mutation to succeed, got %v", err)
 	}
 }
+
+func TestTrackerService_CreateWallet_IdempotentByName(t *testing.T) {
+	store, ctx := openQuotaTestStore(t)
+	user := createTempTrackerUser(t, ctx, store, "wallet-idemp")
+	svc := service.NewTrackerService(store)
+
+	first, err := svc.CreateWallet(ctx, user.ID, service.CreateWalletInput{
+		Name:            "GoPay",
+		Type:            "ewallet",
+		InstitutionCode: svcStrPtr("gopay"),
+		Balance:         150000,
+	})
+	if err != nil {
+		t.Fatalf("first CreateWallet(GoPay): %v", err)
+	}
+
+	second, err := svc.CreateWallet(ctx, user.ID, service.CreateWalletInput{
+		Name:            "  gopay  ",
+		Type:            "ewallet",
+		InstitutionCode: svcStrPtr("gopay"),
+		Balance:         0,
+	})
+	if err != nil {
+		t.Fatalf("second CreateWallet(gopay): %v", err)
+	}
+
+	if second.ID != first.ID {
+		t.Fatalf("expected idempotent CreateWallet to return same wallet ID %s, got %s", first.ID, second.ID)
+	}
+
+	var count int
+	if err := store.Pool.QueryRow(
+		ctx,
+		`SELECT COUNT(*) FROM wallets WHERE user_id = $1 AND LOWER(TRIM(name)) = 'gopay' AND is_archived = FALSE`,
+		user.ID,
+	).Scan(&count); err != nil {
+		t.Fatalf("count gopay wallets: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("expected exactly 1 active GoPay wallet row in PostgreSQL, got %d", count)
+	}
+}

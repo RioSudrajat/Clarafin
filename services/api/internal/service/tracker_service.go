@@ -978,6 +978,20 @@ func (s *TrackerService) CreateWallet(ctx context.Context, userID uuid.UUID, inp
 		return nil, fmt.Errorf("%w: unsupported wallet type %q", ErrInvalidInput, input.Type)
 	}
 
+	existingWallets, err := s.store.ListActiveWalletsByUser(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("list active wallets: %w", err)
+	}
+	for _, existing := range existingWallets {
+		if existing.IsArchived {
+			continue
+		}
+		if strings.EqualFold(strings.TrimSpace(existing.Name), name) {
+			dto := walletToDTO(existing)
+			return &dto, nil
+		}
+	}
+
 	w, err := s.store.CreateWallet(ctx, repository.CreateWalletParams{
 		UserID:              userID,
 		Name:                name,

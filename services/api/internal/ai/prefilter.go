@@ -8,6 +8,8 @@ import (
 
 const maxGreetingRunes = 80
 const maxGreetingTokens = 6
+const maxCapabilityRunes = 140
+const maxCapabilityTokens = 16
 
 type greetingCategory uint8
 
@@ -155,12 +157,12 @@ var allowedGreetingFillers = map[string]struct{}{
 	"semua":    {},
 }
 
-const capabilityHelpReply = "Halo! Aku Clarafin AI, asisten keuangan pribadimu. Ini yang bisa aku bantu:\n" +
-	"1. Catat transaksi & buat dompet (misal: \"catat kopi 25rb pakai GoPay\")\n" +
-	"2. Analisa arus kas & rincian pengeluaran bulananmu\n" +
-	"3. Buat target/goal, budget & tagihan rutin\n" +
-	"4. Edukasi keuangan & pencarian data transaksi\n" +
-	"5. Rekomendasi konsultan keuangan sesuai kebutuhanmu\n\n" +
+const capabilityHelpReply = "Halo! Aku Clarafin AI, asisten keuangan pribadimu. Ini yang bisa aku bantu:\n\n" +
+	"1. **Catat transaksi & buat dompet** (misal: \"catat kopi 25rb pakai GoPay\")\n" +
+	"2. **Analisa arus kas & rincian pengeluaran** bulananmu\n" +
+	"3. **Buat target/goal, budget & tagihan** rutin\n" +
+	"4. **Edukasi keuangan & pencarian data** transaksi\n" +
+	"5. **Rekomendasi konsultan keuangan** sesuai kebutuhanmu\n\n" +
 	"Langsung ketik saja apa yang ingin kamu catat atau tanyakan!"
 
 // Exact normalized phrases for capability/help queries that should return a zero-quota overview
@@ -183,11 +185,105 @@ var capabilityHelpPhrases = map[string]struct{}{
 	"help":                        {},
 }
 
+var capabilityCueSubstrings = []string{
+	"kemampuan",
+	"bisa kamu lakukan",
+	"kamu bisa lakukan",
+	"bisa bantu apa",
+	"fitur clarafin",
+	"fitur apa",
+	"kamu bisa apa",
+}
+
+// Financial action nouns, verbs, and amount terms that must NOT be intercepted by capability prefilter.
+var capabilityBlockedFinancialTokens = map[string]struct{}{
+	"saldo":       {},
+	"uang":        {},
+	"duit":        {},
+	"kopi":        {},
+	"makan":       {},
+	"belanja":     {},
+	"cicilan":     {},
+	"paylater":    {},
+	"paylaterku":  {},
+	"kpr":         {},
+	"budget":      {},
+	"goal":        {},
+	"goals":       {},
+	"tagihan":     {},
+	"dompet":      {},
+	"wallet":      {},
+	"transaksi":   {},
+	"pengeluaran": {},
+	"pemasukan":   {},
+	"gaji":        {},
+	"gajian":      {},
+	"catat":       {},
+	"hitung":      {},
+	"rekomendasi": {},
+	"konsultan":   {},
+	"advisor":     {},
+	"praktisi":    {},
+	"investasi":   {},
+	"beli":        {},
+	"bayar":       {},
+	"transfer":    {},
+	"pinjol":      {},
+	"utang":       {},
+	"hutang":      {},
+	"pajak":       {},
+	"tabungan":    {},
+	"nabung":      {},
+	"rupiah":      {},
+	"rp":          {},
+	"idr":         {},
+	"goceng":      {},
+	"gocap":       {},
+	"cepek":       {},
+	"seceng":      {},
+	"ribu":        {},
+	"juta":        {},
+	"berapa":      {},
+	"cek":         {},
+	"lihat":       {},
+	"buat":        {},
+	"buatin":      {},
+	"hapus":       {},
+	"edit":        {},
+}
+
+func matchesCapabilityQuery(tokens []string) bool {
+	if len(tokens) == 0 || len(tokens) > maxCapabilityTokens {
+		return false
+	}
+	joined := strings.Join(tokens, " ")
+	if _, exact := capabilityHelpPhrases[joined]; exact {
+		return true
+	}
+	hasCue := false
+	for _, cue := range capabilityCueSubstrings {
+		if strings.Contains(joined, cue) {
+			hasCue = true
+			break
+		}
+	}
+	if !hasCue {
+		return false
+	}
+	for _, tok := range tokens {
+		if _, blocked := capabilityBlockedFinancialTokens[tok]; blocked {
+			return false
+		}
+	}
+	return true
+}
+
 // MatchPureGreeting deterministically matches pure Indonesian/English greetings, polite closings,
-// and exact capability/help queries in under 2ms so zero-quota responses never hit the LLM.
+// and exact/natural capability/help queries in under 2ms so zero-quota responses never hit the LLM.
 func MatchPureGreeting(input string) (reply string, matched bool) {
 	trimmed := strings.TrimSpace(input)
-	if trimmed == "" || utf8.RuneCountInString(trimmed) > maxGreetingRunes {
+	runeCount := utf8.RuneCountInString(trimmed)
+	if trimmed == "" || runeCount > maxCapabilityRunes {
 		return "", false
 	}
 
@@ -204,12 +300,16 @@ func MatchPureGreeting(input string) (reply string, matched bool) {
 	tokens := strings.FieldsFunc(normalized, func(r rune) bool {
 		return !unicode.IsLetter(r)
 	})
-	if len(tokens) == 0 || len(tokens) > maxGreetingTokens {
+	if len(tokens) == 0 {
 		return "", false
 	}
 
-	if _, isCapabilityQuery := capabilityHelpPhrases[strings.Join(tokens, " ")]; isCapabilityQuery {
+	if matchesCapabilityQuery(tokens) {
 		return capabilityHelpReply, true
+	}
+
+	if runeCount > maxGreetingRunes || len(tokens) > maxGreetingTokens {
+		return "", false
 	}
 
 	for _, tok := range tokens {

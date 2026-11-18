@@ -755,11 +755,12 @@ func FormatIDR(amount int64) string {
 	return b.String()
 }
 
-// NormalizeNarrativeIDR standardizes Rupiah amounts in narrative prose to integer "Rp X.XXX".
+// NormalizeNarrativeIDR standardizes Rupiah amounts in narrative prose to integer "Rp X.XXX"
+// and formats inline numbered lists onto readable lines.
 func NormalizeNarrativeIDR(text string) string {
 	matches := idrTokenRegexp.FindAllStringSubmatchIndex(text, -1)
 	if len(matches) == 0 {
-		return text
+		return FormatNarrativeReadability(text)
 	}
 
 	var b strings.Builder
@@ -793,10 +794,31 @@ func NormalizeNarrativeIDR(text string) string {
 		lastIdx = fullEnd
 	}
 	if lastIdx == 0 {
-		return text
+		return FormatNarrativeReadability(text)
 	}
 	b.WriteString(text[lastIdx:])
-	return b.String()
+	return FormatNarrativeReadability(b.String())
+}
+
+var inlineNumberedListRegexp = regexp.MustCompile(`([:.?!])[ \t]+(\d{1,2})\.[ \t]+([A-Z*])`)
+
+// FormatNarrativeReadability breaks inline numbered list items (e.g. "... berikut: 1. Item ... 2. Item ...")
+// onto clean newline-separated lines without touching numeric amounts like "Rp 1.500" or regulations like "PP 55/2022".
+func FormatNarrativeReadability(text string) string {
+	if text == "" {
+		return text
+	}
+	return inlineNumberedListRegexp.ReplaceAllStringFunc(text, func(match string) string {
+		parts := inlineNumberedListRegexp.FindStringSubmatch(match)
+		if len(parts) != 4 {
+			return match
+		}
+		punct, num, lead := parts[1], parts[2], parts[3]
+		if num == "1" {
+			return punct + "\n\n" + num + ". " + lead
+		}
+		return punct + "\n" + num + ". " + lead
+	})
 }
 
 func sanitizeNoEmDash(s string) string {

@@ -77,6 +77,11 @@ func TestNormalizeNarrativeIDR(t *testing.T) {
 			in:   "Rp 8000000.00, detail",
 			want: "Rp 8.000.000, detail",
 		},
+		{
+			name: "breaks inline numbered lists onto newlines while preserving Rupiah amounts and PP numbers",
+			in:   "Aku bisa bantu hal berikut: 1. Pencatatan Transaksi Cepat: Catat kopi Rp 25000. 2. Cek Saldo: Pantau Rp 1.500.000. 3. Perencanaan Pajak: Atur sesuai PP 55/2022.",
+			want: "Aku bisa bantu hal berikut:\n\n1. Pencatatan Transaksi Cepat: Catat kopi Rp 25.000.\n2. Cek Saldo: Pantau Rp 1.500.000.\n3. Perencanaan Pajak: Atur sesuai PP 55/2022.",
+		},
 	}
 
 	for _, tc := range tests {
@@ -84,6 +89,39 @@ func TestNormalizeNarrativeIDR(t *testing.T) {
 			got := ai.NormalizeNarrativeIDR(tc.in)
 			if got != tc.want {
 				t.Fatalf("NormalizeNarrativeIDR(%q) = %q, want %q", tc.in, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestFormatNarrativeReadability(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{
+			name: "formats inline numbered list after colon and periods",
+			in:   "Berikut fitur utama: 1. **Pencatatan** harian. 2. **Cek Saldo** real-time. 3. **Perencanaan** anggaran!",
+			want: "Berikut fitur utama:\n\n1. **Pencatatan** harian.\n2. **Cek Saldo** real-time.\n3. **Perencanaan** anggaran!",
+		},
+		{
+			name: "leaves Rupiah amounts and regulation numbers untouched",
+			in:   "Total pengeluaran Rp 25.000 dan saldo Rp 1.500.000 sesuai PP 55/2022.",
+			want: "Total pengeluaran Rp 25.000 dan saldo Rp 1.500.000 sesuai PP 55/2022.",
+		},
+		{
+			name: "does not duplicate newlines when already formatted",
+			in:   "Berikut fitur:\n\n1. Pencatatan\n2. Cek Saldo",
+			want: "Berikut fitur:\n\n1. Pencatatan\n2. Cek Saldo",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := ai.FormatNarrativeReadability(tc.in)
+			if got != tc.want {
+				t.Fatalf("FormatNarrativeReadability(%q) = %q, want %q", tc.in, got, tc.want)
 			}
 		})
 	}
