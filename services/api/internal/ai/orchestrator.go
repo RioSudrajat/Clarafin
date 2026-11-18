@@ -2,10 +2,13 @@ package ai
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
+	"strconv"
 	"strings"
 	"time"
 
@@ -644,7 +647,8 @@ func (o *Orchestrator) extractAndStageDrafts(
 		}
 
 		clean := stripJSONCodeFence(resp.Text)
-		if err := json.Unmarshal([]byte(clean), &extracted); err != nil || len(extracted.Items) == 0 {
+		var attemptPayload quickExtractionPayload
+		if err := json.Unmarshal([]byte(clean), &attemptPayload); err != nil || len(attemptPayload.Items) == 0 {
 			parseErr = fmt.Errorf("%w: invalid extraction JSON (%v)", ErrInvalidStructuredResponse, err)
 			conv = append(conv,
 				LLMMessage{Role: "model", Parts: []LLMPart{{Text: resp.Text}}},
@@ -652,6 +656,7 @@ func (o *Orchestrator) extractAndStageDrafts(
 			)
 			continue
 		}
+		extracted = attemptPayload
 		parseErr = nil
 		break
 	}
@@ -710,7 +715,7 @@ func (o *Orchestrator) extractAndStageDrafts(
 
 	dtos := make([]service.AIDraftDTO, 0, len(prep.TransactionDraft.Items))
 	for idx, item := range prep.TransactionDraft.Items {
-		mutID := fmt.Sprintf("%s:%d", clientReqID, idx)
+		mutID := scopedMutationID(clientReqID, idx)
 		note := strings.TrimSpace(item.Note)
 		if note == "" {
 			note = item.Title
@@ -1321,15 +1326,20 @@ func mergePrepareTransactionResults(results []*PrepareTransactionResult) *Prepar
 				pending = append(pending, r.PendingItems...)
 			} else if r.TransactionDraft != nil {
 				for _, item := range r.TransactionDraft.Items {
+					var targetWalletHint string
+					if item.TargetWalletName != nil {
+						targetWalletHint = *item.TargetWalletName
+					}
 					pending = append(pending, PendingTransactionItem{
-						Title:                 item.Title,
-						AmountIDR:             item.AmountIDR,
-						Type:                  item.Type,
-						CanonicalCategory:     item.CanonicalCategory,
-						CanonicalMainCategory: item.CanonicalMainCategory,
-						Note:                  item.Note,
-						RequestedWalletHint:   item.WalletName,
-						OccurredAt:            item.OccurredAt,
+						Title:                     item.Title,
+						AmountIDR:                 item.AmountIDR,
+						Type:                      item.Type,
+						CanonicalCategory:         item.CanonicalCategory,
+						CanonicalMainCategory:     item.CanonicalMainCategory,
+						Note:                      item.Note,
+						RequestedWalletHint:       item.WalletName,
+						RequestedTargetWalletHint: targetWalletHint,
+						OccurredAt:                item.OccurredAt,
 					})
 				}
 			}
@@ -1465,6 +1475,25 @@ func normalizeClientRequestID(raw string) string {
 		return "req_" + uuid.NewString()
 	}
 	return trimmed
+}
+
+// scopedMutationID derives a deterministic <=128-byte per-item ClientMutationID so
+// ConfirmAIDraft passes validateTransactionInput even when clientReqID is 127-128 bytes.
+func scopedMutationID(clientReqID string, idx int) string {
+	suffix := ":" + strconv.Itoa(idx)
+	if len(clientReqID)+len(suffix) <= 128 {
+		return clientReqID + suffix
+	}
+	sum := sha256.Sum256([]byte(clientReqID))
+	digest := hex.EncodeToString(sum[:])
+	maxDigest := 128 - len(suffix)
+	if maxDigest < len(digest) {
+		if maxDigest < 0 {
+			maxDigest = 0
+		}
+		digest = digest[:maxDigest]
+	}
+	return digest + suffix
 }
 
 func decodeToolArgs(args map[string]any, dst any) error {

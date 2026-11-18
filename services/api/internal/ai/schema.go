@@ -693,7 +693,10 @@ func ValidateAndReconcileStructuredResponse(resp *AiStructuredResponse, bundle *
 	return corrections, nil
 }
 
-var idrTokenRegexp = regexp.MustCompile(`(?i)\b(?:rp\.?|idr)\s*([0-9]+(?:\.[0-9]{3})*)(?:(?:,[0-9]{1,2}\b)|(?:\.[0-9]{1,2}\b))?`)
+var (
+	idrTokenRegexp           = regexp.MustCompile(`(?i)\b(?:rp\.?|idr)\s*([0-9]+(?:\.[0-9]{3})*)(?:(?:,[0-9]{1,2}\b)|(?:\.[0-9]{1,2}\b))?`)
+	idrScaleUnitPrefixRegexp = regexp.MustCompile(`(?i)^[ \t]*(?:rb|ribu|k|jt|juta|m|miliar|milyar|t|triliun)\b`)
+)
 
 // FormatIDR formats an integer Rupiah amount with Indonesian thousand dot separators (Rp X.XXX).
 func FormatIDR(amount int64) string {
@@ -749,6 +752,15 @@ func NormalizeNarrativeIDR(text string) string {
 			if (next >= '0' && next <= '9') || next == ',' {
 				continue
 			}
+			// Guard compact dot decimals such as "Rp 2000.5jt" where \b prevented suffix matching.
+			if next == '.' && fullEnd+1 < len(text) && text[fullEnd+1] >= '0' && text[fullEnd+1] <= '9' {
+				continue
+			}
+		}
+		// Leave fractional scale expressions (e.g. "Rp 1,5 juta", "Rp 2.5 jt") untouched so
+		// normalizing to integer Rupiah never silently drops the fractional magnitude.
+		if fullEnd > numEnd && idrScaleUnitPrefixRegexp.MatchString(text[fullEnd:]) {
+			continue
 		}
 		rawDigits := strings.ReplaceAll(text[numStart:numEnd], ".", "")
 		val, err := strconv.ParseInt(rawDigits, 10, 64)

@@ -251,3 +251,154 @@ func TestOrchestrator_ReconcilesGoalBudgetAndBillDrafts(t *testing.T) {
 		}
 	}
 }
+
+func TestOrchestrator_QuickAddDraft_LongClientRequestIDScopesMutationID(t *testing.T) {
+	userID := uuid.New()
+	gopayID := uuid.New()
+	reqID128 := strings.Repeat("a", 128)
+	otherReqID128 := strings.Repeat("b", 128)
+
+	runOnce := func(clientReqID string) []*string {
+		draftRepo := &memoryDraftRepo{}
+		quota := &mockQuotaManager{
+			status: service.QuotaStatus{PlanType: "free", QuotaTotal: 40, QuotaRemaining: 40},
+		}
+		llm := &mockLLMClient{
+			fn: func(context.Context, int, ai.GenerateRequest) (*ai.GenerateResponse, error) {
+				return &ai.GenerateResponse{
+					Text: `{"default_wallet_hint":"gopay","confidence_score":0.95,"items":[{"title":"Kopi","amount_idr":25000,"type":"expense","raw_category":"kopi"},{"title":"Parkir","amount_idr":5000,"type":"expense","raw_category":"parkir"}]}`,
+				}, nil
+			},
+		}
+		actions := &stubActionProvider{
+			prepareTxFn: func(context.Context, uuid.UUID, ai.PrepareTransactionInput) (*ai.PrepareTransactionResult, error) {
+				now := time.Now().UTC()
+				return &ai.PrepareTransactionResult{
+					Status: "ready",
+					TransactionDraft: &ai.TransactionDraftPayload{
+						ItemCount:      2,
+						TotalAmountIDR: 30000,
+						Items: []ai.TransactionDraftItem{
+							{Title: "Kopi", AmountIDR: 25000, Type: "expense", CanonicalCategory: "Food & Beverage • Coffee Shop", CanonicalMainCategory: "Food & Beverage", WalletID: gopayID, WalletName: "GoPay", OccurredAt: now},
+							{Title: "Parkir", AmountIDR: 5000, Type: "expense", CanonicalCategory: "Transportation • Parking & Toll", CanonicalMainCategory: "Transportation", WalletID: gopayID, WalletName: "GoPay", OccurredAt: now},
+						},
+					},
+				}, nil
+			},
+		}
+		orch := ai.NewOrchestrator(ai.OrchestratorConfig{
+			Model:     "gemini-2.5-flash",
+			LLM:       llm,
+			Quota:     quota,
+			Financial: &stubFinancialProvider{},
+			Actions:   actions,
+			Matching:  &stubMatchingProvider{},
+			DraftRepo: draftRepo,
+		})
+		res, err := orch.QuickAddDraft(context.Background(), userID, ai.QuickAddRequest{
+			ClientRequestID: clientReqID,
+			Text:            "kopi 25k + parkir 5k",
+			Source:          "ai_text",
+		})
+		if err != nil {
+			t.Fatalf("QuickAddDraft(%d): %v", len(clientReqID), err)
+		}
+		if len(res.Drafts) != 2 {
+			t.Fatalf("expected 2 drafts, got %d", len(res.Drafts))
+		}
+		return []*string{res.Drafts[0].ClientMutationID, res.Drafts[1].ClientMutationID}
+	}
+
+	firstRun := runOnce(reqID128)
+	secondRun := runOnce(reqID128)
+	otherRun := runOnce(otherReqID128)
+
+	for idx, ptr := range firstRun {
+		if ptr == nil || *ptr == "" {
+			t.Fatalf("draft %d ClientMutationID must be non-empty", idx)
+		}
+		if len(*ptr) > 128 {
+			t.Fatalf("draft %d ClientMutationID len = %d > 128 (%q)", idx, len(*ptr), *ptr)
+		}
+		if *ptr != *secondRun[idx] {
+			t.Fatalf("expected deterministic ClientMutationID across identical runs: %q != %q", *ptr, *secondRun[idx])
+		}
+		if *ptr == *otherRun[idx] {
+			t.Fatalf("expected distinct ClientMutationID for different 128-char client_request_id: %q", *ptr)
+		}
+	}
+	if *firstRun[0] == *firstRun[1] {
+		t.Fatalf("expected distinct ClientMutationID per draft item, both %q", *firstRun[0])
+	}
+}
+
+func TestOrchestrator_QuickAddDraft_RetryIsolatesAttemptState(t *testing.T) {
+	userID := uuid.New()
+	gopayID := uuid.New()
+	draftRepo := &memoryDraftRepo{}
+	quota := &mockQuotaManager{
+		status: service.QuotaStatus{PlanType: "free", QuotaTotal: 40, QuotaRemaining: 40},
+	}
+
+	llm := &mockLLMClient{
+		fn: func(_ context.Context, callIdx int, _ ai.GenerateRequest) (*ai.GenerateResponse, error) {
+			switch callIdx {
+			case 0:
+				// Valid JSON with populated default_wallet_hint and confidence_score, but empty items -> triggers retry.
+				return &ai.GenerateResponse{
+					Text: `{"default_wallet_hint":"ovo","confidence_score":0.42,"items":[]}`,
+				}, nil
+			case 1:
+				// Retry omits default_wallet_hint and confidence_score -> must NOT inherit attempt 0's partial state.
+				return &ai.GenerateResponse{
+					Text: `{"items":[{"title":"Roti","amount_idr":12000,"type":"expense","raw_category":"makanan"}]}`,
+				}, nil
+			default:
+				t.Fatalf("unexpected LLM call %d", callIdx)
+				return nil, nil
+			}
+		},
+	}
+
+	var capturedInput ai.PrepareTransactionInput
+	actions := &stubActionProvider{
+		prepareTxFn: func(_ context.Context, _ uuid.UUID, input ai.PrepareTransactionInput) (*ai.PrepareTransactionResult, error) {
+			capturedInput = input
+			return &ai.PrepareTransactionResult{
+				Status: "ready",
+				TransactionDraft: &ai.TransactionDraftPayload{
+					ItemCount:      1,
+					TotalAmountIDR: 12000,
+					Items: []ai.TransactionDraftItem{
+						{Title: "Roti", AmountIDR: 12000, Type: "expense", CanonicalCategory: "Food & Beverage • Snacks", CanonicalMainCategory: "Food & Beverage", WalletID: gopayID, WalletName: "GoPay", OccurredAt: time.Now().UTC()},
+					},
+				},
+			}, nil
+		},
+	}
+
+	orch := ai.NewOrchestrator(ai.OrchestratorConfig{
+		Model:     "gemini-2.5-flash",
+		LLM:       llm,
+		Quota:     quota,
+		Financial: &stubFinancialProvider{},
+		Actions:   actions,
+		Matching:  &stubMatchingProvider{},
+		DraftRepo: draftRepo,
+	})
+
+	res, err := orch.QuickAddDraft(context.Background(), userID, ai.QuickAddRequest{
+		ClientRequestID: "qa_retry_isolated",
+		Text:            "roti 12rb",
+		Source:          "ai_text",
+	})
+	if err != nil {
+		t.Fatalf("QuickAddDraft: %v", err)
+	}
+	if capturedInput.DefaultWalletHint != "" {
+		t.Fatalf("expected attempt 0 default_wallet_hint %q not to leak into attempt 1", capturedInput.DefaultWalletHint)
+	}
+	if len(res.Drafts) != 1 || res.Drafts[0].ConfidenceScore != 0.9 {
+		t.Fatalf("expected default confidence_score 0.9 without leakage from attempt 0, got %+v", res.Drafts)
+	}
+}

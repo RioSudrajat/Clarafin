@@ -660,6 +660,7 @@ func TestOrchestrator_IsolatedGoogleSearch_AndFullScreenAdaptiveThinkingBudget(t
 						PractitionerUUID:       c2ID,
 						DisplayName:            "Nurhuzaifah Amini, M.M., CFP®, BKP",
 						TitleHeadline:          "Debt Relief & Tax Specialist",
+						AvatarURL:              aiStrPtr("https://cdn.clarafin.id/practitioners/c2.png"),
 						Certifications:         []string{"CFP®", "BKP"},
 						Tier:                   "premium",
 						Rating:                 4.92,
@@ -668,6 +669,8 @@ func TestOrchestrator_IsolatedGoogleSearch_AndFullScreenAdaptiveThinkingBudget(t
 						MatchReason:            "Spesialis simulasi KPR dan rasio cicilan.",
 						NextAvailableSlotLabel: "Besok, 19:00 WIB",
 						NextAvailableSlotISO:   "2026-11-18T19:00:00+07:00",
+						PreferredSlotLabel:     "Besok, 20:00 WIB",
+						PreferredSlotISO:       "2026-11-18T20:00:00+07:00",
 						PackageCode:            "personal_medium",
 						PackageTitle:           "Optimalisasi Aset & Proteksi",
 						OnlinePriceIDR:         299000,
@@ -701,6 +704,11 @@ func TestOrchestrator_IsolatedGoogleSearch_AndFullScreenAdaptiveThinkingBudget(t
 	}
 	if len(res.Response.RecommendedConsultants) != 1 || res.Response.RecommendedConsultants[0].ConsultantID != "c2" {
 		t.Fatalf("expected RecommendedConsultants hydrated from Pass 1, got %+v", res.Response.RecommendedConsultants)
+	}
+	cons := res.Response.RecommendedConsultants[0]
+	if cons.AvatarURL == nil || *cons.AvatarURL != "https://cdn.clarafin.id/practitioners/c2.png" ||
+		cons.PreferredSlotLabel != "Besok, 20:00 WIB" || cons.PreferredSlotISO != "2026-11-18T20:00:00+07:00" {
+		t.Fatalf("expected consultant AvatarURL and PreferredSlot* hydrated from Pass 1, got %+v", cons)
 	}
 }
 
@@ -1294,6 +1302,7 @@ func TestOrchestrator_MultipleCheckAndPrepareCalls_AndDecimalIDRAndPlanningBudge
 						PractitionerUUID:       c2UUID,
 						DisplayName:            "Nurhuzaifah Amini, M.M., CFP®, BKP",
 						TitleHeadline:          "Debt Relief & Tax Specialist",
+						AvatarURL:              aiStrPtr("https://cdn.clarafin.id/practitioners/c2.png"),
 						Certifications:         []string{"CFP®", "BKP"},
 						Tier:                   "premium",
 						Rating:                 4.92,
@@ -1303,6 +1312,8 @@ func TestOrchestrator_MultipleCheckAndPrepareCalls_AndDecimalIDRAndPlanningBudge
 						IsStaffPinned:          true,
 						NextAvailableSlotLabel: "Besok, 19:00 WIB",
 						NextAvailableSlotISO:   "2026-11-18T19:00:00+07:00",
+						PreferredSlotLabel:     "Besok, 20:00 WIB",
+						PreferredSlotISO:       "2026-11-18T20:00:00+07:00",
 						PackageCode:            "personal_basic",
 						PackageTitle:           "Fondasi Arus Kas & Utang",
 						OnlinePriceIDR:         199000,
@@ -1367,8 +1378,103 @@ func TestOrchestrator_MultipleCheckAndPrepareCalls_AndDecimalIDRAndPlanningBudge
 			t.Fatalf("expected Note preserved from Pass 1, got %q", pass2.TransactionDraft.Items[0].Note)
 		}
 		cons := pass2.RecommendedConsultants[0]
-		if len(cons.Certifications) != 2 || cons.TotalSessionsCompleted != 520 || cons.ReviewCount != 198 || !cons.IsStaffPinned {
+		if len(cons.Certifications) != 2 || cons.TotalSessionsCompleted != 520 || cons.ReviewCount != 198 || !cons.IsStaffPinned ||
+			cons.AvatarURL == nil || *cons.AvatarURL != "https://cdn.clarafin.id/practitioners/c2.png" ||
+			cons.PreferredSlotLabel != "Besok, 20:00 WIB" || cons.PreferredSlotISO != "2026-11-18T20:00:00+07:00" {
 			t.Fatalf("expected full consultant metadata preserved from Pass 1, got %+v", cons)
+		}
+	})
+
+	t.Run("preserves RequestedWalletHint and RequestedTargetWalletHint when folding ready transfer into missing_wallet", func(t *testing.T) {
+		llm := &mockLLMClient{
+			fn: func(_ context.Context, callIdx int, _ ai.GenerateRequest) (*ai.GenerateResponse, error) {
+				switch callIdx {
+				case 0:
+					return &ai.GenerateResponse{
+						FunctionCalls: []ai.ToolCall{
+							{ID: "tx_trf", Name: "check_and_prepare_transaction", Args: map[string]any{"default_wallet_hint": "bca", "items": []any{map[string]any{"title": "Topup GoPay", "amount_idr": 100000, "type": "transfer", "target_wallet_hint": "gopay"}}}},
+							{ID: "tx_miss", Name: "check_and_prepare_transaction", Args: map[string]any{"default_wallet_hint": "jago", "items": []any{map[string]any{"title": "Makan", "amount_idr": 45000, "type": "expense"}}}},
+						},
+					}, nil
+				case 1:
+					return &ai.GenerateResponse{Text: "one wallet missing"}, nil
+				case 2:
+					b, _ := json.Marshal(ai.AiStructuredResponse{
+						Narrative:       "Dompet Bank Jago belum tersedia.",
+						ThinkingSummary: []ai.ThinkingStep{{StepNumber: 1, Title: "Cek dompet", Detail: "Bank Jago belum ada", Status: "completed"}},
+					})
+					return &ai.GenerateResponse{Text: string(b)}, nil
+				default:
+					return nil, nil
+				}
+			},
+		}
+
+		actions := &stubActionProvider{
+			prepareTxFn: func(_ context.Context, _ uuid.UUID, input ai.PrepareTransactionInput) (*ai.PrepareTransactionResult, error) {
+				if input.DefaultWalletHint == "bca" {
+					return &ai.PrepareTransactionResult{
+						Status: "ready",
+						TransactionDraft: &ai.TransactionDraftPayload{
+							ItemCount:      1,
+							TotalAmountIDR: 100000,
+							Items: []ai.TransactionDraftItem{
+								{
+									Title:                 "Topup GoPay",
+									AmountIDR:             100000,
+									Type:                  "transfer",
+									CanonicalCategory:     "Transfer",
+									CanonicalMainCategory: "Transfer",
+									WalletID:              bcaID,
+									WalletName:            "BCA",
+									TargetWalletID:        &gopayID,
+									TargetWalletName:      aiStrPtr("GoPay"),
+								},
+							},
+						},
+					}, nil
+				}
+				return &ai.PrepareTransactionResult{
+					Status: "missing_wallet",
+					WalletCreationDraft: &ai.WalletCreationDraft{
+						InstitutionID:   "jago",
+						InstitutionName: "Bank Jago",
+						InstitutionType: "bank",
+						ExistingWallets: []ai.ExistingWalletChip{{ID: bcaID, Name: "BCA", Type: "bank", BalanceIDR: 1000000}},
+					},
+					PendingItems: []ai.PendingTransactionItem{
+						{Title: "Makan", AmountIDR: 45000, Type: "expense", CanonicalCategory: "Food & Beverage", CanonicalMainCategory: "Food & Beverage", RequestedWalletHint: "jago"},
+					},
+				}, nil
+			},
+		}
+
+		orch := ai.NewOrchestrator(ai.OrchestratorConfig{
+			Model:     "gemini-2.5-flash",
+			LLM:       llm,
+			Quota:     &mockQuotaManager{status: service.QuotaStatus{PlanType: "free", QuotaTotal: 40, QuotaRemaining: 40}},
+			Financial: &stubFinancialProvider{},
+			Actions:   actions,
+			Matching:  &stubMatchingProvider{},
+		})
+
+		res, err := orch.ChatStream(context.Background(), userID, ai.ChatRequest{
+			ClientRequestID: "req_transfer_missing",
+			Message:         "transfer 100rb bca ke gopay dan makan 45rb jago",
+			SurfaceMode:     "quick_sheet",
+		}, func(ai.SSEEvent) error { return nil })
+		if err != nil {
+			t.Fatalf("ChatStream error: %v", err)
+		}
+		if res.Response.TransactionDraft != nil {
+			t.Fatalf("expected TransactionDraft withheld when any wallet is missing, got %+v", res.Response.TransactionDraft)
+		}
+		if res.Response.WalletCreationDraft == nil || len(res.Response.WalletCreationDraft.PendingItems) != 2 {
+			t.Fatalf("expected 2 pending items, got %+v", res.Response.WalletCreationDraft)
+		}
+		trfPending := res.Response.WalletCreationDraft.PendingItems[0]
+		if trfPending.RequestedWalletHint != "BCA" || trfPending.RequestedTargetWalletHint != "GoPay" {
+			t.Fatalf("expected transfer wallet hints (BCA -> GoPay) preserved, got %+v", trfPending)
 		}
 	})
 

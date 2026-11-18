@@ -1,0 +1,80 @@
+package ai_test
+
+import (
+	"testing"
+
+	"github.com/clarafin/api/internal/ai"
+)
+
+func TestNormalizeNarrativeIDR(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{
+			name: "preserves decimal with juta scale unit",
+			in:   "Cicilan KPR Rp 1,5 juta per bulan.",
+			want: "Cicilan KPR Rp 1,5 juta per bulan.",
+		},
+		{
+			name: "preserves dot decimal with jt scale unit",
+			in:   "Target dana darurat Rp 2.5 jt bulan ini.",
+			want: "Target dana darurat Rp 2.5 jt bulan ini.",
+		},
+		{
+			name: "preserves decimal with rb scale unit",
+			in:   "Biaya parkir sekitar Rp 15,5 rb saja.",
+			want: "Biaya parkir sekitar Rp 15,5 rb saja.",
+		},
+		{
+			name: "preserves decimal with miliar scale unit",
+			in:   "Aset properti senilai Rp 1,5 miliar.",
+			want: "Aset properti senilai Rp 1,5 miliar.",
+		},
+		{
+			name: "preserves decimal with milyar, ribu, k, m, t, triliun scale units case-insensitively",
+			in:   "Simulasi Rp 1,5 Milyar, Rp 2,5 RIBU, Rp 3,5 K, Rp 4,5 M, Rp 1,2 T, Rp 1,5 triliun.",
+			want: "Simulasi Rp 1,5 Milyar, Rp 2,5 RIBU, Rp 3,5 K, Rp 4,5 M, Rp 1,2 T, Rp 1,5 triliun.",
+		},
+		{
+			name: "preserves compact decimal scale units without space",
+			in:   "Anggaran Rp 1,5jt dan Rp 2.5jt serta Rp 2000.5jt.",
+			want: "Anggaran Rp 1,5jt dan Rp 2.5jt serta Rp 2000.5jt.",
+		},
+		{
+			name: "strips US decimal cents when not followed by scale unit",
+			in:   "Total kopi Rp 25000.50.",
+			want: "Total kopi Rp 25.000.",
+		},
+		{
+			name: "strips Indonesian decimal cents when not followed by scale unit",
+			in:   "Parkir Rp 5000,75 dan saldo Rp 50000,00.",
+			want: "Parkir Rp 5.000 dan saldo Rp 50.000.",
+		},
+		{
+			name: "does not treat ordinary words starting with m, k, or t as scale units",
+			in:   "Bayar Rp 25000.50 makan siang, Rp 5000,75 kopi, dan Rp 10000,00 tiap hari.",
+			want: "Bayar Rp 25.000 makan siang, Rp 5.000 kopi, dan Rp 10.000 tiap hari.",
+		},
+		{
+			name: "preserves canonical thousand dot separators including multi-group millions",
+			in:   "Saldo Rp 50.000, Rp 1.500, dan Rp 1.500.000.",
+			want: "Saldo Rp 50.000, Rp 1.500, dan Rp 1.500.000.",
+		},
+		{
+			name: "handles mixed scale-unit and standalone tokens in same narrative",
+			in:   "Tagihan Rp 1,5 juta dan kopi Rp 25000.50.",
+			want: "Tagihan Rp 1,5 juta dan kopi Rp 25.000.",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := ai.NormalizeNarrativeIDR(tc.in)
+			if got != tc.want {
+				t.Fatalf("NormalizeNarrativeIDR(%q) = %q, want %q", tc.in, got, tc.want)
+			}
+		})
+	}
+}
