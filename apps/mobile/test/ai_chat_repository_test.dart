@@ -1059,5 +1059,84 @@ void main() {
       expect(quotaCalls, equals(2));
       expect(res['quota_remaining'], equals(40));
     });
+
+    test('TrackerRemoteSyncService reads {"data":[...]} wallets envelope and re-syncs if DB was reset despite persisted synced flag', () async {
+      SharedPreferences.setMockInitialValues({
+        'clarafin_remote_synced_u@clarafin.id': true,
+        'clarafin_remote_wallet_map_u@clarafin.id': jsonEncode({
+          'local_gopay': '11111111-1111-4111-8111-111111111111',
+        }),
+      });
+      final prefs = await SharedPreferences.getInstance();
+      var getWalletsCalls = 0;
+      var postWalletCalls = 0;
+      final adapter = _FakeHttpClientAdapter((options, _, _) async {
+        ResponseBody jsonResp(int status, Map<String, dynamic> body) =>
+            ResponseBody.fromString(
+              jsonEncode(body),
+              status,
+              headers: {
+                Headers.contentTypeHeader: [Headers.jsonContentType],
+              },
+            );
+        if (options.path == '/v1/dev/token') {
+          return jsonResp(200, {
+            'data': {
+              'access_token': 'jwt-sync-test',
+              'expires_in': 3600,
+              'user': {'id': 'u-1'},
+            },
+          });
+        }
+        if (options.path == '/v1/wallets' && options.method == 'GET') {
+          getWalletsCalls++;
+          // Empty remote DB (e.g., after DB reset) despite persisted stale UUID map
+          return jsonResp(200, {'data': <dynamic>[]});
+        }
+        if (options.path == '/v1/wallets' && options.method == 'POST') {
+          postWalletCalls++;
+          return jsonResp(201, {
+            'data': {
+              'id': '22222222-2222-4222-8222-222222222222',
+              'name': 'GoPay',
+              'type': 'ewallet',
+              'institution_code': 'gopay',
+              'balance': 0,
+            },
+          });
+        }
+        return jsonResp(200, {'data': <dynamic>[]});
+      });
+
+      final client = _buildTestClient(adapter, prefs: prefs);
+      final syncService = TrackerRemoteSyncService(
+        client: client,
+        prefs: prefs,
+        storageScopeKey: 'u@clarafin.id',
+      );
+      final gopay = WalletModel(
+        id: 'local_gopay',
+        name: 'GoPay',
+        type: 'e-wallet',
+        balance: 0,
+        customColorHex: '#0F758A',
+      );
+
+      final summary = await syncService.syncInitialSnapshot(
+        wallets: [gopay],
+        transactions: const [],
+        budgets: const [],
+        goals: const [],
+        bills: const [],
+      );
+
+      expect(getWalletsCalls, equals(1));
+      expect(postWalletCalls, equals(1));
+      expect(summary.walletsSynced, equals(1));
+      expect(
+        syncService.resolveRemoteWalletId('local_gopay'),
+        equals('22222222-2222-4222-8222-222222222222'),
+      );
+    });
   });
 }

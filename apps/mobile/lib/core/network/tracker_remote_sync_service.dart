@@ -29,6 +29,7 @@ class TrackerRemoteSyncService {
   final DateTime Function() _clock;
   final Map<String, String> _walletIdMap = {};
   bool _initialSyncCompleted = false;
+  bool _verifiedRemoteWalletsThisSession = false;
 
   TrackerRemoteSyncService({
     required ClarafinApiClient client,
@@ -302,17 +303,30 @@ class TrackerRemoteSyncService {
       (w) => resolveRemoteWalletId(w.id) == null,
     );
     if (!force && _initialSyncCompleted) {
-      if (!hasUnmappedWallets) {
+      if (!hasUnmappedWallets && _verifiedRemoteWalletsThisSession) {
         return const TrackerSyncSummary(skippedAlreadySynced: true);
       }
       final walletCount = await _syncWallets(wallets, cancelToken: cancelToken);
+      _verifiedRemoteWalletsThisSession = true;
       if (walletCount > 0) {
         await _reconcileWalletBalances(wallets, cancelToken: cancelToken);
+        final txCount = await _syncTransactions(
+          transactions,
+          cancelToken: cancelToken,
+        );
+        if (txCount > 0) {
+          await _reconcileWalletBalances(wallets, cancelToken: cancelToken);
+        }
+        return TrackerSyncSummary(
+          walletsSynced: walletCount,
+          transactionsSynced: txCount,
+        );
       }
-      return TrackerSyncSummary(walletsSynced: walletCount);
+      return const TrackerSyncSummary(skippedAlreadySynced: true);
     }
 
     final walletCount = await _syncWallets(wallets, cancelToken: cancelToken);
+    _verifiedRemoteWalletsThisSession = true;
     final txCount = await _syncTransactions(
       transactions,
       cancelToken: cancelToken,
@@ -352,7 +366,9 @@ class TrackerRemoteSyncService {
       '/v1/wallets',
       cancelToken: cancelToken,
     );
-    final remoteList = (remoteRes['wallets'] as List? ?? const [])
+    final rawList =
+        remoteRes['wallets'] ?? remoteRes['data'] ?? remoteRes['items'];
+    final remoteList = (rawList is List ? rawList : const [])
         .whereType<Map>()
         .map((m) => RemoteWalletResult.fromJson(Map<String, dynamic>.from(m)))
         .toList();
