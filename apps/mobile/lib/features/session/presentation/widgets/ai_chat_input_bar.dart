@@ -82,48 +82,44 @@ class _AiChatInputBarState extends State<AiChatInputBar> {
                     border: Border.all(color: NeoBrutalism.darkTeal, width: 2.5),
                   )
                 : null,
-            child: Semantics(
-              textField: true,
-              label: 'Tanya Clarafin AI',
-              child: TextField(
-                key: const Key('ai_input_text_field'),
-                controller: widget.controller,
-                focusNode: widget.focusNode,
-                enabled: !widget.isAiTyping,
-                cursorColor: Colors.black,
-                textCapitalization: TextCapitalization.sentences,
-                textInputAction: TextInputAction.send,
-                maxLines: 3,
-                minLines: 1,
-                style: aiActionTextStyle(context, 13.5, FontWeight.w700),
-                decoration: InputDecoration(
-                  hintText: widget.isAiTyping
-                      ? 'Sedang memproses permintaan...'
-                      : 'Tanya Clarafin AI...',
-                  hintStyle: aiActionTextStyle(
-                    context,
-                    13,
-                    FontWeight.w600,
-                    const Color(0xFF6B7280),
-                  ),
-                  filled: false,
-                  isDense: true,
-                  border: InputBorder.none,
-                  enabledBorder: InputBorder.none,
-                  focusedBorder: InputBorder.none,
-                  errorBorder: InputBorder.none,
-                  disabledBorder: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 12,
-                  ),
+            child: TextField(
+              key: const Key('ai_input_text_field'),
+              controller: widget.controller,
+              focusNode: widget.focusNode,
+              readOnly: widget.isAiTyping,
+              cursorColor: Colors.black,
+              textCapitalization: TextCapitalization.sentences,
+              textInputAction: TextInputAction.send,
+              maxLines: 3,
+              minLines: 1,
+              style: aiActionTextStyle(context, 13.5, FontWeight.w700),
+              decoration: InputDecoration(
+                hintText: widget.isAiTyping
+                    ? 'Sedang memproses permintaan...'
+                    : 'Tanya Clarafin AI...',
+                hintStyle: aiActionTextStyle(
+                  context,
+                  13,
+                  FontWeight.w600,
+                  const Color(0xFF6B7280),
                 ),
-                onSubmitted: (text) {
-                  if (!widget.isAiTyping && text.trim().isNotEmpty) {
-                    widget.onSendMessage(text);
-                  }
-                },
+                filled: false,
+                isDense: true,
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                errorBorder: InputBorder.none,
+                disabledBorder: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
               ),
+              onSubmitted: (text) {
+                if (!widget.isAiTyping && text.trim().isNotEmpty) {
+                  widget.onSendMessage(text);
+                }
+              },
             ),
           ),
           const SizedBox(height: 10),

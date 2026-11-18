@@ -10,6 +10,7 @@ import '../../../../core/theme/neo_brutalism_decorations.dart';
 import '../../../../core/utils/ai_category_normalizer.dart';
 import 'ai_action_card_primitives.dart';
 import 'quick_action_draft_review.dart';
+import 'voice_pulsing_waveform.dart';
 
 /// Voice AI quick transaction modal with timer lifecycle cleanup.
 class VoiceAiModalSheet extends ConsumerStatefulWidget {
@@ -142,7 +143,7 @@ class _VoiceAiModalSheetState extends ConsumerState<VoiceAiModalSheet> {
               onConfirm: _confirmDraft,
             )
           else ...[
-            _PulsingWaveform(isListening: _isListening),
+            VoicePulsingWaveform(isListening: _isListening),
             const SizedBox(height: 20),
             Text(
               _speechText,
@@ -173,93 +174,6 @@ class _VoiceAiModalSheetState extends ConsumerState<VoiceAiModalSheet> {
           ],
         ],
       ),
-    );
-  }
-}
-
-class _PulsingWaveform extends StatefulWidget {
-  final bool isListening;
-  const _PulsingWaveform({required this.isListening});
-
-  @override
-  State<_PulsingWaveform> createState() => _PulsingWaveformState();
-}
-
-class _PulsingWaveformState extends State<_PulsingWaveform>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1000),
-    );
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _syncAnimation();
-  }
-
-  @override
-  void didUpdateWidget(covariant _PulsingWaveform oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    _syncAnimation();
-  }
-
-  void _syncAnimation() {
-    final disableAnim = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
-    if (widget.isListening && !disableAnim) {
-      if (!_ctrl.isAnimating) _ctrl.repeat(reverse: true);
-    } else {
-      _ctrl.stop();
-      _ctrl.value = 0;
-    }
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _ctrl,
-      builder: (context, _) {
-        final scale = 1.0 + (widget.isListening ? 0.25 * _ctrl.value : 0.0);
-        return Stack(
-          alignment: Alignment.center,
-          children: [
-            if (widget.isListening)
-              Container(
-                width: 96,
-                height: 96,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: NeoBrutalism.lime.withValues(alpha: 0.3),
-                  border: Border.all(color: Colors.black, width: 1.5),
-                ),
-                transform: Matrix4.diagonal3Values(scale, scale, 1.0),
-              ),
-            Container(
-              width: 76,
-              height: 76,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: NeoBrutalism.lime,
-                border: Border.all(color: Colors.black, width: 2.5),
-                boxShadow: NeoBrutalism.shadow(yOffset: 4.0),
-              ),
-              child: const Icon(Icons.mic_rounded, color: Colors.black, size: 38),
-            ),
-          ],
-        );
-      },
     );
   }
 }

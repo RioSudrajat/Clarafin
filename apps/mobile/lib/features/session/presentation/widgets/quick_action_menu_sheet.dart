@@ -88,7 +88,7 @@ class QuickActionMenuSheet extends ConsumerWidget {
                   onTap: () {
                     final hostContext = Navigator.of(context).context;
                     Navigator.of(context).pop();
-                    showVoiceAiSheet(hostContext, ref);
+                    showVoiceAiSheet(hostContext);
                   },
                 ),
                 _ActionGridItem(
@@ -100,7 +100,7 @@ class QuickActionMenuSheet extends ConsumerWidget {
                   onTap: () {
                     final hostContext = Navigator.of(context).context;
                     Navigator.of(context).pop();
-                    showOcrScanSheet(hostContext, ref);
+                    showOcrScanSheet(hostContext);
                   },
                 ),
                 _ActionGridItem(

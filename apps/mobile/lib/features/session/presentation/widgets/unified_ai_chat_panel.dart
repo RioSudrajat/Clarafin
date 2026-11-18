@@ -5,7 +5,6 @@ import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/institutions/institution_registry.dart';
 import '../../../../core/models/wallet_model.dart';
 import '../../../../core/providers/ai_quota_provider.dart';
 import '../../../../core/providers/mock_providers.dart';
@@ -13,7 +12,6 @@ import '../../../../core/theme/neo_brutalism_decorations.dart';
 import '../../../../shared/widgets/saas_upgrade_bottom_sheet.dart';
 import '../../domain/models/ai_chat_models.dart';
 import '../providers/unified_ai_chat_provider.dart';
-import 'ai_chat_bubble.dart';
 import 'ai_chat_input_bar.dart';
 import 'ai_chat_welcome_widget.dart';
 import 'unified_ai_chat_header.dart';
@@ -45,9 +43,8 @@ class _UnifiedAiChatPanelState extends ConsumerState<UnifiedAiChatPanel> {
   final ScrollController _scrollController = ScrollController();
   final FocusNode _inputFocusNode = FocusNode();
 
-  AiSurfaceMode get _surfaceMode => widget.isFullScreen
-      ? AiSurfaceMode.fullScreen
-      : AiSurfaceMode.quickSheet;
+  AiSurfaceMode get _surfaceMode =>
+      widget.isFullScreen ? AiSurfaceMode.fullScreen : AiSurfaceMode.quickSheet;
 
   @override
   void initState() {
@@ -72,7 +69,11 @@ class _UnifiedAiChatPanelState extends ConsumerState<UnifiedAiChatPanel> {
       if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) {
         _scrollController.jumpTo(target);
       } else {
-        _scrollController.animateTo(target, duration: const Duration(milliseconds: 220), curve: Curves.easeOutCubic);
+        _scrollController.animateTo(
+          target,
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+        );
       }
     });
   }
@@ -82,14 +83,23 @@ class _UnifiedAiChatPanelState extends ConsumerState<UnifiedAiChatPanel> {
     final state = ref.read(unifiedAiChatProvider);
     if (trimmed.isEmpty || state.isStreaming || state.isMutating) return;
     _textController.clear();
-    unawaited(ref.read(unifiedAiChatProvider.notifier).sendMessage(trimmed, surfaceMode: _surfaceMode));
+    unawaited(
+      ref.read(unifiedAiChatProvider.notifier).sendMessage(trimmed, surfaceMode: _surfaceMode),
+    );
     _scrollToBottom();
   }
 
-  void _handleSelectConsultant(BuildContext context, AiConsultantRecommendation consultant, AiPackageRecommendation? pkg) {
+  void _handleSelectConsultant(
+    BuildContext context,
+    AiConsultantRecommendation consultant,
+    AiPackageRecommendation? pkg,
+  ) {
     final id = consultant.consultantId.trim();
     if (id.isEmpty) return;
-    ref.read(unifiedAiChatProvider.notifier).prepareConsultantBooking(consultant, fallbackPackage: pkg);
+    ref.read(unifiedAiChatProvider.notifier).prepareConsultantBooking(
+          consultant,
+          fallbackPackage: pkg,
+        );
     final router = GoRouter.maybeOf(context);
     if (!widget.isFullScreen) widget.onClose?.call();
     router?.push('/booking/$id/service');
@@ -101,45 +111,6 @@ class _UnifiedAiChatPanelState extends ConsumerState<UnifiedAiChatPanel> {
     router?.go(route);
   }
 
-  String _resolveWalletLabel(List<WalletModel> wallets, String walletId) {
-    final trimmed = walletId.trim();
-    if (trimmed.isEmpty) return '';
-    final hit = wallets.where((w) => w.id == trimmed).firstOrNull;
-    if (hit != null && hit.name.trim().isNotEmpty) return hit.name;
-    final clean = trimmed.replaceFirst(RegExp(r'^(wallet[-_]|w[-_])', caseSensitive: false), '').trim();
-    return (clean.isEmpty ? null : InstitutionRegistry.findById(clean))?.shortName ?? (clean.isEmpty ? trimmed : clean);
-  }
-
-  Widget _buildBubble(
-    BuildContext context,
-    UnifiedAiChatMessage msg,
-    List<WalletModel> wallets,
-  ) {
-    final notifier = ref.read(unifiedAiChatProvider.notifier);
-    return AiChatBubble(
-      message: msg,
-      onRetry: () => unawaited(notifier.retryFailedMessage(msg.id, surfaceMode: _surfaceMode)),
-      onUpgradePlan: () => SaasUpgradeBottomSheet.show(context, reason: msg.text),
-      onCreateWallet: (bal) => unawaited(notifier.confirmWalletCreation(msg.id, initialBalance: bal)),
-      onSelectExistingWallet: (walletId) {
-        final w = wallets.where((item) => item.id == walletId).firstOrNull;
-        if (w != null) notifier.selectExistingWalletForPendingTx(msg.id, w);
-      },
-      onConfirmTransaction: () => unawaited(notifier.confirmTransactionDraft(msg.id)),
-      onCancelTransaction: () => notifier.cancelTransactionDraft(msg.id),
-      onConfirmGoal: () => unawaited(notifier.confirmGoalDraft(msg.id)),
-      onCancelGoal: () => notifier.cancelGoalDraft(msg.id),
-      onConfirmBudget: () => unawaited(notifier.confirmBudgetDraft(msg.id)),
-      onCancelBudget: () => notifier.cancelBudgetDraft(msg.id),
-      onViewBudget: () => _navigateShellBranch(context, '/budget?tab=1'),
-      onConfirmBill: () => unawaited(notifier.confirmBillDraft(msg.id)),
-      onCancelBill: () => notifier.cancelBillDraft(msg.id),
-      onSelectConsultant: (c, pkg) => _handleSelectConsultant(context, c, pkg),
-      onBrowseConsultants: () => _navigateShellBranch(context, '/consult'),
-      walletLabelResolver: (id) => _resolveWalletLabel(wallets, id),
-    );
-  }
-
   Widget _buildMessageList(
     BuildContext context,
     UnifiedAiChatState chatState,
@@ -149,6 +120,17 @@ class _UnifiedAiChatPanelState extends ConsumerState<UnifiedAiChatPanel> {
   }) {
     final padding = EdgeInsets.fromLTRB(12, 14, 12, showExpandPill ? 68 : 14);
     final itemCount = chatState.messages.length + (showLiveTrace ? 1 : 0);
+    final notifier = ref.read(unifiedAiChatProvider.notifier);
+
+    Widget renderBubble(UnifiedAiChatMessage msg) => buildUnifiedChatBubble(
+          context: context,
+          msg: msg,
+          wallets: wallets,
+          notifier: notifier,
+          surfaceMode: _surfaceMode,
+          onSelectConsultant: (c, pkg) => _handleSelectConsultant(context, c, pkg),
+          onNavigateShellBranch: (route) => _navigateShellBranch(context, route),
+        );
 
     // Quick Sheet keeps short threads non-virtualized so adjacent draft cards stay onstage.
     if (!widget.isFullScreen && itemCount <= 12) {
@@ -158,7 +140,7 @@ class _UnifiedAiChatPanelState extends ConsumerState<UnifiedAiChatPanel> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            for (final msg in chatState.messages) _buildBubble(context, msg, wallets),
+            for (final msg in chatState.messages) renderBubble(msg),
             if (showLiveTrace) LiveThinkingTraceRow(trace: chatState.activeThinkingTrace!),
           ],
         ),
@@ -174,7 +156,7 @@ class _UnifiedAiChatPanelState extends ConsumerState<UnifiedAiChatPanel> {
         if (showLiveTrace && index == chatState.messages.length) {
           return LiveThinkingTraceRow(trace: chatState.activeThinkingTrace!);
         }
-        return _buildBubble(context, chatState.messages[index], wallets);
+        return renderBubble(chatState.messages[index]);
       },
     );
   }
@@ -207,7 +189,11 @@ class _UnifiedAiChatPanelState extends ConsumerState<UnifiedAiChatPanel> {
       children: [
         Expanded(
           child: Container(
-            decoration: NeoBrutalism.cardDecoration(backgroundColor: Colors.white, borderRadius: 20, shadowOffset: 4.0),
+            decoration: NeoBrutalism.cardDecoration(
+              backgroundColor: Colors.white,
+              borderRadius: 20,
+              shadowOffset: 4.0,
+            ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(18),
               child: Column(

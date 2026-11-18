@@ -1,10 +1,69 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
+import '../../../../core/institutions/institution_registry.dart';
+import '../../../../core/models/wallet_model.dart';
 import '../../../../core/theme/neo_brutalism_decorations.dart';
+import '../../../../shared/widgets/saas_upgrade_bottom_sheet.dart';
 import '../../../home/presentation/widgets/notion_doodle_icons.dart';
 import '../../domain/models/ai_chat_models.dart';
+import '../providers/unified_ai_chat_provider.dart';
 import 'ai_action_card_primitives.dart';
+import 'ai_chat_bubble.dart';
 import 'ai_thinking_trace_widget.dart';
+
+/// Resolves a human-readable wallet label from user wallets or [InstitutionRegistry].
+String resolveChatWalletLabel(List<WalletModel> wallets, String walletId) {
+  final trimmed = walletId.trim();
+  if (trimmed.isEmpty) return '';
+  final hit = wallets.where((w) => w.id == trimmed).firstOrNull;
+  if (hit != null && hit.name.trim().isNotEmpty) return hit.name;
+  final clean = trimmed
+      .replaceFirst(RegExp(r'^(wallet[-_]|w[-_])', caseSensitive: false), '')
+      .trim();
+  return (clean.isEmpty ? null : InstitutionRegistry.findById(clean))?.shortName ??
+      (clean.isEmpty ? trimmed : clean);
+}
+
+/// Builds a fully wired [AiChatBubble] for [UnifiedAiChatPanel].
+Widget buildUnifiedChatBubble({
+  required BuildContext context,
+  required UnifiedAiChatMessage msg,
+  required List<WalletModel> wallets,
+  required UnifiedAiChatNotifier notifier,
+  required AiSurfaceMode surfaceMode,
+  required void Function(AiConsultantRecommendation, AiPackageRecommendation?)
+      onSelectConsultant,
+  required void Function(String route) onNavigateShellBranch,
+}) {
+  return AiChatBubble(
+    message: msg,
+    onRetry: () => unawaited(
+      notifier.retryFailedMessage(msg.id, surfaceMode: surfaceMode),
+    ),
+    onUpgradePlan: () => SaasUpgradeBottomSheet.show(context, reason: msg.text),
+    onCreateWallet: (bal) => unawaited(
+      notifier.confirmWalletCreation(msg.id, initialBalance: bal),
+    ),
+    onSelectExistingWallet: (walletId) {
+      final w = wallets.where((item) => item.id == walletId).firstOrNull;
+      if (w != null) notifier.selectExistingWalletForPendingTx(msg.id, w);
+    },
+    onConfirmTransaction: () => unawaited(notifier.confirmTransactionDraft(msg.id)),
+    onCancelTransaction: () => notifier.cancelTransactionDraft(msg.id),
+    onConfirmGoal: () => unawaited(notifier.confirmGoalDraft(msg.id)),
+    onCancelGoal: () => notifier.cancelGoalDraft(msg.id),
+    onConfirmBudget: () => unawaited(notifier.confirmBudgetDraft(msg.id)),
+    onCancelBudget: () => notifier.cancelBudgetDraft(msg.id),
+    onViewBudget: () => onNavigateShellBranch('/budget?tab=1'),
+    onConfirmBill: () => unawaited(notifier.confirmBillDraft(msg.id)),
+    onCancelBill: () => notifier.cancelBillDraft(msg.id),
+    onSelectConsultant: onSelectConsultant,
+    onBrowseConsultants: () => onNavigateShellBranch('/consult'),
+    walletLabelResolver: (id) => resolveChatWalletLabel(wallets, id),
+  );
+}
 
 /// Live thinking trace row rendered at the bottom of the chat while streaming.
 class LiveThinkingTraceRow extends StatelessWidget {
@@ -135,30 +194,19 @@ class _ExpandFullScreenPillState extends State<ExpandFullScreenPill> {
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 10,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                     child: ExcludeSemantics(
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(
-                            Icons.open_in_full_rounded,
-                            size: 15,
-                            color: NeoBrutalism.dark,
-                          ),
+                          const Icon(Icons.open_in_full_rounded, size: 15, color: NeoBrutalism.dark),
                           const SizedBox(width: 6),
                           Flexible(
                             child: Text(
                               'Lanjutkan di Layar Penuh',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: aiActionTextStyle(
-                                context,
-                                12,
-                                FontWeight.w900,
-                              ),
+                              style: aiActionTextStyle(context, 12, FontWeight.w900),
                             ),
                           ),
                         ],

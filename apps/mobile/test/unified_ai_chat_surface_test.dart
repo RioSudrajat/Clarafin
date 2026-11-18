@@ -17,7 +17,6 @@ import 'package:mobile/features/session/domain/models/ai_chat_models.dart';
 import 'package:mobile/features/session/presentation/providers/unified_ai_chat_provider.dart';
 import 'package:mobile/features/session/presentation/screens/ai_chat_screen.dart';
 import 'package:mobile/features/session/presentation/screens/quick_action_sheets.dart';
-import 'package:mobile/features/session/presentation/widgets/ai_chat_bubble.dart';
 import 'package:mobile/features/session/presentation/widgets/ai_money_flow_card.dart';
 import 'package:mobile/features/session/presentation/widgets/ai_planning_action_card.dart';
 import 'package:mobile/features/session/presentation/widgets/ai_recommended_consultants_section.dart';
@@ -26,6 +25,9 @@ import 'package:mobile/features/session/presentation/widgets/ai_thinking_trace_w
 import 'package:mobile/features/session/presentation/widgets/ai_transaction_draft_card.dart';
 import 'package:mobile/features/session/presentation/widgets/ai_wallet_creation_draft_card.dart';
 import 'package:mobile/features/session/presentation/widgets/clarafin_ai_quick_sheet.dart';
+import 'package:mobile/features/session/presentation/widgets/ocr_scan_modal_sheet.dart';
+import 'package:mobile/features/session/presentation/widgets/quick_action_menu_sheet.dart';
+import 'package:mobile/features/session/presentation/widgets/voice_ai_modal_sheet.dart';
 import 'package:mobile/router/app_router.dart';
 import 'package:mobile/shared/widgets/saas_upgrade_bottom_sheet.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -152,6 +154,13 @@ void main() {
       expect(find.byKey(const Key('ai_input_scan_btn')), findsOneWidget);
       expect(find.byKey(const Key('ai_input_voice_btn')), findsOneWidget);
       expect(find.text('Tanya Clarafin AI...'), findsOneWidget);
+
+      // Explicitly verify empty-state suggested prompts render cleanly.
+      expect(find.text('Halo, aku Clarafin AI'), findsOneWidget);
+      expect(find.text('Cek saldo dompet saat ini'), findsOneWidget);
+      expect(find.text('Arus kas bulan ini'), findsOneWidget);
+      expect(find.text('Catat jajan multi-item'), findsOneWidget);
+      expect(find.text('Target dana darurat'), findsOneWidget);
       _assertNoSlopUi(tester);
 
       await tester.tap(find.byKey(const Key('ai_chat_quota_badge')));
@@ -391,101 +400,141 @@ void main() {
       container.dispose();
     });
 
-    testWidgets('AiChatBubble composes wallet, planning, analytical, and consultant cards + booking handoff', (tester) async {
-      final container = await _createSurfaceContainer();
+    testWidgets('UnifiedAiChatPanel drives rich cards, Pilih & Jadwalkan (/booking/c1/service + bookingProvider), Lihat Semua Konsultan (/consult), and Lihat Budget (/budget?tab=1)', (tester) async {
+      tester.view.physicalSize = const Size(420, 3200);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
 
-      String? navigatedBookingPath;
-      final router = GoRouter(
-        initialLocation: '/',
-        routes: [
-          GoRoute(
-            path: '/',
-            builder: (context, state) => Scaffold(
-              body: SingleChildScrollView(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  children: [
-                    AiChatBubble(
-                      message: UnifiedAiChatMessage(
-                        id: 'msg_all',
-                        sessionId: 's_smoke',
-                        text: 'Ringkasan lengkap siap.',
-                        isUser: false,
-                        thinkingTrace: const AiThinkingTrace(
-                          steps: [
-                            AiThinkingStep(id: '1', label: 'Analisa selesai', isDone: true),
-                          ],
-                          durationMs: 420,
-                        ),
-                        walletCreationDraft: const AiWalletCreationDraft(
-                          institutionId: 'jago',
-                          institutionName: 'Bank Jago',
-                          walletType: 'bank',
-                          existingWalletIds: ['w_bca'],
-                        ),
-                        goalDraft: const AiGoalDraft(
-                          clientMutationId: 'goal_1',
-                          name: 'Dana Darurat',
-                          targetAmount: 10000000,
-                        ),
-                        moneyFlowCard: const AiMoneyFlowData(
-                          periodLabel: 'Nov 2026',
-                          totalIncome: 10000000,
-                          totalExpense: 3000000,
-                          netCashflow: 7000000,
-                          transactionCount: 5,
-                          incomeSources: [AiMoneyFlowNode(label: 'Gaji', amount: 10000000)],
-                          expenseCategories: [AiMoneyFlowNode(label: 'Makan', amount: 3000000)],
-                        ),
-                        spendingTableCard: const AiSpendingTableData(
-                          title: 'Pengeluaran Kopi',
-                          totalTransactions: 2,
-                          totalAmount: 55000,
-                          rows: [
-                            AiSpendingMerchantRow(merchant: 'Kopi Kenangan', transactionCount: 2, totalAmount: 55000),
-                          ],
-                        ),
-                        recommendedPackage: const AiPackageRecommendation(
-                          packageCode: 'debt_plan',
-                          packageTitle: 'Paket Bebas Utang',
-                          categoryTag: 'Debt Management',
-                          priceIdr: 299000,
-                          sessionCount: 2,
-                          durationMinutes: 60,
-                        ),
-                        recommendedConsultants: const [
-                          AiConsultantRecommendation(
-                            consultantId: 'c_rizky',
-                            name: 'Rizky Pratama',
-                            certifications: ['CFP®'],
-                            tierLabel: 'Medium Tier',
-                            matchReason: 'Spesialis manajemen utang',
-                            selectedPackageCode: 'debt_plan',
-                            unitPrice: 299000,
-                            recommendedTopics: ['Pelunasan Paylater'],
-                            prefilledDescription: 'Cicilan 40% gaji',
-                          ),
-                        ],
-                      ),
-                      onSelectConsultant: (consultant, pkg) {
-                        container.read(unifiedAiChatProvider.notifier).prepareConsultantBooking(
-                              consultant,
-                              fallbackPackage: pkg,
-                            );
-                        GoRouter.of(context).push('/booking/${consultant.consultantId}/service');
-                      },
+      final repo = _ScriptedAiChatRepository([
+        (prompt, mode) => Stream.fromIterable([
+              AiFinalResponseEvent(
+                sessionId: 's_rich',
+                clientRequestId: 'req_rich_1',
+                surfaceMode: mode,
+                quotaRemaining: 39,
+                planType: 'free',
+                message: UnifiedAiChatMessage(
+                  id: 'msg_all',
+                  sessionId: 's_rich',
+                  text: 'Ringkasan lengkap siap.',
+                  isUser: false,
+                  thinkingTrace: const AiThinkingTrace(
+                    steps: [
+                      AiThinkingStep(id: '1', label: 'Analisa selesai', isDone: true),
+                    ],
+                    durationMs: 420,
+                  ),
+                  walletCreationDraft: const AiWalletCreationDraft(
+                    institutionId: 'jago',
+                    institutionName: 'Bank Jago',
+                    walletType: 'bank',
+                    existingWalletIds: ['w_bca'],
+                  ),
+                  goalDraft: const AiGoalDraft(
+                    clientMutationId: 'goal_1',
+                    name: 'Dana Darurat',
+                    targetAmount: 10000000,
+                    linkedWalletId: 'w_bca',
+                  ),
+                  budgetDraft: const AiBudgetDraft(
+                    clientMutationId: 'budget_1',
+                    category: 'Food & Beverage',
+                    limitAmount: 1500000,
+                  ),
+                  moneyFlowCard: const AiMoneyFlowData(
+                    periodLabel: 'Nov 2026',
+                    totalIncome: 10000000,
+                    totalExpense: 3000000,
+                    netCashflow: 7000000,
+                    transactionCount: 5,
+                    incomeSources: [AiMoneyFlowNode(label: 'Gaji', amount: 10000000)],
+                    expenseCategories: [AiMoneyFlowNode(label: 'Makan', amount: 3000000)],
+                  ),
+                  spendingTableCard: const AiSpendingTableData(
+                    title: 'Pengeluaran Kopi',
+                    totalTransactions: 2,
+                    totalAmount: 55000,
+                    rows: [
+                      AiSpendingMerchantRow(merchant: 'Kopi Kenangan', transactionCount: 2, totalAmount: 55000),
+                    ],
+                  ),
+                  recommendedPackage: const AiPackageRecommendation(
+                    packageCode: 'debt_plan',
+                    packageTitle: 'Paket Bebas Utang',
+                    categoryTag: 'Debt Management',
+                    priceIdr: 299000,
+                    sessionCount: 2,
+                    durationMinutes: 60,
+                  ),
+                  recommendedConsultants: const [
+                    AiConsultantRecommendation(
+                      consultantId: 'c1',
+                      name: 'Rizky Pratama',
+                      certifications: ['CFP®'],
+                      tierLabel: 'Medium Tier',
+                      matchReason: 'Spesialis manajemen utang',
+                      selectedPackageCode: 'debt_plan',
+                      unitPrice: 299000,
+                      recommendedTopics: ['Pelunasan Paylater'],
+                      prefilledDescription: 'Cicilan 40% gaji',
                     ),
                   ],
                 ),
               ),
-            ),
+            ]),
+        (prompt, mode) => Stream.fromIterable([
+              AiFinalResponseEvent(
+                sessionId: 's_rich',
+                clientRequestId: 'req_rich_2',
+                surfaceMode: mode,
+                quotaRemaining: 38,
+                planType: 'free',
+                message: UnifiedAiChatMessage(
+                  id: 'msg_empty_consult',
+                  sessionId: 's_rich',
+                  text: 'Paket tersedia, silakan lihat daftar konsultan.',
+                  isUser: false,
+                  recommendedPackage: const AiPackageRecommendation(
+                    packageCode: 'wealth_plan',
+                    packageTitle: 'Paket Investasi',
+                    categoryTag: 'Investment',
+                    priceIdr: 399000,
+                    sessionCount: 2,
+                    durationMinutes: 60,
+                  ),
+                  recommendedConsultants: const [],
+                ),
+              ),
+            ]),
+      ]);
+
+      final container = await _createSurfaceContainer(repository: repo);
+
+      final router = GoRouter(
+        initialLocation: '/ai-chat',
+        routes: [
+          GoRoute(
+            path: '/ai-chat',
+            builder: (context, state) => const AiChatScreen(),
           ),
           GoRoute(
             path: '/booking/:id/service',
-            builder: (context, state) {
-              navigatedBookingPath = state.uri.toString();
-              return const Scaffold(body: Text('Booking Step 1'));
-            },
+            builder: (context, state) =>
+                Scaffold(body: Text('Booking Step 1: ${state.pathParameters['id']}')),
+          ),
+          GoRoute(
+            path: '/consult',
+            builder: (context, state) => const Scaffold(body: Text('Consult Directory')),
+          ),
+          GoRoute(
+            path: '/budget',
+            builder: (context, state) =>
+                Scaffold(body: Text('Budget Tab: ${state.uri.queryParameters['tab']}')),
+          ),
+          GoRoute(
+            path: '/goal/add',
+            builder: (context, state) => const Scaffold(body: Text('Goal Add Form')),
           ),
         ],
       );
@@ -499,21 +548,73 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      await tester.enterText(find.byKey(const Key('ai_input_text_field')), 'analisa lengkap');
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('ai_input_send_btn')));
+      await tester.pumpAndSettle();
+
       expect(find.byType(AiThinkingTraceWidget), findsOneWidget);
       expect(find.byType(AiWalletCreationDraftCard), findsOneWidget);
       expect(find.byType(AiPlanningActionCard), findsOneWidget);
+      expect(find.text('BCA Utama'), findsNWidgets(2));
+
+      // 1. Goal edit button -> /goal/add
+      await tester.tap(find.byKey(const Key('goal_edit_btn')));
+      await tester.pumpAndSettle();
+      expect(
+        router.routerDelegate.currentConfiguration.last.matchedLocation,
+        equals('/goal/add'),
+      );
+      expect(find.text('Goal Add Form'), findsOneWidget);
+      router.pop();
+      await tester.pumpAndSettle();
+
+      // 2. Budget view button -> UnifiedAiChatPanel._navigateShellBranch('/budget?tab=1')
+      await tester.tap(find.byKey(const Key('budget_view_btn')));
+      await tester.pumpAndSettle();
+      expect(
+        router.routerDelegate.currentConfiguration.uri.toString(),
+        equals('/budget?tab=1'),
+      );
+      expect(find.text('Budget Tab: 1'), findsOneWidget);
+      router.go('/ai-chat');
+      await tester.pumpAndSettle();
+
       expect(find.byType(AiMoneyFlowCard), findsOneWidget);
       expect(find.byType(AiSpendingBreakdownTableCard), findsOneWidget);
       expect(find.byType(AiRecommendedConsultantsSection), findsOneWidget);
 
-      await tester.ensureVisible(find.text('Pilih & Jadwalkan'));
+      // 3. Consultant Pilih & Jadwalkan -> UnifiedAiChatPanel._handleSelectConsultant -> /booking/c1/service
       await tester.tap(find.text('Pilih & Jadwalkan'));
       await tester.pumpAndSettle();
 
-      expect(navigatedBookingPath, equals('/booking/c_rizky/service'));
+      expect(
+        router.routerDelegate.currentConfiguration.last.matchedLocation,
+        equals('/booking/c1/service'),
+      );
+      expect(find.text('Booking Step 1: c1'), findsOneWidget);
       final booking = container.read(bookingProvider);
       expect(booking.selectedPackageCode, equals('debt_plan'));
       expect(booking.prefilledTopics, contains('Pelunasan Paylater'));
+      expect(booking.description, equals('Cicilan 40% gaji'));
+      expect(booking.isPrefilledFromAi, isTrue);
+
+      router.pop();
+      await tester.pumpAndSettle();
+
+      // 4. Empty consultant list -> Lihat Semua Konsultan -> UnifiedAiChatPanel._navigateShellBranch('/consult')
+      await tester.enterText(find.byKey(const Key('ai_input_text_field')), 'cari konsultan investasi');
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('ai_input_send_btn')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Lihat Semua Konsultan'));
+      await tester.pumpAndSettle();
+      expect(
+        router.routerDelegate.currentConfiguration.uri.toString(),
+        equals('/consult'),
+      );
+      expect(find.text('Consult Directory'), findsOneWidget);
 
       await tester.pumpWidget(const SizedBox.shrink());
       container.dispose();
@@ -603,7 +704,7 @@ void main() {
       container.dispose();
     });
 
-    testWidgets('Quick Sheet [Scan] & [Bicara] open OCR and Voice modals cleanly without Navigator errors', (tester) async {
+    testWidgets('QuickActionMenuSheet -> AI Chat Action -> [Scan] & [Bicara] open OCR and Voice modals cleanly without disposed WidgetRef errors', (tester) async {
       final container = await _createSurfaceContainer();
 
       await tester.pumpWidget(
@@ -614,8 +715,8 @@ void main() {
             home: Scaffold(
               body: Consumer(
                 builder: (context, ref, _) => ElevatedButton(
-                  onPressed: () => showAiChatQuickSheet(context, ref),
-                  child: const Text('Buka'),
+                  onPressed: () => showQuickActionMenuSheet(context, ref),
+                  child: const Text('Buka Hub'),
                 ),
               ),
             ),
@@ -624,25 +725,40 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Buka'));
+      // Path 1: QuickActionMenuSheet -> AI Chat Action -> [Scan] (after QuickActionMenuSheet is disposed)
+      await tester.tap(find.text('Buka Hub'));
       await tester.pumpAndSettle();
+      expect(find.byType(QuickActionMenuSheet), findsOneWidget);
+
+      await tester.tap(find.text('AI Chat Action'));
+      await tester.pumpAndSettle();
+      expect(find.byType(QuickActionMenuSheet), findsNothing);
+      expect(find.byType(ClarafinAiQuickSheet), findsOneWidget);
 
       await tester.tap(find.byKey(const Key('ai_input_scan_btn')));
       await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.byType(OcrScanModalSheet), findsOneWidget);
       expect(find.text('Scan Struk / Nota (OCR)'), findsOneWidget);
-      Navigator.of(tester.element(find.text('Scan Struk / Nota (OCR)'))).pop();
+      Navigator.of(tester.element(find.byType(OcrScanModalSheet))).pop();
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Buka'));
+      // Path 2: QuickActionMenuSheet -> AI Chat Action -> [Bicara] (after QuickActionMenuSheet is disposed)
+      await tester.tap(find.text('Buka Hub'));
       await tester.pumpAndSettle();
+      await tester.tap(find.text('AI Chat Action'));
+      await tester.pumpAndSettle();
+      expect(find.byType(ClarafinAiQuickSheet), findsOneWidget);
 
       await tester.tap(find.byKey(const Key('ai_input_voice_btn')));
       await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.byType(VoiceAiModalSheet), findsOneWidget);
       expect(find.text('Voice AI Action'), findsOneWidget);
-      Navigator.of(tester.element(find.text('Voice AI Action'))).pop();
+      Navigator.of(tester.element(find.byType(VoiceAiModalSheet))).pop();
       await tester.pumpAndSettle();
 
-      // Verify AiChatScreen [Scan] and [Bicara] also open modals cleanly.
+      // Path 3: AiChatScreen [Scan] and [Bicara] also open modals cleanly.
       await tester.pumpWidget(
         UncontrolledProviderScope(
           container: container,
@@ -656,19 +772,19 @@ void main() {
 
       await tester.tap(find.byKey(const Key('ai_input_scan_btn')));
       await tester.pumpAndSettle();
-      expect(find.text('Scan Struk / Nota (OCR)'), findsOneWidget);
-      Navigator.of(tester.element(find.text('Scan Struk / Nota (OCR)'))).pop();
+      expect(find.byType(OcrScanModalSheet), findsOneWidget);
+      Navigator.of(tester.element(find.byType(OcrScanModalSheet))).pop();
       await tester.pumpAndSettle();
 
       await tester.tap(find.byKey(const Key('ai_input_voice_btn')));
       await tester.pumpAndSettle();
-      expect(find.text('Voice AI Action'), findsOneWidget);
+      expect(find.byType(VoiceAiModalSheet), findsOneWidget);
 
       await tester.pumpWidget(const SizedBox.shrink());
       container.dispose();
     });
 
-    testWidgets('goRouterProvider /draft/review passes extra to AiDraftReviewScreen directly', (tester) async {
+    testWidgets('goRouterProvider /draft/review converts untyped dynamic extra map and passes it to AiDraftReviewScreen', (tester) async {
       final container = await _createSurfaceContainer();
 
       final router = container.read(goRouterProvider);
@@ -684,21 +800,20 @@ void main() {
       await tester.pump(const Duration(seconds: 3));
       await tester.pumpAndSettle();
 
-      router.push(
-        '/draft/review',
-        extra: {
-          'prefillItems': [
-            {
-              'title': 'Kopi Kenangan Tebet',
-              'amount': 25000,
-              'isExpense': true,
-              'category': 'Food & Beverage • Coffee Shop',
-              'walletId': 'w_gopay',
-              'walletName': 'GoPay',
-            },
-          ],
-        },
-      );
+      final Object untypedExtra = <dynamic, dynamic>{
+        'prefillItems': <dynamic>[
+          <dynamic, dynamic>{
+            'title': 'Kopi Kenangan Tebet',
+            'amount': 25000,
+            'isExpense': true,
+            'category': 'Food & Beverage • Coffee Shop',
+            'walletId': 'w_gopay',
+            'walletName': 'GoPay',
+          },
+        ],
+      };
+
+      router.push('/draft/review', extra: untypedExtra);
       await tester.pumpAndSettle();
 
       expect(find.text('Kopi Kenangan Tebet'), findsOneWidget);

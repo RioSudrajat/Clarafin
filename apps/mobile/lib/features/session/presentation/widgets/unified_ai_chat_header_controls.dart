@@ -33,6 +33,7 @@ class _HeaderQuotaBadgeState extends State<HeaderQuotaBadge> {
         label: 'Kuota AI ${widget.quotaText}',
         child: Tooltip(
           message: 'Kuota AI: ${widget.quotaText}',
+          excludeFromSemantics: true,
           child: Material(
             color: Colors.transparent,
             child: InkWell(
@@ -118,6 +119,7 @@ class _HeaderCircleButtonState extends State<HeaderCircleButton> {
         label: widget.semanticLabel,
         child: Tooltip(
           message: widget.tooltip,
+          excludeFromSemantics: true,
           child: Material(
             color: Colors.transparent,
             child: InkWell(

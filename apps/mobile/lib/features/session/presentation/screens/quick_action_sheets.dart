@@ -11,13 +11,18 @@ import '../widgets/quick_action_menu_sheet.dart';
 import '../widgets/voice_ai_modal_sheet.dart';
 
 /// Opens the unified Clarafin AI Quick Sheet with a fresh capture session.
+///
+/// Uses [ProviderScope.containerOf] on the mounted [context] so callbacks
+/// invoked after an originating sheet pops never touch a disposed [WidgetRef].
 void showAiChatQuickSheet(
   BuildContext context,
   WidgetRef parentRef, {
   bool resetSession = true,
 }) {
   if (resetSession) {
-    parentRef.read(unifiedAiChatProvider.notifier).startNewChat();
+    ProviderScope.containerOf(context, listen: false)
+        .read(unifiedAiChatProvider.notifier)
+        .startNewChat();
   }
   final parentRouter = GoRouter.maybeOf(context);
   showModalBottomSheet<void>(
@@ -31,20 +36,21 @@ void showAiChatQuickSheet(
       onOpenScan: () {
         final hostContext = Navigator.of(sheetCtx).context;
         Navigator.of(sheetCtx).pop();
-        showOcrScanSheet(hostContext, parentRef);
+        showOcrScanSheet(hostContext);
       },
       onOpenVoice: () {
         final hostContext = Navigator.of(sheetCtx).context;
         Navigator.of(sheetCtx).pop();
-        showVoiceAiSheet(hostContext, parentRef);
+        showVoiceAiSheet(hostContext);
       },
     ),
   );
 }
 
 /// Opens the OCR receipt scan sheet after enforcing remaining AI quota.
-void showOcrScanSheet(BuildContext context, WidgetRef parentRef) {
-  final quota = parentRef.read(aiQuotaProvider);
+void showOcrScanSheet(BuildContext context, [WidgetRef? _]) {
+  final quota = ProviderScope.containerOf(context, listen: false)
+      .read(aiQuotaProvider);
   if (!quota.isUnlimited && quota.quotaRemaining <= 0) {
     SaasUpgradeBottomSheet.show(
       context,
@@ -70,8 +76,9 @@ void showOcrScanSheet(BuildContext context, WidgetRef parentRef) {
 }
 
 /// Opens the Voice AI recording sheet after enforcing remaining AI quota.
-void showVoiceAiSheet(BuildContext context, WidgetRef parentRef) {
-  final quota = parentRef.read(aiQuotaProvider);
+void showVoiceAiSheet(BuildContext context, [WidgetRef? _]) {
+  final quota = ProviderScope.containerOf(context, listen: false)
+      .read(aiQuotaProvider);
   if (!quota.isUnlimited && quota.quotaRemaining <= 0) {
     SaasUpgradeBottomSheet.show(
       context,

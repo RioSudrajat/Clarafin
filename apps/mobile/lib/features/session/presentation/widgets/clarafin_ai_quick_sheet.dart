@@ -7,7 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'unified_ai_chat_panel.dart';
 
 /// Keyboard-safe Quick Sheet shell wrapping [UnifiedAiChatPanel] in `quick_sheet` mode.
-class ClarafinAiQuickSheet extends ConsumerWidget {
+class ClarafinAiQuickSheet extends ConsumerStatefulWidget {
   final VoidCallback onOpenScan;
   final VoidCallback onOpenVoice;
   final GoRouter? parentRouter;
@@ -19,14 +19,24 @@ class ClarafinAiQuickSheet extends ConsumerWidget {
     this.parentRouter,
   });
 
+  @override
+  ConsumerState<ClarafinAiQuickSheet> createState() =>
+      _ClarafinAiQuickSheetState();
+}
+
+class _ClarafinAiQuickSheetState extends ConsumerState<ClarafinAiQuickSheet> {
+  bool _isExpanding = false;
+
   void _expandToFullScreen(BuildContext context) {
-    final router = GoRouter.maybeOf(context) ?? parentRouter;
+    if (_isExpanding || !mounted) return;
+    _isExpanding = true;
+    final router = GoRouter.maybeOf(context) ?? widget.parentRouter;
     Navigator.of(context).pop();
     router?.push('/ai-chat');
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
     final availableHeight =
         media.size.height - media.viewInsets.bottom - media.padding.top;
@@ -50,8 +60,8 @@ class ClarafinAiQuickSheet extends ConsumerWidget {
         height: targetHeight,
         child: UnifiedAiChatPanel(
           isFullScreen: false,
-          onOpenScan: onOpenScan,
-          onOpenVoice: onOpenVoice,
+          onOpenScan: widget.onOpenScan,
+          onOpenVoice: widget.onOpenVoice,
           onExpandToFullScreen: () => _expandToFullScreen(context),
           onClose: () => Navigator.of(context).pop(),
         ),

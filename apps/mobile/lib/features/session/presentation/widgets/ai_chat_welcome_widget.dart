@@ -65,8 +65,7 @@ class AiChatWelcomeWidget extends StatelessWidget {
           SizedBox(height: isCompact ? 14 : 22),
           LayoutBuilder(
             builder: (context, constraints) {
-              final useSingleColumn =
-                  constraints.maxWidth < 310 || textScale >= 1.2;
+              final useSingleColumn = constraints.maxWidth < 310 || textScale >= 1.2;
               if (useSingleColumn) {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -100,8 +99,7 @@ class AiChatWelcomeWidget extends StatelessWidget {
                             child: i + 1 < _prompts.length
                                 ? _PromptChipButton(
                                     item: _prompts[i + 1],
-                                    onTap: () =>
-                                        onSelectPrompt(_prompts[i + 1].prompt),
+                                    onTap: () => onSelectPrompt(_prompts[i + 1].prompt),
                                   )
                                 : const SizedBox.shrink(),
                           ),
@@ -133,21 +131,14 @@ class AiChatWelcomeWidget extends StatelessWidget {
             boxShadow: NeoBrutalism.shadow(yOffset: 3.0),
           ),
           child: Center(
-            child: NotionDoodleWidget(
-              svgString: NotionDoodleIcons.aiChat,
-              size: iconSize,
-            ),
+            child: NotionDoodleWidget(svgString: NotionDoodleIcons.aiChat, size: iconSize),
           ),
         ),
         SizedBox(height: isCompact ? 10 : 14),
         Text(
           'Halo, aku Clarafin AI',
           textAlign: TextAlign.center,
-          style: aiActionTextStyle(
-            context,
-            isCompact ? 16.5 : 19,
-            FontWeight.w900,
-          ),
+          style: aiActionTextStyle(context, isCompact ? 16.5 : 19, FontWeight.w900),
         ),
         const SizedBox(height: 6),
         Text(
@@ -215,21 +206,23 @@ class _PromptChipButtonState extends State<_PromptChipButton> {
                   constraints: const BoxConstraints(minHeight: 44, minWidth: 44),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Icon(widget.item.icon, size: 18, color: NeoBrutalism.darkTeal),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            widget.item.label,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: aiActionTextStyle(context, 12, FontWeight.w800)
-                                .copyWith(height: 1.25),
+                    child: ExcludeSemantics(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Icon(widget.item.icon, size: 18, color: NeoBrutalism.darkTeal),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              widget.item.label,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: aiActionTextStyle(context, 12, FontWeight.w800)
+                                  .copyWith(height: 1.25),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
