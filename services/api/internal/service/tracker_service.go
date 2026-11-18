@@ -23,6 +23,8 @@ var (
 	ErrNotFound = errors.New("resource not found")
 	// ErrConflict indicates a state conflict such as FK restrict delete or duplicate draft confirmation.
 	ErrConflict = errors.New("resource state conflict")
+	// ErrInsufficientBalance indicates an expense or transfer would drive the source wallet balance negative.
+	ErrInsufficientBalance = errors.New("insufficient wallet balance")
 )
 
 var validWalletTypes = map[string]struct{}{
@@ -2299,6 +2301,9 @@ func (s *TrackerService) createTransactionInTx(
 		if err != nil {
 			return nil, mapBalanceUpdateErr("deduct source wallet balance", err)
 		}
+		if srcWallet.Balance < 0 && !isHistoricalSyncMutation(mutID) {
+			return nil, fmt.Errorf("%w: wallet balance %d cannot cover expense %d", ErrInsufficientBalance, srcWallet.Balance+input.Amount, input.Amount)
+		}
 	case "income":
 		srcWallet, err = q.UpdateWalletBalanceDelta(ctx, repository.UpdateWalletBalanceDeltaParams{
 			UserID: userID,
@@ -2316,6 +2321,9 @@ func (s *TrackerService) createTransactionInTx(
 		})
 		if err != nil {
 			return nil, mapBalanceUpdateErr("deduct transfer source wallet balance", err)
+		}
+		if srcWallet.Balance < 0 && !isHistoricalSyncMutation(mutID) {
+			return nil, fmt.Errorf("%w: wallet balance %d cannot cover transfer %d", ErrInsufficientBalance, srcWallet.Balance+input.Amount, input.Amount)
 		}
 		if input.DestinationWalletID != nil {
 			dstWallet, err := q.UpdateWalletBalanceDelta(ctx, repository.UpdateWalletBalanceDeltaParams{
@@ -2364,6 +2372,16 @@ func (s *TrackerService) createTransactionInTx(
 		WalletBalanceIDR: srcWallet.Balance,
 		DestBalanceIDR:   destBalance,
 	}, nil
+}
+
+// isHistoricalSyncMutation allows offline initial snapshot sync (sync_tx_* or sync:*)
+// to replay older transactions before wallet balances are reconciled.
+func isHistoricalSyncMutation(mutID *string) bool {
+	if mutID == nil {
+		return false
+	}
+	trimmed := strings.TrimSpace(*mutID)
+	return strings.HasPrefix(trimmed, "sync:") || strings.HasPrefix(trimmed, "sync_tx_")
 }
 
 func (s *TrackerService) buildReplayResult(

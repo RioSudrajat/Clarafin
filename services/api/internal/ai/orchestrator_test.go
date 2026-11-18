@@ -1091,6 +1091,159 @@ func TestOrchestrator_NumericAntiHallucinationValidator_ReconcilesAllCards(t *te
 			t.Fatalf("SpendingBreakdownTable not corrected to SQL output: %+v", res.Response.SpendingBreakdownTable)
 		}
 	})
+
+	t.Run("emits SpendingBreakdownTable deterministically for category cashflow", func(t *testing.T) {
+		llm := &mockLLMClient{
+			fn: func(_ context.Context, callIdx int, _ ai.GenerateRequest) (*ai.GenerateResponse, error) {
+				switch callIdx {
+				case 0:
+					return &ai.GenerateResponse{
+						FunctionCalls: []ai.ToolCall{
+							{ID: "cat", Name: "get_cashflow_summary", Args: map[string]any{"period": "this_month", "group_by": "category"}},
+						},
+					}, nil
+				case 1:
+					return &ai.GenerateResponse{Text: "done"}, nil
+				case 2:
+					resp := ai.AiStructuredResponse{
+						Narrative:       "Total pengeluaran bulan ini Rp 1.250.000.",
+						ThinkingSummary: []ai.ThinkingStep{{StepNumber: 1, Title: "Analisa kategori", Detail: "OK", Status: "completed"}},
+					}
+					b, _ := json.Marshal(resp)
+					return &ai.GenerateResponse{Text: string(b)}, nil
+				default:
+					return &ai.GenerateResponse{}, nil
+				}
+			},
+		}
+
+		financial := &stubFinancialProvider{
+			cashflowFn: func(_ context.Context, _ uuid.UUID, in ai.CashflowQueryInput) (*ai.CashflowSummaryOutput, error) {
+				return &ai.CashflowSummaryOutput{
+					Period:           in.Period,
+					PeriodLabel:      "November 2026",
+					GroupBy:          "category",
+					TotalExpenseIDR:  1250000,
+					ExpenseCount:     5,
+					TransactionCount: 6,
+					SourceWallets:    []string{"BCA", "GoPay"},
+					CategoriesUsed:   []string{"Food & Beverage", "Transportation"},
+					CategoryRows: []ai.CategoryBreakdownRow{
+						{TxType: "income", Category: "Income • Salary", TxCount: 1, TotalAmount: 8000000, SharePct: 100},
+						{TxType: "expense", Category: "Food & Beverage", TxCount: 3, TotalAmount: 850000, SharePct: 68},
+						{TxType: "expense", Category: "Transportation", TxCount: 2, TotalAmount: 400000, SharePct: 32},
+					},
+				}, nil
+			},
+		}
+
+		orch := ai.NewOrchestrator(ai.OrchestratorConfig{
+			Model:     "gemini-2.5-flash",
+			LLM:       llm,
+			Quota:     &mockQuotaManager{status: service.QuotaStatus{PlanType: "free", QuotaTotal: 40, QuotaRemaining: 40}},
+			Financial: financial,
+			Actions:   &stubActionProvider{},
+			Matching:  &stubMatchingProvider{},
+		})
+
+		res, err := orch.ChatStream(context.Background(), userID, ai.ChatRequest{
+			ClientRequestID: "req_cat_table",
+			Message:         "Berapa pengeluaran bulan ini?",
+			SurfaceMode:     "full_screen",
+		}, func(ai.SSEEvent) error { return nil })
+		if err != nil {
+			t.Fatalf("ChatStream error: %v", err)
+		}
+		tbl := res.Response.SpendingBreakdownTable
+		if tbl == nil {
+			t.Fatalf("expected SpendingBreakdownTable for category cashflow, got nil")
+		}
+		if tbl.Title != "Rincian Pengeluaran per Kategori (November 2026)" {
+			t.Fatalf("unexpected title: %q", tbl.Title)
+		}
+		if tbl.TotalAmountIDR != 1250000 || tbl.TransactionCount != 5 || len(tbl.Rows) != 2 {
+			t.Fatalf("unexpected table summary: %+v", tbl)
+		}
+		if tbl.Rows[0].Merchant != "Food & Beverage" || tbl.Rows[0].TotalAmount != 850000 || tbl.Rows[1].Merchant != "Transportation" {
+			t.Fatalf("unexpected category rows: %+v", tbl.Rows)
+		}
+	})
+
+	t.Run("emits SpendingBreakdownTable deterministically for wallet cashflow", func(t *testing.T) {
+		llm := &mockLLMClient{
+			fn: func(_ context.Context, callIdx int, _ ai.GenerateRequest) (*ai.GenerateResponse, error) {
+				switch callIdx {
+				case 0:
+					return &ai.GenerateResponse{
+						FunctionCalls: []ai.ToolCall{
+							{ID: "wal", Name: "get_cashflow_summary", Args: map[string]any{"period": "this_month", "group_by": "wallet"}},
+						},
+					}, nil
+				case 1:
+					return &ai.GenerateResponse{Text: "done"}, nil
+				case 2:
+					resp := ai.AiStructuredResponse{
+						Narrative:       "Total pengeluaran bulan ini Rp 900.000.",
+						ThinkingSummary: []ai.ThinkingStep{{StepNumber: 1, Title: "Analisa dompet", Detail: "OK", Status: "completed"}},
+					}
+					b, _ := json.Marshal(resp)
+					return &ai.GenerateResponse{Text: string(b)}, nil
+				default:
+					return &ai.GenerateResponse{}, nil
+				}
+			},
+		}
+
+		financial := &stubFinancialProvider{
+			cashflowFn: func(_ context.Context, _ uuid.UUID, in ai.CashflowQueryInput) (*ai.CashflowSummaryOutput, error) {
+				return &ai.CashflowSummaryOutput{
+					Period:           in.Period,
+					PeriodLabel:      "November 2026",
+					GroupBy:          "wallet",
+					TotalExpenseIDR:  900000,
+					ExpenseCount:     3,
+					TransactionCount: 3,
+					SourceWallets:    []string{"BCA", "GoPay"},
+					CategoriesUsed:   []string{"Food & Beverage"},
+					WalletRows: []ai.WalletBreakdownRow{
+						{WalletName: "GoPay", TotalExpenseIDR: 600000, TxCount: 2},
+						{WalletName: "BCA", TotalExpenseIDR: 300000, TxCount: 1},
+					},
+				}, nil
+			},
+		}
+
+		orch := ai.NewOrchestrator(ai.OrchestratorConfig{
+			Model:     "gemini-2.5-flash",
+			LLM:       llm,
+			Quota:     &mockQuotaManager{status: service.QuotaStatus{PlanType: "free", QuotaTotal: 40, QuotaRemaining: 40}},
+			Financial: financial,
+			Actions:   &stubActionProvider{},
+			Matching:  &stubMatchingProvider{},
+		})
+
+		res, err := orch.ChatStream(context.Background(), userID, ai.ChatRequest{
+			ClientRequestID: "req_wallet_table",
+			Message:         "Pengeluaran per dompet bulan ini berapa?",
+			SurfaceMode:     "full_screen",
+		}, func(ai.SSEEvent) error { return nil })
+		if err != nil {
+			t.Fatalf("ChatStream error: %v", err)
+		}
+		tbl := res.Response.SpendingBreakdownTable
+		if tbl == nil {
+			t.Fatalf("expected SpendingBreakdownTable for wallet cashflow, got nil")
+		}
+		if tbl.Title != "Rincian Pengeluaran per Dompet (November 2026)" {
+			t.Fatalf("unexpected title: %q", tbl.Title)
+		}
+		if tbl.TotalAmountIDR != 900000 || tbl.TransactionCount != 3 || len(tbl.Rows) != 2 {
+			t.Fatalf("unexpected wallet table summary: %+v", tbl)
+		}
+		if tbl.Rows[0].Merchant != "GoPay" || tbl.Rows[0].TotalAmount != 600000 {
+			t.Fatalf("unexpected wallet rows: %+v", tbl.Rows)
+		}
+	})
 }
 
 func TestOrchestrator_MultipleCheckAndPrepareCalls_AndDecimalIDRAndPlanningBudget(t *testing.T) {

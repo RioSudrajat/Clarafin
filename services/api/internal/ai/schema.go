@@ -612,7 +612,7 @@ func ValidateAndReconcileStructuredResponse(resp *AiStructuredResponse, bundle *
 		corrections = append(corrections, "stripped ungrounded money_flow_card")
 	}
 
-	// 3. Reconcile SpendingBreakdownTable against SQL merchant output.
+	// 3. Reconcile SpendingBreakdownTable against SQL merchant, category, or wallet output.
 	if bundle.MerchantCashflow != nil {
 		customTitle := ""
 		if resp.SpendingBreakdownTable != nil {
@@ -623,6 +623,26 @@ func ValidateAndReconcileStructuredResponse(resp *AiStructuredResponse, bundle *
 			corrections = append(corrections, "reconciled spending_breakdown_table from Pass 1 SQL summary")
 		}
 		resp.SpendingBreakdownTable = expected
+	} else if bundle.FlowCashflow == nil && (bundle.CategoryCashflow != nil || bundle.WalletCashflow != nil) {
+		customTitle := ""
+		if resp.SpendingBreakdownTable != nil {
+			customTitle = strings.TrimSpace(sanitizeNoEmDash(resp.SpendingBreakdownTable.Title))
+		}
+		var expected *SpendingBreakdownTablePayload
+		if bundle.CategoryCashflow != nil {
+			expected = buildCategorySpendingBreakdownTable(bundle.CategoryCashflow, customTitle)
+		} else if bundle.WalletCashflow != nil {
+			expected = buildWalletSpendingBreakdownTable(bundle.WalletCashflow, customTitle)
+		}
+		if expected != nil {
+			if !spendingTablesEqual(resp.SpendingBreakdownTable, expected) {
+				corrections = append(corrections, "reconciled spending_breakdown_table from Pass 1 SQL summary")
+			}
+			resp.SpendingBreakdownTable = expected
+		} else if resp.SpendingBreakdownTable != nil {
+			resp.SpendingBreakdownTable = nil
+			corrections = append(corrections, "stripped ungrounded spending_breakdown_table")
+		}
 	} else if resp.SpendingBreakdownTable != nil {
 		resp.SpendingBreakdownTable = nil
 		corrections = append(corrections, "stripped ungrounded spending_breakdown_table")
@@ -954,6 +974,100 @@ func buildSpendingBreakdownTable(cf *CashflowSummaryOutput, customTitle string) 
 		Rows:             append([]MerchantBreakdownRow(nil), cf.MerchantRows...),
 		SourceWallets:    append([]string(nil), cf.SourceWallets...),
 		CategoriesUsed:   append([]string(nil), cf.CategoriesUsed...),
+	}
+}
+
+func buildCategorySpendingBreakdownTable(cf *CashflowSummaryOutput, customTitle string) *SpendingBreakdownTablePayload {
+	if cf == nil || (len(cf.CategoryRows) == 0 && cf.TotalExpenseIDR <= 0) {
+		return nil
+	}
+	sourceWallets := nonNilStrings(cf.SourceWallets)
+	categoriesUsed := nonNilStrings(cf.CategoriesUsed)
+	rows := make([]MerchantBreakdownRow, 0, len(cf.CategoryRows))
+	for _, r := range cf.CategoryRows {
+		if r.TxType != "expense" {
+			continue
+		}
+		rows = append(rows, MerchantBreakdownRow{
+			Merchant:    r.Category,
+			TxCount:     r.TxCount,
+			TotalAmount: r.TotalAmount,
+			WalletNames: append([]string{}, sourceWallets...),
+			Categories:  []string{r.Category},
+		})
+	}
+	if len(rows) == 0 {
+		return nil
+	}
+	title := customTitle
+	if title == "" {
+		if cf.PeriodLabel != "" {
+			title = fmt.Sprintf("Rincian Pengeluaran per Kategori (%s)", cf.PeriodLabel)
+		} else {
+			title = "Rincian Pengeluaran per Kategori"
+		}
+	}
+	txCount := cf.ExpenseCount
+	if txCount == 0 {
+		txCount = cf.TransactionCount
+	}
+	return &SpendingBreakdownTablePayload{
+		Title:            title,
+		Period:           cf.Period,
+		PeriodLabel:      cf.PeriodLabel,
+		KeywordFilter:    cf.KeywordFilter,
+		TotalAmountIDR:   cf.TotalExpenseIDR,
+		TransactionCount: txCount,
+		Rows:             rows,
+		SourceWallets:    sourceWallets,
+		CategoriesUsed:   categoriesUsed,
+	}
+}
+
+func buildWalletSpendingBreakdownTable(cf *CashflowSummaryOutput, customTitle string) *SpendingBreakdownTablePayload {
+	if cf == nil || (len(cf.WalletRows) == 0 && cf.TotalExpenseIDR <= 0) {
+		return nil
+	}
+	sourceWallets := nonNilStrings(cf.SourceWallets)
+	categoriesUsed := nonNilStrings(cf.CategoriesUsed)
+	rows := make([]MerchantBreakdownRow, 0, len(cf.WalletRows))
+	for _, r := range cf.WalletRows {
+		if r.TotalExpenseIDR <= 0 {
+			continue
+		}
+		rows = append(rows, MerchantBreakdownRow{
+			Merchant:    r.WalletName,
+			TxCount:     r.TxCount,
+			TotalAmount: r.TotalExpenseIDR,
+			WalletNames: []string{r.WalletName},
+			Categories:  append([]string{}, categoriesUsed...),
+		})
+	}
+	if len(rows) == 0 {
+		return nil
+	}
+	title := customTitle
+	if title == "" {
+		if cf.PeriodLabel != "" {
+			title = fmt.Sprintf("Rincian Pengeluaran per Dompet (%s)", cf.PeriodLabel)
+		} else {
+			title = "Rincian Pengeluaran per Dompet"
+		}
+	}
+	txCount := cf.ExpenseCount
+	if txCount == 0 {
+		txCount = cf.TransactionCount
+	}
+	return &SpendingBreakdownTablePayload{
+		Title:            title,
+		Period:           cf.Period,
+		PeriodLabel:      cf.PeriodLabel,
+		KeywordFilter:    cf.KeywordFilter,
+		TotalAmountIDR:   cf.TotalExpenseIDR,
+		TransactionCount: txCount,
+		Rows:             rows,
+		SourceWallets:    sourceWallets,
+		CategoriesUsed:   categoriesUsed,
 	}
 }
 

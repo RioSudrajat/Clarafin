@@ -768,6 +768,8 @@ func decodeStrictJSON(w http.ResponseWriter, r *http.Request, reqID string, allo
 
 func writeTrackerServiceError(w http.ResponseWriter, reqID string, err error) {
 	switch {
+	case errors.Is(err, service.ErrInsufficientBalance):
+		domain.WriteError(w, http.StatusBadRequest, domain.ErrCodeInsufficientBalance, "Saldo dompet tidak mencukupi untuk transaksi ini.", reqID)
 	case errors.Is(err, service.ErrInvalidInput), errors.Is(err, service.ErrInvalidQuotaRequest):
 		domain.WriteError(w, http.StatusBadRequest, domain.ErrCodeInvalidRequest, "Invalid request parameters.", reqID)
 	case errors.Is(err, service.ErrNotFound), errors.Is(err, service.ErrUserNotFound):

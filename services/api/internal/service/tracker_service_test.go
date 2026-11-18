@@ -629,3 +629,99 @@ func TestTrackerService_TargetGoalIDValidation(t *testing.T) {
 		t.Fatalf("expected valid transfer with target_goal_id to succeed, got %v", err)
 	}
 }
+
+func TestTrackerService_PreventNegativeWalletBalance(t *testing.T) {
+	store, ctx := openQuotaTestStore(t)
+	user := createTempTrackerUser(t, ctx, store, "neg-bal")
+	svc := service.NewTrackerService(store)
+
+	gopay, err := svc.CreateWallet(ctx, user.ID, service.CreateWalletInput{
+		Name: "GoPay", Type: "ewallet", Balance: 50000,
+	})
+	if err != nil {
+		t.Fatalf("CreateWallet gopay: %v", err)
+	}
+	bca, err := svc.CreateWallet(ctx, user.ID, service.CreateWalletInput{
+		Name: "BCA", Type: "bank", Balance: 100000,
+	})
+	if err != nil {
+		t.Fatalf("CreateWallet bca: %v", err)
+	}
+
+	// 1. Expense exceeding balance must fail with ErrInsufficientBalance and roll back.
+	if _, err := svc.CreateTransaction(ctx, user.ID, service.CreateTransactionInput{
+		WalletID:         gopay.ID,
+		Type:             "expense",
+		Category:         "Food & Beverage",
+		Amount:           75000,
+		Title:            "Overdraft Lunch",
+		Source:           "manual",
+		ClientMutationID: svcStrPtr("exp-over-1"),
+	}); !errors.Is(err, service.ErrInsufficientBalance) {
+		t.Fatalf("expected ErrInsufficientBalance on expense, got %v", err)
+	}
+	gopayCheck, err := store.GetWalletByID(ctx, repository.GetWalletByIDParams{UserID: user.ID, ID: gopay.ID})
+	if err != nil || gopayCheck.Balance != 50000 {
+		t.Fatalf("expected gopay balance unchanged at 50000, got (%+v, %v)", gopayCheck, err)
+	}
+
+	// 2. Transfer exceeding source balance must fail with ErrInsufficientBalance and leave both wallets unchanged.
+	if _, err := svc.CreateTransaction(ctx, user.ID, service.CreateTransactionInput{
+		WalletID:            gopay.ID,
+		DestinationWalletID: &bca.ID,
+		Type:                "transfer",
+		Category:            "Transfer",
+		Amount:              60000,
+		Title:               "Overdraft Transfer",
+		Source:              "manual",
+		ClientMutationID:    svcStrPtr("trf-over-1"),
+	}); !errors.Is(err, service.ErrInsufficientBalance) {
+		t.Fatalf("expected ErrInsufficientBalance on transfer, got %v", err)
+	}
+	gopayCheck, _ = store.GetWalletByID(ctx, repository.GetWalletByIDParams{UserID: user.ID, ID: gopay.ID})
+	bcaCheck, _ := store.GetWalletByID(ctx, repository.GetWalletByIDParams{UserID: user.ID, ID: bca.ID})
+	if gopayCheck.Balance != 50000 || bcaCheck.Balance != 100000 {
+		t.Fatalf("expected balances unchanged (50000, 100000), got (%d, %d)", gopayCheck.Balance, bcaCheck.Balance)
+	}
+
+	// 3. ConfirmAIDraft exceeding wallet balance must fail with ErrInsufficientBalance and keep draft pending_review.
+	draft, err := store.CreateAIDraft(ctx, repository.CreateAIDraftParams{
+		UserID:     user.ID,
+		WalletID:   &gopay.ID,
+		Type:       "expense",
+		Category:   "Shopping",
+		Amount:     80000,
+		Title:      "Overdraft Draft",
+		Source:     "ai_text",
+		OccurredAt: time.Now(),
+	})
+	if err != nil {
+		t.Fatalf("CreateAIDraft: %v", err)
+	}
+	if _, err := svc.ConfirmAIDraft(ctx, user.ID, draft.ID, service.ConfirmAIDraftInput{
+		ClientMutationID: svcStrPtr("draft-over-1"),
+	}); !errors.Is(err, service.ErrInsufficientBalance) {
+		t.Fatalf("expected ErrInsufficientBalance on ConfirmAIDraft, got %v", err)
+	}
+	draftCheck, err := store.GetAIDraftByID(ctx, repository.GetAIDraftByIDParams{UserID: user.ID, ID: draft.ID})
+	if err != nil || draftCheck.Status != "pending_review" {
+		t.Fatalf("expected draft to remain pending_review after rollback, got (%+v, %v)", draftCheck, err)
+	}
+	gopayCheck, _ = store.GetWalletByID(ctx, repository.GetWalletByIDParams{UserID: user.ID, ID: gopay.ID})
+	if gopayCheck.Balance != 50000 {
+		t.Fatalf("expected gopay balance unchanged at 50000 after draft rollback, got %d", gopayCheck.Balance)
+	}
+
+	// 4. Historical snapshot sync (sync_tx_ or sync:) is permitted to replay before balance reconciliation.
+	if _, err := svc.CreateTransaction(ctx, user.ID, service.CreateTransactionInput{
+		WalletID:         gopay.ID,
+		Type:             "expense",
+		Category:         "Food & Beverage",
+		Amount:           75000,
+		Title:            "Historical Sync Expense",
+		Source:           "manual",
+		ClientMutationID: svcStrPtr("sync_tx_hist-1"),
+	}); err != nil {
+		t.Fatalf("expected historical sync_tx_ mutation to succeed, got %v", err)
+	}
+}

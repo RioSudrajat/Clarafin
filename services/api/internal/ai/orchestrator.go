@@ -1292,7 +1292,7 @@ func computePass2ThinkingBudget(surfaceMode string, bundle *Pass1ToolBundle) int
 		bundle.GoalDraft != nil ||
 		bundle.BudgetDraft != nil ||
 		bundle.BillDraft != nil ||
-		(surfaceMode == "full_screen" && (bundle.MerchantCashflow != nil || bundle.BudgetBills != nil)) {
+		(surfaceMode == "full_screen" && (bundle.MerchantCashflow != nil || bundle.CategoryCashflow != nil || bundle.WalletCashflow != nil || bundle.BudgetBills != nil)) {
 		return 768
 	}
 	return 128

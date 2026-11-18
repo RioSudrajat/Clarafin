@@ -8,14 +8,15 @@ import (
 
 // Canonical API error codes shared across handlers and middleware.
 const (
-	ErrCodeUnauthorized   = "UNAUTHORIZED"
-	ErrCodeForbidden      = "FORBIDDEN"
-	ErrCodeNotFound       = "NOT_FOUND"
-	ErrCodeConflict       = "CONFLICT"
-	ErrCodeInvalidRequest = "INVALID_REQUEST"
-	ErrCodeRateLimited    = "RATE_LIMITED"
-	ErrCodeQuotaExceeded  = "QUOTA_EXCEEDED"
-	ErrCodeInternalError  = "INTERNAL_ERROR"
+	ErrCodeUnauthorized        = "UNAUTHORIZED"
+	ErrCodeForbidden           = "FORBIDDEN"
+	ErrCodeNotFound            = "NOT_FOUND"
+	ErrCodeConflict            = "CONFLICT"
+	ErrCodeInvalidRequest      = "INVALID_REQUEST"
+	ErrCodeInsufficientBalance = "INSUFFICIENT_BALANCE"
+	ErrCodeRateLimited         = "RATE_LIMITED"
+	ErrCodeQuotaExceeded       = "QUOTA_EXCEEDED"
+	ErrCodeInternalError       = "INTERNAL_ERROR"
 )
 
 // Meta carries per-request metadata returned in standard success envelopes.
@@ -53,7 +54,7 @@ func HTTPStatusForErrorCode(code string) int {
 		return http.StatusNotFound
 	case ErrCodeConflict:
 		return http.StatusConflict
-	case ErrCodeInvalidRequest:
+	case ErrCodeInvalidRequest, ErrCodeInsufficientBalance:
 		return http.StatusBadRequest
 	case ErrCodeRateLimited:
 		return http.StatusTooManyRequests

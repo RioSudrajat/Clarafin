@@ -223,6 +223,20 @@ func TestTrackerHandler_EndToEndCRUDIdempotencyAndConflictMapping(t *testing.T) 
 		t.Fatalf("expected 400 for same-wallet transfer, got %d", recBadTrf.Code)
 	}
 
+	// Expense exceeding wallet balance returns 400 INSUFFICIENT_BALANCE.
+	overdraftExpense := fmt.Sprintf(`{"wallet_id":"%s","type":"expense","category":"Shopping","amount":9999999,"title":"Overdraft","source":"manual","client_mutation_id":"handler-over-1"}`, walletA1.ID)
+	recOverdraft := doTrackerReq(r, userA.ID, http.MethodPost, "/v1/transactions", overdraftExpense)
+	if recOverdraft.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 for overdraft expense, got %d (%s)", recOverdraft.Code, recOverdraft.Body.String())
+	}
+	var overdraftEnv struct {
+		Error domain.ErrorDetail `json:"error"`
+	}
+	_ = json.Unmarshal(recOverdraft.Body.Bytes(), &overdraftEnv)
+	if overdraftEnv.Error.Code != domain.ErrCodeInsufficientBalance {
+		t.Fatalf("expected error code INSUFFICIENT_BALANCE, got %q", overdraftEnv.Error.Code)
+	}
+
 	// Deleting wallet referenced by transaction returns 409 CONFLICT.
 	recDelUsed := doTrackerReq(r, userA.ID, http.MethodDelete, "/v1/wallets/"+walletA1.ID.String(), "")
 	if recDelUsed.Code != http.StatusConflict {
