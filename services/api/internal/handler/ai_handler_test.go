@@ -10,6 +10,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
@@ -221,6 +222,12 @@ func TestAIHandler_Chat_QuotaExceededReturns402_AndRateLimitReturns429(t *testin
 		user := createTempHandlerUser(t, ctx, store, "ai-rate")
 
 		redisURL := "redis://redis:6379/0"
+		for _, key := range []string{"TEST_REDIS_URL", "DOCKER_REDIS_URL"} {
+			if raw := strings.TrimSpace(os.Getenv(key)); raw != "" {
+				redisURL = raw
+				break
+			}
+		}
 		opts, err := redis.ParseURL(redisURL)
 		if err != nil {
 			t.Fatalf("parse redis url: %v", err)
