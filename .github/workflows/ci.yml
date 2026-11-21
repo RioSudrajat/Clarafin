@@ -1,0 +1,101 @@
+name: Clarafin CI
+
+on:
+  push:
+    branches:
+      - main
+      - production
+  pull_request:
+    branches:
+      - main
+      - production
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  api-build-vet:
+    name: api-build-vet
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: services/api/go.mod
+          cache-dependency-path: services/api/go.sum
+      - run: go vet ./...
+      - run: go build ./...
+
+  api-test:
+    name: api-test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/api
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: clarafin
+          POSTGRES_PASSWORD: clarafin_dev_password
+          POSTGRES_DB: clarafin
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U clarafin -d clarafin"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: clarafin
+      POSTGRES_PASSWORD: clarafin_dev_password
+      POSTGRES_DB: clarafin
+      TEST_DATABASE_URL: postgresql://clarafin:clarafin_dev_password@localhost:5432/clarafin?sslmode=disable
+      TEST_REDIS_URL: redis://localhost:6379/0
+      DOCKER_REDIS_URL: redis://localhost:6379/0
+      GEMINI_API_KEY: ""
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: services/api/go.mod
+          cache-dependency-path: services/api/go.sum
+      - name: Verify migrations and seed schema
+        run: go test -count=1 ./db/migrations
+      - name: Run Go API unit, integration, and offline eval tests
+        run: go test -p 1 -count=1 ./internal/...
+
+  mobile-check-test:
+    name: mobile-check-test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.50.0"
+          channel: "stable"
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze --no-fatal-infos
+      - run: flutter test

@@ -1,0 +1,59 @@
+name: Bug Report
+description: Report broken behavior, regressions, or failing flows with deterministic reproduction steps.
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: Clear, concise description of the bug.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction Steps
+      description: Exact steps to reproduce locally, on Staging (`main`), or on Production (`production`).
+      value: |
+        1. Open / send request to ...
+        2. Perform ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected_actual
+    attributes:
+      label: Expected vs Actual Behavior
+      description: What should happen vs what actually happens?
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - apps/mobile
+        - services/api
+        - Fullstack (Mobile + API)
+        - Infra / CI / Auth
+    validations:
+      required: true
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options:
+        - Blocker (breaks login / core flow / build)
+        - High (major feature degraded)
+        - Medium (workaround exists)
+        - Low (polish / minor UI)
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Logs, Stack Traces, or Screenshots
+      description: Paste relevant API/Flutter errors (redact JWTs, API keys, and secrets) or attach screenshots.
+    validations:
+      required: false

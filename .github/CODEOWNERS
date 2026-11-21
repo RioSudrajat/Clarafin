@@ -1,0 +1,22 @@
+# Default fallback (both co-owners prevent self-approval deadlocks in a 2-person team)
+* @RioSudrajat @Fatihmaull
+
+# AI & team collaboration governance
+/AGENTS.md @RioSudrajat @Fatihmaull
+/GEMINI.md @RioSudrajat @Fatihmaull
+/CONTRIBUTING.md @RioSudrajat @Fatihmaull
+/.github/ @RioSudrajat @Fatihmaull
+/scripts/ @RioSudrajat @Fatihmaull
+/docs/ @RioSudrajat @Fatihmaull
+
+# Backend Go API, SQL migrations & sqlc generated layer
+/services/api/ @RioSudrajat @Fatihmaull
+/services/api/db/migrations/ @RioSudrajat @Fatihmaull
+/services/api/db/queries/ @RioSudrajat @Fatihmaull
+/services/api/sqlc.yaml @RioSudrajat @Fatihmaull
+
+# Mobile Flutter app & shared routing
+/apps/mobile/ @RioSudrajat @Fatihmaull
+/apps/mobile/lib/router/ @RioSudrajat @Fatihmaull
+/apps/mobile/pubspec.yaml @RioSudrajat @Fatihmaull
+/apps/mobile/pubspec.lock @RioSudrajat @Fatihmaull

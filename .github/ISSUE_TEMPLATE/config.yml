@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Team Contributing & Git Workflow Guide
+    url: https://github.com/RioSudrajat/Clarafin/blob/main/CONTRIBUTING.md
+    about: Read local setup, branching rules (main = staging, production = prod), and conflict-prevention rules.
+  - name: Clarafin PRD & Architecture Docs
+    url: https://github.com/RioSudrajat/Clarafin/blob/main/docs/PRD.md
+    about: Check product scope, architecture, and technical specifications.
+  - name: Clarafin Kanban Board (Project #2)
+    url: https://github.com/users/RioSudrajat/projects/2
+    about: Track Backlog, Ready, In Progress, In Review, and Done tasks.

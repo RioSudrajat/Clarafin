@@ -1,0 +1,46 @@
+name: Kanban Progress Automation
+
+on:
+  issues:
+    types: [opened, reopened, closed]
+  pull_request_target:
+    types: [opened, reopened, ready_for_review, converted_to_draft, closed]
+
+permissions:
+  contents: read
+
+jobs:
+  sync-kanban:
+    name: sync-project-2
+    if: >-
+      (github.event_name == 'issues' &&
+        contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association)) ||
+      (github.event_name == 'pull_request_target' &&
+        github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check project token availability
+        id: auth
+        env:
+          GH_PROJECT_PAT: ${{ secrets.GH_PROJECT_PAT }}
+        run: |
+          if [ -z "$GH_PROJECT_PAT" ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping automated sync: GH_PROJECT_PAT secret is not configured. Enable built-in Project #2 workflows or add GH_PROJECT_PAT with 'project' scope."
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.auth.outputs.enabled == 'true'
+
+      - uses: actions/setup-node@v4
+        if: steps.auth.outputs.enabled == 'true'
+        with:
+          node-version: "22"
+
+      - name: Sync Kanban status on Project #2
+        if: steps.auth.outputs.enabled == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GH_PROJECT_PAT }}
+        run: node scripts/kanban.mjs sync-event

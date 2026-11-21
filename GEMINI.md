@@ -65,6 +65,17 @@ Plugin ini berisi 15 skill untuk disiplin engineering. **Kapan digunakan & apa y
 
 ---
 
+## 4. Team Collaboration & Git Workflow
+
+Panduan lengkap kolaborasi tim (`@RioSudrajat` & `@Fatihmaull`) ada di [`CONTRIBUTING.md`](CONTRIBUTING.md). Semua agen AI wajib mematuhi aturan kerja Git berikut:
+- **Branch model:** `main` = **Staging**, `production` = **Production**. Jangan pernah commit atau push langsung ke `main` atau `production`.
+- **Feature branch:** Selalu buat branch baru dari `origin/main` terbaru dengan format `feat|fix|ops|chore/<issue>-<short-slug>`.
+- **Aturan PR:** Tidak ada batas ketat jumlah baris (tidak ada cap 400 baris), selama PR fokus dalam **satu scope / satu fitur / satu Issue (`Closes #<id>`)**, **bebas konflik** terhadap `origin/main`, dan sudah terverifikasi (`go vet ./...`, `go build ./...`, `go test`, `flutter analyze --no-fatal-infos`, `flutter test`).
+- **Area rawan konflik:** Rebase ke `origin/main` terbaru sebelum membuat migrasi berurutan di `services/api/db/migrations/` (`00000X_*.sql`) atau menjalankan `sqlc generate`, serta hindari modifikasi file routing/lockfile di luar scope task.
+- **Keamanan:** Jangan pernah memasukkan secret, token, atau `services/api/.env` ke git, Issue, atau PR.
+
+---
+
 <!-- antislop:start -->
 ## antislop
 For UI, copy, people, mobile layout, or code comments work, read `.agents/skills/antislop/SKILL.md` (core) and then the skill for the task:

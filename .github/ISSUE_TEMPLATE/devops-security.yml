@@ -1,0 +1,48 @@
+name: DevOps / Security Task
+description: Infrastructure, deployment, CI/CD, Supabase/Postgres, Redis, or security hardening work.
+title: "[Ops/Sec] "
+labels: ["area:devops", "area:security"]
+body:
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Environment
+      options:
+        - staging
+        - production
+        - ci
+        - both
+    validations:
+      required: true
+  - type: textarea
+    id: objective
+    attributes:
+      label: Objective & Scope
+      description: What infrastructure, CI, or security capability is being built, configured, or audited?
+    validations:
+      required: true
+  - type: textarea
+    id: checklist
+    attributes:
+      label: Security & Deployment Checklist
+      description: Cover RLS, Supabase JWT, CORS (`ALLOWED_ORIGINS`), rate limits, Docker healthchecks, and environment separation.
+      value: |
+        - [ ] Requirement 1
+        - [ ] Verified in target environment
+    validations:
+      required: true
+  - type: textarea
+    id: secrets
+    attributes:
+      label: Secret Names Needed (Names Only — NEVER Paste Secret Values)
+      description: List required GitHub Environment or host secret variable names. Hand off actual values out-of-band to @RioSudrajat (GitHub Custodian) — never post credentials in Issues, PRs, or git.
+      placeholder: "Example: DATABASE_URL, REDIS_URL, SUPABASE_JWT_SECRET, GEMINI_API_KEY (values sent out-of-band)"
+    validations:
+      required: false
+  - type: textarea
+    id: verification_rollback
+    attributes:
+      label: Verification & Rollback Plan
+      description: How will we verify health (/healthz, DB migrations, mobile connectivity) and roll back if needed?
+    validations:
+      required: true

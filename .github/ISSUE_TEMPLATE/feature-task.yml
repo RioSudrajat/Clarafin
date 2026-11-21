@@ -1,0 +1,76 @@
+name: Feature / Task Brief (AI-Ready)
+description: Delegate a scoped product feature or engineering task with clear acceptance criteria.
+title: "[Feat] "
+labels: ["type:feature", "ai-ready"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Write this brief so both the assigned engineer and their AI coding assistant share exact scope and acceptance criteria without guesswork.
+  - type: textarea
+    id: goal
+    attributes:
+      label: Product Goal & Why
+      description: What user or business outcome does this solve? Link docs/PRD.md or feature docs if relevant.
+      placeholder: "Example: Add recurring bill reminder toggle on Bill detail screen and persist schedule preference via /api/v1/bills."
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Target Area
+      description: Primary workspace touched by this task.
+      options:
+        - apps/mobile
+        - services/api
+        - Fullstack (Mobile + API)
+        - Docs / Design System
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - priority:p0
+        - priority:p1
+        - priority:p2
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: Acceptance Criteria
+      description: Concrete, testable checklist that defines "done".
+      value: |
+        - [ ] Criterion 1
+        - [ ] Criterion 2
+        - [ ] Relevant Go/Flutter tests added or updated and local checks pass
+    validations:
+      required: true
+  - type: textarea
+    id: target_files
+    attributes:
+      label: Target Files & API Contracts
+      description: Expected handlers, services, Flutter screens/providers, or API contracts to touch or reuse.
+      placeholder: "Example: services/api/internal/handler/..., apps/mobile/lib/features/..."
+    validations:
+      required: false
+  - type: textarea
+    id: out_of_scope
+    attributes:
+      label: Out of Scope
+      description: Explicitly list what NOT to change so parallel work stays conflict-free.
+      placeholder: "Example: Do not modify unrelated wallet screens or existing DB seed data."
+    validations:
+      required: true
+  - type: dropdown
+    id: db_migration
+    attributes:
+      label: Requires SQL Migration or sqlc Update?
+      description: Migrations under services/api/db/migrations/ are sequential (00000X_*.sql); rebase onto latest main first.
+      options:
+        - "No"
+        - "Yes — rebase onto latest main before adding 00000X_*.sql & regenerating sqlc"
+    validations:
+      required: true
