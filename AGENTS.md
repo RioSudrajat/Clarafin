@@ -38,6 +38,33 @@ Jika terjadi perbedaan arahan gaya antara skill umum dengan desain spesifik proy
 
 ---
 
+---
+
+## 3. Panduan Penggunaan Plugin & Skill Tambahan (`superpowers`, `hallmark`, `design-taste-frontend`)
+
+Selain skill inti Halofin di atas, agen memiliki akses ke plugin/skill berikut dan wajib mengikuti aturan penggunaannya:
+
+### A. `superpowers` (Engineering & Workflow Discipline — Global Plugin)
+Plugin ini berisi 15 skill untuk disiplin engineering. **Kapan digunakan & apa yang harus dilakukan agy:**
+- **Sebelum membuat fitur/komponen/perubahan perilaku baru**: Wajib aktifkan `brainstorming` terlebih dahulu untuk menyelaraskan desain & kebutuhan sebelum menulis kode.
+- **Untuk task multi-langkah**: Gunakan `writing-plans` sebelum menyentuh kode, lalu eksekusi dengan `executing-plans` (inline) atau `subagent-driven-development` (jika task independen bisa didelegasikan ke subagent).
+- **Saat implementasi fitur atau bugfix**: Terapkan `test-driven-development` (tulis test dulu) dan `systematic-debugging` saat menemui bug/test failure (cari root cause sebelum menebak fix).
+- **Paralelisme & Isolasi**: Gunakan `dispatching-parallel-agents` untuk 2+ task independen tanpa shared state, dan `using-git-worktrees` jika butuh workspace terisolasi.
+- **Verifikasi & Review**: Sebelum mengklaim selesai/lulus, wajib jalankan `verification-before-completion` (bukti command output nyata). Gunakan `requesting-code-review` / `receiving-code-review` untuk review teknis, dan `finishing-a-development-branch` saat integrasi branch.
+- **Best Practice**: Baca `SKILL.md` skill terkait sebelum bertindak; jangan pernah melewati fase perencanaan/verifikasi demi kecepatan.
+
+### B. `hallmark` (Web Design & New Pages — Global Skill)
+- **Kapan digunakan**: Saat user meminta membuat atau mendesain **halaman web / website baru dari nol** agar terlihat *designed*, bukan *generated*.
+- **Larangan**: **Jangan** gunakan `hallmark` pada desain/halaman yang sudah ada kecuali user menyebutnya secara eksplisit (misal: `/hallmark redesign <path>`).
+- **Best Practice**: Untuk UI mobile Flutter Halofin, tetap patuhi `apps/mobile/docs/DESIGN_SYSTEM.md` sebagai aturan tertinggi.
+
+### C. `design-taste-frontend` (`taste-skill` — Workspace Skill)
+- **Kapan digunakan**: Saat membangun, mendesain ulang, memoles, atau me-review **halaman web / landing page** (company, product, SaaS, AI, developer-tool, dll., baik HTML/CSS statis maupun React/Next.js/Vue/Svelte/Astro/Tailwind), atau saat user menyebut halaman terlihat generik/"AI-made".
+- **Apa yang harus dilakukan agy**: Baca `.agents/skills/design-taste-frontend/SKILL.md` sebelum mulai, terapkan standar anti-slop (copywriting natural, satu sistem visual, foto/UI produk nyata, micro-interaction tenang), dan jalankan finish gate/checker di browser nyata.
+- **Hierarki Konflik**: Jika digunakan di proyek Halofin, aturan `apps/mobile/docs/DESIGN_SYSTEM.md` tetap menjadi prioritas utama untuk identitas visual Halofin.
+
+---
+
 <!-- antislop:start -->
 ## antislop
 For UI, copy, people, mobile layout, or code comments work, read `.agents/skills/antislop/SKILL.md` (core) and then the skill for the task:
