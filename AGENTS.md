@@ -25,6 +25,7 @@ Semua skill kustom workspace tersimpan di dalam `.agents/skills/`. Agen harus me
 | **Pembuatan Brand Kit & Token Warna Baru** | `brandkit` | `minimalist-ui` |
 | **Stress-Testing Ide, Rencana, & Desain Arsitektur** | `grill-me`, `grilling` | `apps/mobile/docs/CODE_GUIDELINES.md` |
 | **Wawancara Arsitektur + ADR & Domain Glossary** | `grill-with-docs`, `domain-modeling` | `grilling`, `apps/mobile/docs/CODE_GUIDELINES.md` |
+| **Delegasi Tim, Issue, PR, & Kanban Board (`Project #2`)** | `team-delegation` | `CONTRIBUTING.md`, `scripts/kanban.mjs` |
 
 ---
 
@@ -70,6 +71,7 @@ Plugin ini berisi 15 skill untuk disiplin engineering. **Kapan digunakan & apa y
 Panduan lengkap kolaborasi tim (`@RioSudrajat` & `@Fatihmaull`) ada di [`CONTRIBUTING.md`](CONTRIBUTING.md). Semua agen AI wajib mematuhi aturan kerja Git berikut:
 - **Branch model:** `main` = **Staging**, `production` = **Production**. Jangan pernah commit atau push langsung ke `main` atau `production`.
 - **Feature branch:** Selalu buat branch baru dari `origin/main` terbaru dengan format `feat|fix|ops|chore/<issue>-<short-slug>`.
+- **Kanban sync otomatis:** Aktifkan skill `team-delegation` dan jalankan `node scripts/kanban.mjs` saat membuat Issue (`Ready`), memulai branch (`In Progress`), membuka PR (`In Review`), atau merge/menutup Issue (`Done`).
 - **Aturan PR:** Tidak ada batas ketat jumlah baris (tidak ada cap 400 baris), selama PR fokus dalam **satu scope / satu fitur / satu Issue (`Closes #<id>`)**, **bebas konflik** terhadap `origin/main`, dan sudah terverifikasi (`go vet ./...`, `go build ./...`, `go test`, `flutter analyze --no-fatal-infos`, `flutter test`).
 - **Area rawan konflik:** Rebase ke `origin/main` terbaru sebelum membuat migrasi berurutan di `services/api/db/migrations/` (`00000X_*.sql`) atau menjalankan `sqlc generate`, serta hindari modifikasi file routing/lockfile di luar scope task.
 - **Keamanan:** Jangan pernah memasukkan secret, token, atau `services/api/.env` ke git, Issue, atau PR.
