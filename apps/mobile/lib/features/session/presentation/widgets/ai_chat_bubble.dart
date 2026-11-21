@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/models/wallet_model.dart';
+import '../../../../core/theme/app_typography.dart';
 import '../../../../core/theme/neo_brutalism_decorations.dart';
 import '../../../home/presentation/widgets/notion_doodle_icons.dart';
 import '../../domain/models/ai_chat_models.dart';
@@ -96,7 +97,7 @@ class AiChatBubble extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
                     color: NeoBrutalism.lime,
                     borderRadius: const BorderRadius.only(
@@ -106,7 +107,16 @@ class AiChatBubble extends StatelessWidget {
                     border: NeoBrutalism.border(width: 2.0),
                     boxShadow: NeoBrutalism.shadow(yOffset: 2.0),
                   ),
-                  child: Text(message.text, style: aiActionTextStyle(context, 13.5, FontWeight.w700).copyWith(height: 1.4)),
+                  child: Text(
+                    message.text,
+                    textAlign: TextAlign.justify,
+                    style: AppTypography.chatBody(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.black,
+                      height: 1.48,
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(_formatTime(message.timestamp), style: aiActionTextStyle(context, 10.5, FontWeight.w600, const Color(0xFF4B5563))),
@@ -149,7 +159,7 @@ class AiChatBubble extends StatelessWidget {
                   ],
                   if (message.text.trim().isNotEmpty)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: const BorderRadius.only(

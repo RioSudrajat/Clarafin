@@ -133,7 +133,7 @@ void main() {
   });
 
   group('Task 5.5 Unified Clarafin AI Surface', () {
-    testWidgets('AiChatScreen renders Clarafin AI header, Online, [40/40], New Chat, and suggested prompts', (tester) async {
+    testWidgets('AiChatScreen renders Clarafin AI header without Online, [40/40], New Chat, and suggested prompts', (tester) async {
       final container = await _createSurfaceContainer();
 
       await tester.pumpWidget(
@@ -148,7 +148,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Clarafin AI'), findsWidgets);
-      expect(find.text('Online'), findsOneWidget);
+      expect(find.text('Online'), findsNothing);
       expect(find.text('40/40'), findsOneWidget);
       expect(find.byIcon(Icons.flash_on_rounded), findsOneWidget);
       expect(find.byKey(const Key('ai_chat_new_chat_btn')), findsOneWidget);
@@ -876,6 +876,94 @@ void main() {
           findsOneWidget,
         );
         expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets(
+      'AiChatInputBar hides Scan & Voice icons while typing and restores them when cleared',
+      (tester) async {
+        final container = await _createSurfaceContainer();
+
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: MaterialApp(
+              theme: AppTheme.lightTheme,
+              home: const AiChatScreen(),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(const Key('ai_input_scan_btn')), findsOneWidget);
+        expect(find.byKey(const Key('ai_input_voice_btn')), findsOneWidget);
+
+        await tester.enterText(
+          find.byKey(const Key('ai_input_text_field')),
+          'Cek saldo',
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(const Key('ai_input_scan_btn')), findsNothing);
+        expect(find.byKey(const Key('ai_input_voice_btn')), findsNothing);
+
+        await tester.enterText(
+          find.byKey(const Key('ai_input_text_field')),
+          '',
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(const Key('ai_input_scan_btn')), findsOneWidget);
+        expect(find.byKey(const Key('ai_input_voice_btn')), findsOneWidget);
+
+        await tester.pumpWidget(const SizedBox.shrink());
+        container.dispose();
+      },
+    );
+
+    testWidgets(
+      'AiFormattedNarrativeText splits dense long single-paragraph responses into readable paragraphs',
+      (tester) async {
+        const denseParagraph =
+            'Kenaikan suku bunga acuan memang berdampak pada pasar keuangan, di mana deposito atau SBN menawarkan imbal hasil lebih menarik. '
+            'Untuk profil investasi seimbang, strategi diversifikasi adalah kunci agar portofolio tetap stabil. '
+            'Kamu bisa membagi porsi ke Reksadana Pasar Uang dan Saham Blue Chip sesuai target jangka waktu.';
+
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: AppTheme.lightTheme,
+            home: Scaffold(
+              body: Padding(
+                padding: const EdgeInsets.all(12),
+                child: AiChatBubble(
+                  message: UnifiedAiChatMessage(
+                    id: 'ai-dense-1',
+                    sessionId: 'sess-1',
+                    isUser: false,
+                    text: denseParagraph,
+                    timestamp: DateTime(2026, 11, 20, 1, 16),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final narrativeFinder = find.byType(AiFormattedNarrativeText);
+        expect(narrativeFinder, findsOneWidget);
+        final richTexts = tester.widgetList<RichText>(
+          find.descendant(of: narrativeFinder, matching: find.byType(RichText)),
+        );
+        expect(richTexts.length, equals(2));
+        final widget = tester.widget<AiFormattedNarrativeText>(narrativeFinder);
+        expect(widget.textColor, equals(Colors.black));
+        final rootSpan = richTexts.first.text as TextSpan;
+        final effectiveSpan =
+            (rootSpan.children != null && rootSpan.children!.isNotEmpty)
+                ? rootSpan.children!.first as TextSpan
+                : rootSpan;
+        expect(effectiveSpan.style?.color, equals(Colors.black));
       },
     );
   });

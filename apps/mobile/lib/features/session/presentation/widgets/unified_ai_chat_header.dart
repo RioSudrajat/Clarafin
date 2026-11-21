@@ -37,89 +37,44 @@ class UnifiedAiChatHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textScale = MediaQuery.textScalerOf(context).scale(14.0) / 14.0;
     return Container(
       padding: const EdgeInsets.fromLTRB(8, 6, 6, 6),
       decoration: const BoxDecoration(
         color: Colors.white,
         border: Border(bottom: BorderSide(color: Colors.black, width: 2.0)),
       ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final useSingleRow = isFullScreen
-              ? (constraints.maxWidth >= 370 && textScale <= 1.1)
-              : (constraints.maxWidth >= 420 && textScale <= 1.05);
-          if (useSingleRow) {
-            return Row(
-              children: [
-                if (isFullScreen && onClose != null) ...[
-                  HeaderCircleButton(
-                    buttonKey: const Key('ai_chat_back_btn'),
-                    icon: Icons.arrow_back_rounded,
-                    semanticLabel: 'Kembali',
-                    tooltip: 'Kembali',
-                    onTap: onClose,
-                  ),
-                  const SizedBox(width: 2),
-                ],
-                _buildAvatar(),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text('Clarafin AI', maxLines: 1, overflow: TextOverflow.ellipsis, style: _style(context, 14.5, FontWeight.w900)),
-                      const SizedBox(height: 2),
-                      _buildOnlineIndicator(context),
-                    ],
-                  ),
+      child: Row(
+        children: [
+          if (isFullScreen && onClose != null) ...[
+            HeaderCircleButton(
+              buttonKey: const Key('ai_chat_back_btn'),
+              icon: Icons.arrow_back_rounded,
+              semanticLabel: 'Kembali',
+              tooltip: 'Kembali',
+              onTap: onClose,
+            ),
+            const SizedBox(width: 2),
+          ],
+          _buildAvatar(),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Clarafin AI',
+                  maxLines: 1,
+                  style: _style(context, 14.5, FontWeight.w900),
                 ),
-                const SizedBox(width: 4),
-                _buildQuotaBadge(context),
-                _buildActionButtons(),
-              ],
-            );
-          }
-
-          return Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  if (isFullScreen && onClose != null) ...[
-                    HeaderCircleButton(
-                      buttonKey: const Key('ai_chat_back_btn'),
-                      icon: Icons.arrow_back_rounded,
-                      semanticLabel: 'Kembali',
-                      tooltip: 'Kembali',
-                      onTap: onClose,
-                    ),
-                    const SizedBox(width: 2),
-                  ],
-                  _buildAvatar(),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Clarafin AI',
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: _style(context, 13.5, FontWeight.w900),
-                    ),
-                  ),
-                  _buildActionButtons(),
-                ],
               ),
-              Row(
-                children: [
-                  const SizedBox(width: 4),
-                  Expanded(child: _buildOnlineIndicator(context)),
-                  _buildQuotaBadge(context),
-                ],
-              ),
-            ],
-          );
-        },
+            ),
+          ),
+          const SizedBox(width: 4),
+          _buildQuotaBadge(context),
+          _buildActionButtons(),
+        ],
       ),
     );
   }
@@ -139,33 +94,6 @@ class UnifiedAiChatHeader extends StatelessWidget {
     );
   }
 
-  Widget _buildOnlineIndicator(BuildContext context) {
-    const greenInk = Color(0xFF15803D);
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(
-            color: greenInk,
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.black, width: 1.0),
-          ),
-        ),
-        const SizedBox(width: 5),
-        Flexible(
-          child: Text(
-            'Online',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: _style(context, 11.5, FontWeight.w800, color: greenInk),
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildQuotaBadge(BuildContext context) {
     return HeaderQuotaBadge(
       quotaText: quotaBadgeText,
@@ -181,7 +109,7 @@ class UnifiedAiChatHeader extends StatelessWidget {
       children: [
         HeaderCircleButton(
           buttonKey: const Key('ai_chat_new_chat_btn'),
-          icon: Icons.edit_outlined,
+          iconWidget: const GeminiNewChatIcon(),
           semanticLabel: 'Chat Baru',
           tooltip: 'Chat Baru',
           onTap: onNewChat,

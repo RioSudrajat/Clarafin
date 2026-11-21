@@ -4,7 +4,7 @@ import '../../../../core/theme/neo_brutalism_decorations.dart';
 import 'ai_action_card_primitives.dart';
 import 'ai_chat_input_buttons.dart';
 
-/// Card 2 Neo-Brutalist input dock shared across Quick Sheet and `/ai-chat`.
+/// Single-pill Neo-Brutalist input dock shared across Quick Sheet and `/ai-chat`.
 class AiChatInputBar extends StatefulWidget {
   final TextEditingController controller;
   final FocusNode focusNode;
@@ -60,28 +60,27 @@ class _AiChatInputBarState extends State<AiChatInputBar> {
 
   @override
   Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+    final animDuration =
+        reduceMotion ? Duration.zero : const Duration(milliseconds: 150);
+
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.fromLTRB(4, 3, 4, 3),
       decoration: NeoBrutalism.cardDecoration(
         backgroundColor: Colors.white,
-        borderRadius: 20,
-        shadowOffset: 4.0,
+        borderRadius: 28,
+        shadowOffset: 3.0,
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+      foregroundDecoration: _isInputFocused
+          ? BoxDecoration(
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(color: NeoBrutalism.darkTeal, width: 2.5),
+            )
+          : null,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFFF9FAFB),
-              borderRadius: BorderRadius.circular(12),
-              border: NeoBrutalism.border(width: 1.8),
-            ),
-            foregroundDecoration: _isInputFocused
-                ? BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: NeoBrutalism.darkTeal, width: 2.5),
-                  )
-                : null,
+          Expanded(
             child: TextField(
               key: const Key('ai_input_text_field'),
               controller: widget.controller,
@@ -92,16 +91,21 @@ class _AiChatInputBarState extends State<AiChatInputBar> {
               textInputAction: TextInputAction.send,
               maxLines: 3,
               minLines: 1,
-              style: aiActionTextStyle(context, 13.5, FontWeight.w700),
+              style: aiActionTextStyle(
+                context,
+                13.5,
+                FontWeight.w600,
+                Colors.black,
+              ),
               decoration: InputDecoration(
                 hintText: widget.isAiTyping
-                    ? 'Sedang memproses permintaan...'
+                    ? 'Sedang memproses...'
                     : 'Tanya Clarafin AI...',
                 hintStyle: aiActionTextStyle(
                   context,
-                  13,
-                  FontWeight.w600,
-                  const Color(0xFF6B7280),
+                  13.5,
+                  FontWeight.w500,
+                  const Color(0xFF9CA3AF),
                 ),
                 filled: false,
                 isDense: true,
@@ -110,10 +114,7 @@ class _AiChatInputBarState extends State<AiChatInputBar> {
                 focusedBorder: InputBorder.none,
                 errorBorder: InputBorder.none,
                 disabledBorder: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 12,
-                ),
+                contentPadding: const EdgeInsets.fromLTRB(14, 10, 4, 10),
               ),
               onSubmitted: (text) {
                 if (!widget.isAiTyping && text.trim().isNotEmpty) {
@@ -122,59 +123,56 @@ class _AiChatInputBarState extends State<AiChatInputBar> {
               },
             ),
           ),
-          const SizedBox(height: 10),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    if (widget.onOpenScan != null)
-                      AiInputTactileControl(
-                        buttonKey: const Key('ai_input_scan_btn'),
-                        icon: Icons.document_scanner_outlined,
-                        label: 'Scan',
-                        semanticLabel: 'Scan struk belanja',
-                        activeColor: Colors.white,
-                        borderWidth: 1.5,
-                        radius: 10,
-                        onTap: widget.isAiTyping ? null : widget.onOpenScan,
-                      ),
-                    if (widget.onOpenVoice != null)
-                      AiInputTactileControl(
-                        buttonKey: const Key('ai_input_voice_btn'),
-                        icon: Icons.mic_none_rounded,
-                        label: 'Bicara',
-                        semanticLabel: 'Input suara AI',
-                        activeColor: Colors.white,
-                        borderWidth: 1.5,
-                        radius: 10,
-                        onTap: widget.isAiTyping ? null : widget.onOpenVoice,
-                      ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              ValueListenableBuilder<TextEditingValue>(
-                valueListenable: widget.controller,
-                builder: (context, val, _) {
-                  final canSend = val.text.trim().isNotEmpty && !widget.isAiTyping;
-                  return AiInputTactileControl(
+          ValueListenableBuilder<TextEditingValue>(
+            valueListenable: widget.controller,
+            builder: (context, val, _) {
+              final hasTypedText = val.text.isNotEmpty;
+              final canSend =
+                  val.text.trim().isNotEmpty && !widget.isAiTyping;
+
+              return Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  AnimatedSize(
+                    duration: animDuration,
+                    curve: Curves.easeOutCubic,
+                    child: hasTypedText
+                        ? const SizedBox.shrink()
+                        : Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (widget.onOpenScan != null)
+                                AiInputInlineIconButton(
+                                  buttonKey: const Key('ai_input_scan_btn'),
+                                  icon: Icons.qr_code_scanner_rounded,
+                                  semanticLabel: 'Scan struk belanja',
+                                  tooltip: 'Scan',
+                                  onTap: widget.isAiTyping
+                                      ? null
+                                      : widget.onOpenScan,
+                                ),
+                              if (widget.onOpenVoice != null)
+                                AiInputInlineIconButton(
+                                  buttonKey: const Key('ai_input_voice_btn'),
+                                  icon: Icons.mic_none_rounded,
+                                  semanticLabel: 'Input suara AI',
+                                  tooltip: 'Bicara',
+                                  onTap: widget.isAiTyping
+                                      ? null
+                                      : widget.onOpenVoice,
+                                ),
+                            ],
+                          ),
+                  ),
+                  AiInputCircleSendButton(
                     buttonKey: const Key('ai_input_send_btn'),
-                    icon: Icons.arrow_upward_rounded,
-                    semanticLabel: 'Kirim pesan',
-                    activeColor: NeoBrutalism.lime,
-                    borderWidth: 2.0,
-                    radius: 12,
                     onTap: canSend
                         ? () => widget.onSendMessage(widget.controller.text)
                         : null,
-                  );
-                },
-              ),
-            ],
+                  ),
+                ],
+              );
+            },
           ),
         ],
       ),

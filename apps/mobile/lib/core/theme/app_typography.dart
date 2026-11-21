@@ -41,4 +41,19 @@ class AppTypography {
       letterSpacing: letterSpacing,
     );
   }
+
+  /// Readable humanist sans-serif for long-form AI & user chat bubbles.
+  static TextStyle chatBody({
+    double fontSize = 13.5,
+    FontWeight fontWeight = FontWeight.w500,
+    Color color = Colors.black,
+    double height = 1.5,
+  }) {
+    return GoogleFonts.ibmPlexSans(
+      fontSize: fontSize,
+      fontWeight: fontWeight,
+      color: color,
+      height: height,
+    );
+  }
 }

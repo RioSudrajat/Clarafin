@@ -87,7 +87,8 @@ class _HeaderQuotaBadgeState extends State<HeaderQuotaBadge> {
 /// Circular Neo-Brutalist header icon button with >= 44x44 hit target and focus ring.
 class HeaderCircleButton extends StatefulWidget {
   final Key buttonKey;
-  final IconData icon;
+  final IconData? icon;
+  final Widget? iconWidget;
   final String semanticLabel;
   final String tooltip;
   final VoidCallback? onTap;
@@ -95,11 +96,12 @@ class HeaderCircleButton extends StatefulWidget {
   const HeaderCircleButton({
     super.key,
     required this.buttonKey,
-    required this.icon,
+    this.icon,
+    this.iconWidget,
     required this.semanticLabel,
     required this.tooltip,
     required this.onTap,
-  });
+  }) : assert(icon != null || iconWidget != null);
 
   @override
   State<HeaderCircleButton> createState() => _HeaderCircleButtonState();
@@ -153,7 +155,10 @@ class _HeaderCircleButtonState extends State<HeaderCircleButton> {
                             )
                           : null,
                       child: ExcludeSemantics(
-                        child: Icon(widget.icon, size: 17, color: NeoBrutalism.dark),
+                        child: Center(
+                          child: widget.iconWidget ??
+                              Icon(widget.icon, size: 17, color: NeoBrutalism.dark),
+                        ),
                       ),
                     ),
                   ),
@@ -165,4 +170,68 @@ class _HeaderCircleButtonState extends State<HeaderCircleButton> {
       ),
     );
   }
+}
+
+/// Gemini-web-style compose / new-chat icon (open rounded square + diagonal pen).
+class GeminiNewChatIcon extends StatelessWidget {
+  final double size;
+  final Color color;
+
+  const GeminiNewChatIcon({
+    super.key,
+    this.size = 17,
+    this.color = NeoBrutalism.dark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      size: Size.square(size),
+      painter: _GeminiNewChatPainter(color: color),
+    );
+  }
+}
+
+class _GeminiNewChatPainter extends CustomPainter {
+  final Color color;
+
+  const _GeminiNewChatPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.85
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    // Open rounded square: top-middle -> top-left -> bottom-left -> bottom-right -> right-middle
+    final boxPath = Path()
+      ..moveTo(w * 0.54, h * 0.18)
+      ..lineTo(w * 0.24, h * 0.18)
+      ..quadraticBezierTo(w * 0.12, h * 0.18, w * 0.12, h * 0.30)
+      ..lineTo(w * 0.12, h * 0.76)
+      ..quadraticBezierTo(w * 0.12, h * 0.88, w * 0.24, h * 0.88)
+      ..lineTo(w * 0.70, h * 0.88)
+      ..quadraticBezierTo(w * 0.82, h * 0.88, w * 0.82, h * 0.76)
+      ..lineTo(w * 0.82, h * 0.46);
+    canvas.drawPath(boxPath, paint);
+
+    // Diagonal pen from top-right into the square
+    final penPath = Path()
+      ..moveTo(w * 0.78, h * 0.12)
+      ..lineTo(w * 0.88, h * 0.22)
+      ..lineTo(w * 0.49, h * 0.61)
+      ..lineTo(w * 0.36, h * 0.64)
+      ..lineTo(w * 0.39, h * 0.51)
+      ..close();
+    canvas.drawPath(penPath, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _GeminiNewChatPainter oldDelegate) =>
+      oldDelegate.color != color;
 }

@@ -23,14 +23,18 @@ class StickyBookingBottomBar extends StatelessWidget {
     );
     final isEnabled = onTap != null;
 
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(
-          top: BorderSide(color: Colors.black, width: 2.0),
-        ),
+    return CustomPaint(
+      foregroundPainter: const _RoundedTopBorderPainter(
+        radius: 24.0,
+        strokeWidth: 2.0,
+        color: Colors.black,
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24.0)),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: SafeArea(
         top: false,
         child: Row(
@@ -104,6 +108,49 @@ class StickyBookingBottomBar extends StatelessWidget {
           ],
         ),
       ),
+    ),
     );
   }
+}
+
+class _RoundedTopBorderPainter extends CustomPainter {
+  final double radius;
+  final double strokeWidth;
+  final Color color;
+
+  const _RoundedTopBorderPainter({
+    required this.radius,
+    required this.strokeWidth,
+    required this.color,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final halfStroke = strokeWidth / 2;
+    final r = radius.clamp(0.0, size.width / 2);
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+
+    final path = Path()
+      ..moveTo(halfStroke, r)
+      ..arcToPoint(
+        Offset(r, halfStroke),
+        radius: Radius.circular(r),
+      )
+      ..lineTo(size.width - r, halfStroke)
+      ..arcToPoint(
+        Offset(size.width - halfStroke, r),
+        radius: Radius.circular(r),
+      );
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _RoundedTopBorderPainter oldDelegate) =>
+      oldDelegate.radius != radius ||
+      oldDelegate.strokeWidth != strokeWidth ||
+      oldDelegate.color != color;
 }

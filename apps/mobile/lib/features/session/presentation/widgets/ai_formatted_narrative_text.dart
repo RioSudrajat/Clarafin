@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/theme/app_typography.dart';
 import '../../../../core/theme/neo_brutalism_decorations.dart';
 import 'ai_action_card_primitives.dart';
 
@@ -13,8 +14,8 @@ class AiFormattedNarrativeText extends StatelessWidget {
   const AiFormattedNarrativeText({
     super.key,
     required this.text,
-    this.textColor = const Color(0xFF111827),
-    this.fontSize = 13.0,
+    this.textColor = Colors.black,
+    this.fontSize = 13.5,
   });
 
   static final RegExp _inlineNumberedSplitRegex = RegExp(
@@ -24,18 +25,31 @@ class AiFormattedNarrativeText extends StatelessWidget {
   static final RegExp _bulletLineRegex = RegExp(r'^(?:-|•|\*)\s+(.*)$');
   static final RegExp _titleColonRegex = RegExp(r'^([^:\n]{2,45}):(\s+.*)$');
   static final RegExp _boldMarkdownRegex = RegExp(r'\*\*([^*]+)\*\*');
+  static final RegExp _sentenceBoundaryRegex = RegExp(
+    r'(?<=[.!?])\s+(?=[A-Z\u00C0-\u024F])',
+  );
+  static const Set<String> _nonSplittingAbbreviations = {
+    'no.',
+    'dr.',
+    'rp.',
+    'dll.',
+    'dsb.',
+    'dkk.',
+    'tgl.',
+    'hal.',
+  };
 
   @override
   Widget build(BuildContext context) {
     final blocks = _parseBlocks(text);
     if (blocks.isEmpty) return const SizedBox.shrink();
 
-    final baseStyle = aiActionTextStyle(
-      context,
-      fontSize,
-      FontWeight.w500,
-      textColor,
-    ).copyWith(height: 1.48);
+    final baseStyle = AppTypography.chatBody(
+      fontSize: fontSize,
+      fontWeight: FontWeight.w500,
+      color: textColor,
+      height: 1.52,
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -43,7 +57,7 @@ class AiFormattedNarrativeText extends StatelessWidget {
       children: [
         for (var i = 0; i < blocks.length; i++) ...[
           _buildBlock(context, blocks[i], baseStyle),
-          if (i < blocks.length - 1) const SizedBox(height: 7),
+          if (i < blocks.length - 1) const SizedBox(height: 10),
         ],
       ],
     );
@@ -83,9 +97,47 @@ class AiFormattedNarrativeText extends StatelessWidget {
         continue;
       }
 
-      blocks.add(_NarrativeBlock(kind: _BlockKind.paragraph, content: line));
+      blocks.addAll(_splitDenseParagraph(line));
     }
     return blocks;
+  }
+
+  /// Breaks a long, dense single-line paragraph (>220 chars, >=3 sentences)
+  /// into 2-sentence paragraphs so walls of text stay readable.
+  List<_NarrativeBlock> _splitDenseParagraph(String paragraph) {
+    if (paragraph.length <= 220) {
+      return [_NarrativeBlock(kind: _BlockKind.paragraph, content: paragraph)];
+    }
+
+    final rawParts = paragraph.split(_sentenceBoundaryRegex);
+    final sentences = <String>[];
+    for (final part in rawParts) {
+      final trimmed = part.trim();
+      if (trimmed.isEmpty) continue;
+      if (sentences.isNotEmpty) {
+        final prevWords = sentences.last.split(RegExp(r'\s+'));
+        final lastWord = prevWords.isNotEmpty ? prevWords.last.toLowerCase() : '';
+        if (_nonSplittingAbbreviations.contains(lastWord)) {
+          sentences[sentences.length - 1] = '${sentences.last} $trimmed';
+          continue;
+        }
+      }
+      sentences.add(trimmed);
+    }
+
+    if (sentences.length < 3) {
+      return [_NarrativeBlock(kind: _BlockKind.paragraph, content: paragraph)];
+    }
+
+    final result = <_NarrativeBlock>[];
+    for (var i = 0; i < sentences.length; i += 2) {
+      final end = (i + 2 < sentences.length) ? i + 2 : sentences.length;
+      result.add(_NarrativeBlock(
+        kind: _BlockKind.paragraph,
+        content: sentences.sublist(i, end).join(' '),
+      ));
+    }
+    return result;
   }
 
   Widget _buildBlock(
@@ -102,6 +154,7 @@ class AiFormattedNarrativeText extends StatelessWidget {
           boldLeadIn: block.kind != _BlockKind.paragraph,
         ),
       ),
+      textAlign: TextAlign.justify,
     );
     if (block.kind == _BlockKind.paragraph) return richText;
 
@@ -155,7 +208,7 @@ class AiFormattedNarrativeText extends StatelessWidget {
           return [
             TextSpan(
               text: '$title:',
-              style: baseStyle.copyWith(fontWeight: FontWeight.w700),
+              style: baseStyle.copyWith(fontWeight: FontWeight.w800),
             ),
             TextSpan(text: colonMatch.group(2)!),
           ];
@@ -174,7 +227,7 @@ class AiFormattedNarrativeText extends StatelessWidget {
       }
       spans.add(TextSpan(
         text: match.group(1),
-        style: baseStyle.copyWith(fontWeight: FontWeight.w700),
+        style: baseStyle.copyWith(fontWeight: FontWeight.w800),
       ));
       cursor = match.end;
     }
