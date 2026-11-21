@@ -95,6 +95,8 @@ func main() {
 		DefaultModel:        cfg.GeminiModel,
 		FallbackModels:      cfg.GeminiFallbackModels,
 		ContextCacheEnabled: cfg.GeminiContextCacheEnabled,
+		AttemptTimeout:      config.DefaultGeminiAttemptTimeout,
+		CooldownDuration:    config.DefaultGeminiCooldownDuration,
 		Logger:              logger,
 	})
 	geminiCancel()

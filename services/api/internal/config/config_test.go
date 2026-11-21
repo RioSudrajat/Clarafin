@@ -76,21 +76,22 @@ func TestLoadConfig_DefaultsGeminiModelAndRateLimit(t *testing.T) {
 	if cfg.HTTPPort != "8080" {
 		t.Errorf("expected HTTPPort '8080', got %q", cfg.HTTPPort)
 	}
-	if cfg.GeminiModel != "gemini-3.5-flash" {
-		t.Errorf("expected GeminiModel 'gemini-3.5-flash', got %q", cfg.GeminiModel)
+	if cfg.GeminiModel != "gemini-3.1-flash-lite-preview" {
+		t.Errorf("expected GeminiModel 'gemini-3.1-flash-lite-preview', got %q", cfg.GeminiModel)
 	}
 	wantFallbacks := []string{
-		"gemini-3.1-flash-lite-preview",
 		"gemini-3.1-flash-lite",
-		"gemini-flash-lite-latest",
+		"gemini-3.5-flash",
+		"gemini-3.6-flash",
 		"gemini-3-flash-preview",
-		"gemini-3.8-flash",
+		"gemini-2.5-flash",
+		"gemini-2.5-flash-lite",
 	}
 	if !reflect.DeepEqual(cfg.GeminiFallbackModels, wantFallbacks) {
 		t.Errorf("expected GeminiFallbackModels %v, got %v", wantFallbacks, cfg.GeminiFallbackModels)
 	}
-	if !cfg.GeminiContextCacheEnabled {
-		t.Errorf("expected GeminiContextCacheEnabled true by default")
+	if cfg.GeminiContextCacheEnabled {
+		t.Errorf("expected GeminiContextCacheEnabled false by default")
 	}
 	if cfg.AIRateLimitPerMin != 10 {
 		t.Errorf("expected AIRateLimitPerMin 10, got %d", cfg.AIRateLimitPerMin)

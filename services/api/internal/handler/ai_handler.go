@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -94,14 +95,18 @@ func (h *AIHandler) Chat(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rc := http.NewResponseController(w)
+	var writeMu sync.Mutex
 	streamStarted := false
 	emittedTerminalError := false
+	lastWriteAt := time.Now()
 
 	writeSSE := func(ev ai.SSEEvent) error {
 		payload, err := json.Marshal(ev.Data)
 		if err != nil {
 			return fmt.Errorf("marshal SSE event %s: %w", ev.Type, err)
 		}
+		writeMu.Lock()
+		defer writeMu.Unlock()
 		if !streamStarted {
 			// Disable http.Server.WriteTimeout for long-lived SSE streaming without failing on httptest.ResponseRecorder.
 			_ = rc.SetWriteDeadline(time.Time{})
@@ -113,11 +118,40 @@ func (h *AIHandler) Chat(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 		_ = rc.Flush()
+		lastWriteAt = time.Now()
 		if ev.Type == ai.SSEEventError {
 			emittedTerminalError = true
 		}
 		return nil
 	}
+
+	// Emit periodic SSE keepalive comments while waiting on upstream LLM calls so mobile clients
+	// and proxies do not drop an active stream due to idle socket timeouts.
+	heartbeatDone := make(chan struct{})
+	var heartbeatWG sync.WaitGroup
+	heartbeatWG.Add(1)
+	go func() {
+		defer heartbeatWG.Done()
+		ticker := time.NewTicker(10 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-heartbeatDone:
+				return
+			case <-r.Context().Done():
+				return
+			case <-ticker.C:
+				writeMu.Lock()
+				if streamStarted && !emittedTerminalError && time.Since(lastWriteAt) >= 9*time.Second {
+					if _, err := io.WriteString(w, ": keepalive\n\n"); err == nil {
+						_ = rc.Flush()
+						lastWriteAt = time.Now()
+					}
+				}
+				writeMu.Unlock()
+			}
+		}
+	}()
 
 	_, err := h.service.ChatStream(r.Context(), userID, ai.ChatRequest{
 		SessionID:       strings.TrimSpace(body.SessionID),
@@ -127,6 +161,9 @@ func (h *AIHandler) Chat(w http.ResponseWriter, r *http.Request) {
 		SurfaceMode:     body.SurfaceMode,
 		SessionHistory:  body.SessionHistory,
 	}, writeSSE)
+
+	close(heartbeatDone)
+	heartbeatWG.Wait()
 
 	if err != nil {
 		if !streamStarted {

@@ -24,7 +24,10 @@ import (
 
 const defaultCacheTTL = 60 * time.Minute
 const failedCacheRetryCooldown = 5 * time.Minute
-const defaultPrimaryModel = "gemini-3.5-flash"
+const defaultPrimaryModel = "gemini-3.1-flash-lite-preview"
+const defaultAttemptTimeout = 20 * time.Second
+const defaultSearchAttemptTimeout = 15 * time.Second
+const defaultModelCooldown = 2 * time.Minute
 
 // ErrGeminiUnavailable indicates the Gemini adapter has no API key or failed initialization.
 var ErrGeminiUnavailable = errors.New("gemini client unavailable")
@@ -36,6 +39,8 @@ type Config struct {
 	FallbackModels      []string
 	ContextCacheEnabled bool
 	CacheTTL            time.Duration
+	AttemptTimeout      time.Duration
+	CooldownDuration    time.Duration
 	HTTPClient          *http.Client
 	Logger              *zap.Logger
 }
@@ -56,6 +61,8 @@ type Client struct {
 	fallbackModels      []string
 	contextCacheEnabled bool
 	cacheTTL            time.Duration
+	attemptTimeout      time.Duration
+	cooldownDuration    time.Duration
 	logger              *zap.Logger
 	genaiClient         *genai.Client
 	nowFn               func() time.Time
@@ -67,6 +74,8 @@ type Client struct {
 
 	unavailableMu     sync.RWMutex
 	unavailableModels map[string]error
+	modelCooldowns    map[string]time.Time
+	searchCooldowns   map[string]time.Time
 }
 
 // NewClient initializes the Google Gemini adapter. An empty APIKey yields a safe unconfigured client
@@ -84,6 +93,14 @@ func NewClient(ctx context.Context, cfg Config) (*Client, error) {
 	if cacheTTL <= 0 {
 		cacheTTL = defaultCacheTTL
 	}
+	attemptTimeout := cfg.AttemptTimeout
+	if attemptTimeout <= 0 {
+		attemptTimeout = defaultAttemptTimeout
+	}
+	cooldownDuration := cfg.CooldownDuration
+	if cooldownDuration < 0 {
+		cooldownDuration = 0
+	}
 
 	c := &Client{
 		apiKey:              strings.TrimSpace(cfg.APIKey),
@@ -91,21 +108,41 @@ func NewClient(ctx context.Context, cfg Config) (*Client, error) {
 		fallbackModels:      normalizeFallbackSlice(cfg.FallbackModels, model),
 		contextCacheEnabled: cfg.ContextCacheEnabled,
 		cacheTTL:            cacheTTL,
+		attemptTimeout:      attemptTimeout,
+		cooldownDuration:    cooldownDuration,
 		logger:              logger,
 		nowFn:               time.Now,
 		caches:              make(map[string]cachedEntry),
 		cacheCooldown:       make(map[string]time.Time),
 		unavailableModels:   make(map[string]error),
+		modelCooldowns:      make(map[string]time.Time),
+		searchCooldowns:     make(map[string]time.Time),
 	}
 
 	if c.apiKey == "" {
 		return c, nil
 	}
 
+	httpClient := cfg.HTTPClient
+	if httpClient == nil {
+		httpClient = &http.Client{
+			Transport: &http.Transport{
+				Proxy:                 http.ProxyFromEnvironment,
+				DialContext:           (&net.Dialer{Timeout: 8 * time.Second, KeepAlive: 30 * time.Second}).DialContext,
+				ForceAttemptHTTP2:     true,
+				MaxIdleConns:          32,
+				MaxIdleConnsPerHost:   16,
+				IdleConnTimeout:       90 * time.Second,
+				TLSHandshakeTimeout:   8 * time.Second,
+				ResponseHeaderTimeout: attemptTimeout,
+			},
+		}
+	}
+
 	clientCfg := &genai.ClientConfig{
 		APIKey:     c.apiKey,
 		Backend:    genai.BackendGeminiAPI,
-		HTTPClient: cfg.HTTPClient,
+		HTTPClient: httpClient,
 	}
 	sdkClient, err := genai.NewClient(ctx, clientCfg)
 	if err != nil {
@@ -144,8 +181,12 @@ func (c *Client) GenerateContent(ctx context.Context, req ai.GenerateRequest) (*
 
 	savedSys := baseCfg.SystemInstruction
 	savedTools := baseCfg.Tools
-	candidates := c.candidateModels(primaryModel)
-	searchGroundingDisabled := false
+	candidates := c.orderedHealthyCandidates(primaryModel, req.EnableGoogleSearch)
+
+	attemptTimeout := c.attemptTimeout
+	if req.Pass == ai.Pass1SearchGround && defaultSearchAttemptTimeout < attemptTimeout {
+		attemptTimeout = defaultSearchAttemptTimeout
+	}
 
 	var lastErr error
 	for idx, candidateModel := range candidates {
@@ -153,14 +194,14 @@ func (c *Client) GenerateContent(ctx context.Context, req ai.GenerateRequest) (*
 			lastErr = memoErr
 			continue
 		}
+		if req.EnableGoogleSearch && c.isSearchCoolingDown(candidateModel) {
+			continue
+		}
 
 		attemptCfg := *baseCfg
 		attemptCfg.CachedContent = ""
 		attemptCfg.SystemInstruction = savedSys
 		attemptCfg.Tools = savedTools
-		if req.EnableGoogleSearch && searchGroundingDisabled {
-			attemptCfg.Tools = nil
-		}
 		attemptCacheName := ""
 
 		// Explicit CachedContent is strictly bound to the model that created it.
@@ -176,8 +217,12 @@ func (c *Client) GenerateContent(ctx context.Context, req ai.GenerateRequest) (*
 			}
 		}
 
-		rawResp, callErr := c.genaiClient.Models.GenerateContent(ctx, candidateModel, contents, &attemptCfg)
-		if callErr != nil && attemptCacheName != "" && ctx.Err() == nil {
+		callCtx, cancelCall := context.WithTimeout(ctx, attemptTimeout)
+		rawResp, callErr := c.genaiClient.Models.GenerateContent(callCtx, candidateModel, contents, &attemptCfg)
+		attemptTimedOut := callErr != nil && callCtx.Err() == context.DeadlineExceeded && ctx.Err() == nil
+		cancelCall()
+
+		if callErr != nil && attemptCacheName != "" && ctx.Err() == nil && !attemptTimedOut {
 			shouldFailover, _ := classifyGeminiError(ctx, callErr)
 			c.invalidateExplicitCache(buildExplicitCacheKey(candidateModel, req.CacheKey, req.ToolDeclarations))
 			if !shouldFailover {
@@ -191,21 +236,43 @@ func (c *Client) GenerateContent(ctx context.Context, req ai.GenerateRequest) (*
 				attemptCfg.CachedContent = ""
 				attemptCfg.SystemInstruction = savedSys
 				attemptCfg.Tools = savedTools
-				rawResp, callErr = c.genaiClient.Models.GenerateContent(ctx, candidateModel, contents, &attemptCfg)
+				retryCtx, cancelRetry := context.WithTimeout(ctx, attemptTimeout)
+				rawResp, callErr = c.genaiClient.Models.GenerateContent(retryCtx, candidateModel, contents, &attemptCfg)
+				attemptTimedOut = callErr != nil && retryCtx.Err() == context.DeadlineExceeded && ctx.Err() == nil
+				cancelRetry()
 			}
 		}
 
-		if callErr != nil && req.EnableGoogleSearch && !searchGroundingDisabled && ctx.Err() == nil {
-			_, isModelNotFound := classifyGeminiError(ctx, callErr)
-			if !isModelNotFound {
-				searchGroundingDisabled = true
+		// If a model rejects ThinkingConfig (e.g. a non-thinking lite model returning 400),
+		// strip ThinkingConfig and retry once rather than aborting the entire failover chain.
+		if callErr != nil && attemptCfg.ThinkingConfig != nil && ctx.Err() == nil && !attemptTimedOut && isThinkingUnsupportedError(callErr) {
+			c.logger.Warn(
+				"gemini model rejected thinkingConfig; retrying without thinkingConfig",
+				zap.String("model", candidateModel),
+				zap.Error(callErr),
+			)
+			attemptCfg.ThinkingConfig = nil
+			retryCtx, cancelRetry := context.WithTimeout(ctx, attemptTimeout)
+			rawResp, callErr = c.genaiClient.Models.GenerateContent(retryCtx, candidateModel, contents, &attemptCfg)
+			attemptTimedOut = callErr != nil && retryCtx.Err() == context.DeadlineExceeded && ctx.Err() == nil
+			cancelRetry()
+		}
+
+		// Only strip google_search on the same model if it is a non-failover error (e.g. 400 tool unsupported).
+		// On 429/503/timeout, fail over to the next healthy candidate model with google_search intact.
+		if callErr != nil && req.EnableGoogleSearch && ctx.Err() == nil && !attemptTimedOut {
+			shouldFailover, _ := classifyGeminiError(ctx, callErr)
+			if !shouldFailover {
 				c.logger.Warn(
-					"gemini google_search grounding failed; falling back to ungrounded model synthesis",
+					"gemini google_search grounding rejected; falling back to ungrounded model synthesis",
 					zap.String("model", candidateModel),
 					zap.Error(callErr),
 				)
 				attemptCfg.Tools = nil
-				rawResp, callErr = c.genaiClient.Models.GenerateContent(ctx, candidateModel, contents, &attemptCfg)
+				retryCtx, cancelRetry := context.WithTimeout(ctx, attemptTimeout)
+				rawResp, callErr = c.genaiClient.Models.GenerateContent(retryCtx, candidateModel, contents, &attemptCfg)
+				attemptTimedOut = callErr != nil && retryCtx.Err() == context.DeadlineExceeded && ctx.Err() == nil
+				cancelRetry()
 			}
 		}
 
@@ -215,8 +282,17 @@ func (c *Client) GenerateContent(ctx context.Context, req ai.GenerateRequest) (*
 
 		lastErr = callErr
 		shouldFailover, isModelNotFound := classifyGeminiError(ctx, callErr)
+		if attemptTimedOut {
+			shouldFailover = true
+		}
 		if isModelNotFound {
 			c.markModelUnavailable(candidateModel, callErr)
+		} else if shouldFailover && ctx.Err() == nil {
+			if req.EnableGoogleSearch {
+				c.markSearchCooldown(candidateModel)
+			} else {
+				c.markModelCooldown(candidateModel)
+			}
 		}
 		if !shouldFailover {
 			return nil, fmt.Errorf("gemini generate content (%s): %w", req.Pass, callErr)
@@ -228,8 +304,54 @@ func (c *Client) GenerateContent(ctx context.Context, req ai.GenerateRequest) (*
 				zap.String("failed_model", candidateModel),
 				zap.String("next_model", candidates[idx+1]),
 				zap.Bool("memoized_404", isModelNotFound),
+				zap.Bool("attempt_timeout", attemptTimedOut),
 				zap.Error(callErr),
 			)
+			// Brief backoff on transient 503/429 before hitting the next candidate.
+			if !isModelNotFound && !attemptTimedOut {
+				sleepWithContext(ctx, 250*time.Millisecond)
+			}
+		}
+	}
+
+	// If google_search failed across all candidates (e.g. search quota exhausted on every model),
+	// try ungrounded synthesis on up to 2 healthy candidates before degrading gracefully.
+	if req.EnableGoogleSearch && ctx.Err() == nil {
+		ungroundedCandidates := c.orderedHealthyCandidates(primaryModel, false)
+		ungroundedAttempts := 0
+		for _, candidateModel := range ungroundedCandidates {
+			if _, unavailable := c.unavailableModelError(candidateModel); unavailable {
+				continue
+			}
+			if ungroundedAttempts >= 2 {
+				break
+			}
+			ungroundedAttempts++
+			c.logger.Warn(
+				"gemini google_search grounding failed across all candidates; falling back to ungrounded synthesis",
+				zap.String("model", candidateModel),
+				zap.Error(lastErr),
+			)
+			ungroundedCfg := *baseCfg
+			ungroundedCfg.Tools = nil
+			ungroundedCfg.CachedContent = ""
+			ungroundedCfg.SystemInstruction = savedSys
+			retryCtx, cancelRetry := context.WithTimeout(ctx, attemptTimeout)
+			rawResp, callErr := c.genaiClient.Models.GenerateContent(retryCtx, candidateModel, contents, &ungroundedCfg)
+			cancelRetry()
+			if callErr == nil {
+				return fromGenaiResponse(rawResp, candidateModel, ""), nil
+			}
+			lastErr = callErr
+			shouldFailover, isModelNotFound := classifyGeminiError(ctx, callErr)
+			if isModelNotFound {
+				c.markModelUnavailable(candidateModel, callErr)
+			} else if shouldFailover && ctx.Err() == nil {
+				c.markModelCooldown(candidateModel)
+			}
+			if !shouldFailover {
+				break
+			}
 		}
 	}
 
@@ -555,7 +677,9 @@ func (c *Client) resolveOrCreateExplicitCache(
 	}
 	c.cacheMu.RUnlock()
 
-	created, err := c.genaiClient.Caches.Create(ctx, model, &genai.CreateCachedContentConfig{
+	cacheCtx, cancelCache := context.WithTimeout(ctx, 5*time.Second)
+	defer cancelCache()
+	created, err := c.genaiClient.Caches.Create(cacheCtx, model, &genai.CreateCachedContentConfig{
 		DisplayName:       fullKey,
 		TTL:               c.cacheTTL,
 		SystemInstruction: sysInst,
@@ -610,6 +734,72 @@ func (c *Client) candidateModels(primaryModel string) []string {
 		out = append(out, fb)
 	}
 	return out
+}
+
+// orderedHealthyCandidates places non-cooled-down models first and appends cooled-down
+// models at the end as a last resort so transient 429/503 spikes do not permanently block all models.
+func (c *Client) orderedHealthyCandidates(primaryModel string, isSearch bool) []string {
+	all := c.candidateModels(primaryModel)
+	now := c.nowFn()
+	healthy := make([]string, 0, len(all))
+	cooled := make([]string, 0, len(all))
+
+	c.unavailableMu.RLock()
+	for _, m := range all {
+		if _, dead := c.unavailableModels[m]; dead {
+			continue
+		}
+		cooldownMap := c.modelCooldowns
+		if isSearch {
+			cooldownMap = c.searchCooldowns
+		}
+		if until, ok := cooldownMap[m]; ok && until.After(now) {
+			cooled = append(cooled, m)
+			continue
+		}
+		healthy = append(healthy, m)
+	}
+	c.unavailableMu.RUnlock()
+
+	if len(healthy) == 0 && len(cooled) == 0 {
+		return all
+	}
+	if len(healthy) == 0 {
+		return cooled
+	}
+	return append(healthy, cooled...)
+}
+
+func (c *Client) isSearchCoolingDown(model string) bool {
+	if model == "" || c.cooldownDuration <= 0 {
+		return false
+	}
+	c.unavailableMu.RLock()
+	until, ok := c.searchCooldowns[model]
+	c.unavailableMu.RUnlock()
+	return ok && until.After(c.nowFn())
+}
+
+func (c *Client) markSearchCooldown(model string) {
+	if model == "" || c.cooldownDuration <= 0 {
+		return
+	}
+	d := 5 * time.Minute
+	if c.cooldownDuration > d {
+		d = c.cooldownDuration
+	}
+	c.unavailableMu.Lock()
+	c.searchCooldowns[model] = c.nowFn().Add(d)
+	c.unavailableMu.Unlock()
+}
+
+func (c *Client) markModelCooldown(model string) {
+	if model == "" || c.cooldownDuration <= 0 {
+		return
+	}
+	c.unavailableMu.Lock()
+	c.modelCooldowns[model] = c.nowFn().Add(c.cooldownDuration)
+	c.unavailableMu.Unlock()
 }
 
 func (c *Client) unavailableModelError(model string) (error, bool) {
@@ -730,6 +920,21 @@ func classifyGeminiError(ctx context.Context, err error) (shouldFailover bool, i
 	return false, false
 }
 
+func isThinkingUnsupportedError(err error) bool {
+	if err == nil {
+		return false
+	}
+	lower := strings.ToLower(err.Error())
+	return strings.Contains(lower, "thinking") &&
+		(strings.Contains(lower, "invalid_argument") ||
+			strings.Contains(lower, "status 400") ||
+			strings.Contains(lower, "code 400") ||
+			strings.Contains(lower, "error 400") ||
+			strings.Contains(lower, "not supported") ||
+			strings.Contains(lower, "unsupported") ||
+			strings.Contains(lower, "budget"))
+}
+
 func extractAPIError(err error) (genai.APIError, bool) {
 	if err == nil {
 		return genai.APIError{}, false
@@ -756,4 +961,16 @@ func buildExplicitCacheKey(model, reqKey string, decls []ai.ToolDeclaration) str
 		_, _ = h.Write(raw)
 	}
 	return "clarafin_" + hex.EncodeToString(h.Sum(nil))[:24]
+}
+
+func sleepWithContext(ctx context.Context, d time.Duration) {
+	if d <= 0 {
+		return
+	}
+	timer := time.NewTimer(d)
+	defer timer.Stop()
+	select {
+	case <-ctx.Done():
+	case <-timer.C:
+	}
 }

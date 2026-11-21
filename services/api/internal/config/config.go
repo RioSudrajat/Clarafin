@@ -8,12 +8,8 @@ import (
 	"strings"
 )
 
-// DefaultGeminiModel is the primary Gemini model used when GEMINI_MODEL is unset.
-const DefaultGeminiModel = "gemini-3.5-flash"
-
-const defaultFallbackModels = "gemini-3.1-flash-lite-preview,gemini-3.1-flash-lite,gemini-flash-lite-latest,gemini-3-flash-preview,gemini-3.8-flash"
-
-// Config holds validated runtime configuration loaded from environment variables.
+// Config holds validated runtime configuration loaded from environment variables
+// and backend-managed defaults.
 type Config struct {
 	AppEnv                    string
 	HTTPPort                  string
@@ -63,7 +59,7 @@ func Load() (*Config, error) {
 		return nil, errors.New("REDIS_URL is required")
 	}
 
-	geminiCacheEnabled, err := getBoolEnvOrDefault("GEMINI_CONTEXT_CACHE_ENABLED", true)
+	geminiCacheEnabled, err := getBoolEnvOrDefault("GEMINI_CONTEXT_CACHE_ENABLED", DefaultGeminiContextCacheEnabled)
 	if err != nil {
 		return nil, err
 	}

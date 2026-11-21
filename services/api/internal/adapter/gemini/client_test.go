@@ -11,6 +11,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"google.golang.org/genai"
 
@@ -751,4 +752,160 @@ type roundTripperFunc func(*http.Request) (*http.Response, error)
 
 func (f roundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
 	return f(req)
+}
+
+func TestClient_PerAttemptTimeoutFailsOverToNextModel(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		model := extractModelFromGeneratePath(r.URL.Path)
+		if model == "gemini-slow" {
+			select {
+			case <-r.Context().Done():
+				return
+			case <-time.After(2 * time.Second):
+				writeMockSuccessCandidate(w, `{"narrative":"Too late"}`)
+				return
+			}
+		}
+		writeMockSuccessCandidate(w, `{"narrative":"Fast fallback"}`)
+	}))
+	defer srv.Close()
+
+	c, err := gemini.NewClient(context.Background(), gemini.Config{
+		APIKey:              "test-key",
+		DefaultModel:        "gemini-slow",
+		FallbackModels:      []string{"gemini-fast"},
+		ContextCacheEnabled: false,
+		AttemptTimeout:      120 * time.Millisecond,
+		CooldownDuration:    time.Minute,
+		HTTPClient:          newRedirectHTTPClient(srv),
+	})
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+
+	resp, err := c.GenerateContent(context.Background(), ai.GenerateRequest{
+		Pass:     ai.Pass1ToolPlanning,
+		Contents: []ai.LLMMessage{{Role: "user", Parts: []ai.LLMPart{{Text: "halo"}}}},
+		Params:   ai.GenerationParams{Temperature: 0.1},
+	})
+	if err != nil {
+		t.Fatalf("GenerateContent failed: %v", err)
+	}
+	if resp.Model != "gemini-fast" {
+		t.Fatalf("expected failover to 'gemini-fast', got %q", resp.Model)
+	}
+}
+
+func TestClient_CooldownSkipsDegradedModelOnSubsequentCalls(t *testing.T) {
+	var mu sync.Mutex
+	hitsByModel := make(map[string]int)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		model := extractModelFromGeneratePath(r.URL.Path)
+		mu.Lock()
+		hitsByModel[model]++
+		mu.Unlock()
+
+		if model == "gemini-degraded" {
+			writeMockAPIError(w, http.StatusServiceUnavailable, "UNAVAILABLE", "overloaded")
+			return
+		}
+		writeMockSuccessCandidate(w, `{"narrative":"Healthy model"}`)
+	}))
+	defer srv.Close()
+
+	c, err := gemini.NewClient(context.Background(), gemini.Config{
+		APIKey:              "test-key",
+		DefaultModel:        "gemini-degraded",
+		FallbackModels:      []string{"gemini-healthy"},
+		ContextCacheEnabled: false,
+		CooldownDuration:    time.Minute,
+		HTTPClient:          newRedirectHTTPClient(srv),
+	})
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+
+	req := ai.GenerateRequest{
+		Pass:     ai.Pass1ToolPlanning,
+		Contents: []ai.LLMMessage{{Role: "user", Parts: []ai.LLMPart{{Text: "halo"}}}},
+		Params:   ai.GenerationParams{Temperature: 0.1},
+	}
+
+	for i := 0; i < 3; i++ {
+		resp, err := c.GenerateContent(context.Background(), req)
+		if err != nil {
+			t.Fatalf("call %d failed: %v", i+1, err)
+		}
+		if resp.Model != "gemini-healthy" {
+			t.Fatalf("call %d expected 'gemini-healthy', got %q", i+1, resp.Model)
+		}
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+	if hitsByModel["gemini-degraded"] != 1 {
+		t.Fatalf("expected degraded model to be hit only once during cooldown, got %d", hitsByModel["gemini-degraded"])
+	}
+	if hitsByModel["gemini-healthy"] != 3 {
+		t.Fatalf("expected healthy model to be hit 3 times, got %d", hitsByModel["gemini-healthy"])
+	}
+}
+
+func TestClient_GoogleSearch429FailsOverToNextModelWithSearchIntact(t *testing.T) {
+	var mu sync.Mutex
+	hitsByModel := make(map[string]int)
+	var fallbackSawSearch bool
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		bodyBytes, _ := io.ReadAll(r.Body)
+		model := extractModelFromGeneratePath(r.URL.Path)
+		mu.Lock()
+		hitsByModel[model]++
+		if model == "gemini-search-ok" && strings.Contains(string(bodyBytes), "googleSearch") {
+			fallbackSawSearch = true
+		}
+		mu.Unlock()
+
+		if model == "gemini-search-429" {
+			writeMockAPIError(w, http.StatusTooManyRequests, "RESOURCE_EXHAUSTED", "quota exceeded")
+			return
+		}
+		writeMockSuccessCandidate(w, `Ringkasan BI Rate 6%`)
+	}))
+	defer srv.Close()
+
+	c, err := gemini.NewClient(context.Background(), gemini.Config{
+		APIKey:              "test-key",
+		DefaultModel:        "gemini-search-429",
+		FallbackModels:      []string{"gemini-search-ok"},
+		ContextCacheEnabled: false,
+		CooldownDuration:    time.Minute,
+		HTTPClient:          newRedirectHTTPClient(srv),
+	})
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+
+	resp, err := c.GenerateContent(context.Background(), ai.GenerateRequest{
+		Pass:               ai.Pass1SearchGround,
+		EnableGoogleSearch: true,
+		Contents:           []ai.LLMMessage{{Role: "user", Parts: []ai.LLMPart{{Text: "BI rate 6%"}}}},
+		Params:             ai.GenerationParams{Temperature: 0.1},
+	})
+	if err != nil {
+		t.Fatalf("GenerateContent failed: %v", err)
+	}
+	if resp.Model != "gemini-search-ok" {
+		t.Fatalf("expected failover to 'gemini-search-ok', got %q", resp.Model)
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+	if hitsByModel["gemini-search-429"] != 1 {
+		t.Fatalf("expected 429 model not to be retried without search, got %d hits", hitsByModel["gemini-search-429"])
+	}
+	if !fallbackSawSearch {
+		t.Fatal("expected fallback model to receive googleSearch tool intact")
+	}
 }

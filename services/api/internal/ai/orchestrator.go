@@ -10,6 +10,7 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -413,6 +414,15 @@ func (o *Orchestrator) ChatStream(
 		}
 	}
 	failWithSSE := func(code, message string, cause error) (*ChatResult, error) {
+		if cause != nil {
+			o.logger.Warn(
+				"ai chat stream failed",
+				zap.String("code", code),
+				zap.String("request_id", traceReqID),
+				zap.String("session_id", sessionID),
+				zap.Error(cause),
+			)
+		}
 		compensateOnce()
 		_ = emit(SSEEvent{
 			Type: SSEEventError,
@@ -463,7 +473,7 @@ func (o *Orchestrator) ChatStream(
 
 	bundle, pass1Summary, err := o.runPass1(ctx, userID, surfaceMode, sysPrompt, history, msg, &stepNum, sessionID, clientReqID, emit)
 	if err != nil {
-		return failWithSSE(domain.ErrCodeInternalError, "Terjadi kendala saat mengambil data keuangan atau merencanakan aksi.", err)
+		return failWithSSE(domain.ErrCodeInternalError, classifyOrchestrationErrorMessage(err, "Terjadi kendala saat mengambil data keuangan atau merencanakan aksi. Kuota kamu tidak dipotong."), err)
 	}
 
 	if err := emitStep("Menyusun jawaban & komponen aksi", "Memformat hasil analisa dan kartu konfirmasi.", "in_progress"); err != nil {
@@ -473,7 +483,7 @@ func (o *Orchestrator) ChatStream(
 
 	structured, err := o.runPass2WithRetry(ctx, surfaceMode, sysPrompt, msg, bundle, pass1Summary)
 	if err != nil {
-		return failWithSSE(domain.ErrCodeInternalError, "Clarafin AI gagal menyusun format jawaban terstruktur. Kuota kamu tidak dipotong.", err)
+		return failWithSSE(domain.ErrCodeInternalError, classifyOrchestrationErrorMessage(err, "Clarafin AI gagal menyusun format jawaban terstruktur. Kuota kamu tidak dipotong."), err)
 	}
 
 	if err := o.quota.CommitSuccess(ctx, clientReqID); err != nil {
@@ -802,7 +812,7 @@ func (o *Orchestrator) runPass1(
 				TopP:            0.85,
 				TopK:            40,
 				MaxOutputTokens: 1024,
-				ThinkingBudget:  128,
+				ThinkingBudget:  0,
 				SafetyThreshold: SafetyBlockMediumAndAbove,
 			},
 		})
@@ -822,10 +832,43 @@ func (o *Orchestrator) runPass1(
 		}
 		conv = append(conv, LLMMessage{Role: "model", Parts: modelParts})
 
+		type toolExecResult struct {
+			outMap  map[string]any
+			stepErr error
+			sub     Pass1ToolBundle
+		}
+
+		results := make([]toolExecResult, len(resp.FunctionCalls))
+		if len(resp.FunctionCalls) == 1 {
+			results[0].outMap, results[0].stepErr = o.executePass1Tool(ctx, userID, resp.FunctionCalls[0], &results[0].sub)
+		} else {
+			// Run network-bound search_financial_knowledge calls concurrently, while keeping
+			// DB-backed tools sequential so single-connection test transactions (pgx.Tx) never hit "conn busy".
+			var wg sync.WaitGroup
+			for idx, tc := range resp.FunctionCalls {
+				if tc.Name == "search_financial_knowledge" {
+					wg.Add(1)
+					go func(i int, call ToolCall) {
+						defer wg.Done()
+						results[i].outMap, results[i].stepErr = o.executePass1Tool(ctx, userID, call, &results[i].sub)
+					}(idx, tc)
+				}
+			}
+			for idx, tc := range resp.FunctionCalls {
+				if tc.Name != "search_financial_knowledge" {
+					results[idx].outMap, results[idx].stepErr = o.executePass1Tool(ctx, userID, tc, &results[idx].sub)
+				}
+			}
+			wg.Wait()
+		}
+
 		responseParts := make([]LLMPart, 0, len(resp.FunctionCalls))
-		for _, tc := range resp.FunctionCalls {
+		for idx, tc := range resp.FunctionCalls {
 			title, detail := describeToolStep(tc.Name, tc.Args)
-			outMap, stepErr := o.executePass1Tool(ctx, userID, tc, bundle)
+			outMap := results[idx].outMap
+			stepErr := results[idx].stepErr
+			mergeToolBundle(bundle, &results[idx].sub)
+
 			status := "completed"
 			if stepErr != nil {
 				status = "failed"
@@ -869,6 +912,54 @@ func (o *Orchestrator) runPass1(
 	}
 
 	return bundle, observationText, nil
+}
+
+func mergeToolBundle(dst, src *Pass1ToolBundle) {
+	if dst == nil || src == nil {
+		return
+	}
+	if src.Wallets != nil {
+		dst.Wallets = src.Wallets
+	}
+	if src.FlowCashflow != nil {
+		dst.FlowCashflow = src.FlowCashflow
+	}
+	if src.MerchantCashflow != nil {
+		dst.MerchantCashflow = src.MerchantCashflow
+	}
+	if src.CategoryCashflow != nil {
+		dst.CategoryCashflow = src.CategoryCashflow
+	}
+	if src.WalletCashflow != nil {
+		dst.WalletCashflow = src.WalletCashflow
+	}
+	if src.BudgetBills != nil {
+		dst.BudgetBills = src.BudgetBills
+	}
+	if len(src.TxChecks) > 0 {
+		dst.TxChecks = append(dst.TxChecks, src.TxChecks...)
+		dst.PrepareTx = mergePrepareTransactionResults(dst.TxChecks)
+	} else if src.PrepareTx != nil {
+		dst.PrepareTx = src.PrepareTx
+	}
+	if src.GoalDraft != nil {
+		dst.GoalDraft = src.GoalDraft
+	}
+	if src.BudgetDraft != nil {
+		dst.BudgetDraft = src.BudgetDraft
+	}
+	if src.BillDraft != nil {
+		dst.BillDraft = src.BillDraft
+	}
+	if src.Matching != nil {
+		dst.Matching = src.Matching
+	}
+	if len(src.SearchSummaries) > 0 {
+		dst.SearchSummaries = append(dst.SearchSummaries, src.SearchSummaries...)
+	}
+	if len(src.SearchSources) > 0 {
+		dst.SearchSources = append(dst.SearchSources, src.SearchSources...)
+	}
 }
 
 func (o *Orchestrator) executePass1Tool(
@@ -1036,7 +1127,17 @@ func (o *Orchestrator) executePass1Tool(
 			},
 		})
 		if err != nil {
-			return nil, fmt.Errorf("isolated google_search sub-call: %w", err)
+			if ctx.Err() != nil {
+				return nil, fmt.Errorf("isolated google_search sub-call: %w", err)
+			}
+			o.logger.Warn("isolated google_search sub-call failed; continuing without web grounding", zap.String("query", query), zap.Error(err))
+			return map[string]any{
+				"query":       query,
+				"summary":     "",
+				"sources":     []string{},
+				"unavailable": true,
+				"note":        "Pencarian web eksternal sedang sibuk atau melewati kuota; lanjutkan analisa berdasarkan pengetahuan ekonomi umum yang netral.",
+			}, nil
 		}
 		summary := sanitizeNoEmDash(strings.TrimSpace(searchResp.Text))
 		if summary != "" {
@@ -1293,7 +1394,7 @@ func computePass2ThinkingBudget(surfaceMode string, bundle *Pass1ToolBundle) int
 		bundle.BudgetDraft != nil ||
 		bundle.BillDraft != nil ||
 		(surfaceMode == "full_screen" && (bundle.MerchantCashflow != nil || bundle.CategoryCashflow != nil || bundle.WalletCashflow != nil || bundle.BudgetBills != nil)) {
-		return 768
+		return 512
 	}
 	return 128
 }
@@ -1581,4 +1682,22 @@ func aiDraftRowToDTO(d repository.AiDraft) service.AIDraftDTO {
 		CreatedAt:           d.CreatedAt,
 		UpdatedAt:           d.UpdatedAt,
 	}
+}
+
+func classifyOrchestrationErrorMessage(err error, fallback string) string {
+	if err == nil {
+		return fallback
+	}
+	if errors.Is(err, context.DeadlineExceeded) {
+		return "Server AI membutuhkan waktu lebih lama dari biasanya. Silakan coba lagi sebentar lagi. Kuota kamu tidak dipotong."
+	}
+	lower := strings.ToLower(err.Error())
+	if strings.Contains(lower, "503") ||
+		strings.Contains(lower, "unavailable") ||
+		strings.Contains(lower, "high demand") ||
+		strings.Contains(lower, "429") ||
+		strings.Contains(lower, "resource_exhausted") {
+		return "Server AI sedang mengalami lonjakan permintaan. Silakan coba lagi sebentar lagi. Kuota kamu tidak dipotong."
+	}
+	return fallback
 }
